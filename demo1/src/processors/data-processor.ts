@@ -7,6 +7,12 @@ import type { GameObject } from "../game-object";
 export class DataProcessor implements Processor {
   priority: Priority = Priority.Hud;
 
+  process(element: Element, gameWorld: GameWorld, gameObjs: GameObject[]): void {
+    gameObjs.forEach(obj => {
+      obj.moveable = element.data?.moveable;
+    });
+  }
+
   update(element: Element, gameWorld: GameWorld, gameObjs: GameObject[]): void {
     if (element.data?.nextOnClick) {
       if (mouseWasPressed(0)) {

@@ -35,6 +35,7 @@ export const DEMO: Scene = {
           player: 1,
           reveal: 1,
           moveOnClick: true,
+          moveable: true,
         },
       },
       {
