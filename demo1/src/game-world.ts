@@ -1,4 +1,4 @@
-import { debugClear, engineInit, engineObjects, engineObjectsDestroy, mainContext, mouseWasPressed, setCameraScale } from "littlejsengine";
+import { debugClear, engineInit, engineObjectsDestroy } from "littlejsengine";
 import { GameObject } from "./game-object";
 import type { Scene } from "./type/scene";
 import type { Processor } from "./processors/processor";

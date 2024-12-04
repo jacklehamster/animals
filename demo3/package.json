@@ -1,0 +1,21 @@
+{
+  "name": "animals",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun i && bun test && rm -rf public/dist/*.* && bun run bundler/bundler.ts && bun run test",
+    "start": "bun run build && bun run ./index.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/express": "^5.0.0",
+    "express": "^4.21.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "littlejsengine": "^1.10.4"
+  }
+}
