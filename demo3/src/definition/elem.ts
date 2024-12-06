@@ -1,13 +1,17 @@
 export interface Elem {
+  definition?: string;
   lastUpdate?: number;
   name?: string;
   type?: string;
+  level?: number;
+  owner?: number;
   group?: {
     grid?: [number, number];
     chance?: number;
   };
   gameObject?: {
-    pos: [number, number];
+    pos?: [number, number];
+    offset?: [number, number];
     size?: [number, number];
     hidden?: boolean;
     color?: string;
@@ -47,6 +51,10 @@ export interface Elem {
       animation: string;
       scale?: number;
     }
+  };
+  move?: {
+    animation: string;
+    distance?: number;
   };
   shadow?: {
     animation: string;

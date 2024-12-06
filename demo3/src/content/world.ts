@@ -4,7 +4,126 @@ const SIZE = 30;
 
 export const worldData: Scene = {
   scale: 64,
-  layers: ["tile", "tile_overlay", "water", "river", "unit", "decor", "cloud", "cursor"],
+  layers: {
+    "tile": 0,
+    "tile_overlay": 1,
+    "water": 2,
+    "river": 3,
+    "house": 4,
+    "unit": 4,
+    "decor": 4,
+    "cloud": 6,
+    "cursor": 7,
+  },
+  colayers: {
+    "house": 1,
+    "decor": 2,
+    "unit": 3,
+  },
+  definitions: [
+    {
+      name: "sheep",
+      type: "unit",
+      gameObject: {
+        pos: [0, 0] as [number, number],
+        size: [1.5, 1.5] as [number, number],
+        speed: 0.08,
+      },
+      animation: {
+        name: "sheep",
+      },
+      onHover: {
+        hideCursor: true,
+        indic: {
+          animation: "hover",
+        },
+      },
+      selected: {
+        animation: "sheep_wait",
+        indic: {
+          animation: "indic",
+        },
+        moveIndic: {
+          animation: "blue",
+        },
+      },
+      move: {
+        animation: "sheep_jump",
+      },
+      shadow: {
+        animation: "shadow",
+      },
+      clearCloud: true,
+      dynamic: true,
+    },
+    {
+      name: "dog",
+      type: "unit",
+      gameObject: {
+        size: [1.5, 1.5] as [number, number],
+        speed: 0.05,
+      },
+      animation: {
+        name: "dog",
+      },
+      onHover: {
+        hideCursor: true,
+        indic: {
+          animation: "hover",
+        },
+      },
+      selected: {
+        animation: "dog_wait",
+        indic: {
+          animation: "indic",
+        },
+        moveIndic: {
+          animation: "blue",
+        },
+      },
+      move: {
+        animation: "dog_jump",
+      },
+      shadow: {
+        animation: "shadow",
+      },
+      clearCloud: true,
+      dynamic: true,
+    },
+    {
+      name: "cow",
+      type: "unit",
+      gameObject: {
+        size: [1.8, 1.8] as [number, number],
+        speed: 0.04,
+      },
+      animation: {
+        name: "cow",
+      },
+      onHover: {
+        hideCursor: true,
+        indic: {
+          animation: "hover",
+        },
+      },
+      selected: {
+        animation: "cow_wait",
+        indic: {
+          animation: "indic",
+        },
+        moveIndic: {
+          animation: "blue",
+        },
+      },
+      move: {
+        animation: "cow_jump",
+      },
+      shadow: {
+        animation: "shadow",
+      },
+      clearCloud: true,
+    },
+  ],
   animations: [
     {
       name: "triangle",
@@ -21,6 +140,15 @@ export const worldData: Scene = {
       spriteSize: [64, 64] as [number, number],
       frames: [
         6,
+      ],
+    },
+    {
+      name: "sheep_wait",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      mul: 20,
+      frames: [
+        6, 7,
       ],
     },
     {
@@ -155,6 +283,77 @@ export const worldData: Scene = {
         32,
       ],
     },
+    {
+      name: "house",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        27, 28, 29,
+      ],
+      mul: 20,
+    },
+    ...new Array(10).fill(36).map((base, i) => ({
+      name: `num_${i}`,
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        base + i,
+      ],
+    })),
+    {
+      name: "dog",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64],
+      frames: [
+        46,
+      ],
+    },
+    {
+      name: "dog_wait",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      mul: 20,
+      frames: [
+        46, 47,
+      ],
+    },
+    {
+      name: "dog_jump",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      mul: 3,
+      frames: [
+        47, 48, 49, 49, 50,
+      ],
+      airFrames: [48, 49],
+    },
+    {
+      name: "cow",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        51,
+      ],
+    },
+    {
+      name: "cow_wait",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      mul: 20,
+      frames: [
+        51, 52, 51,
+      ],
+    },
+    {
+      name: "cow_jump",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      mul: 10,
+      frames: [
+        51, 53, 54,
+      ],
+      airFrames: [54],
+    },
   ],
   elems: [
     {
@@ -191,36 +390,8 @@ export const worldData: Scene = {
       },
     },
     {
-      name: "sheep",
-      type: "unit",
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-        speed: 0.1,
-      },
-      animation: {
-        name: "sheep",
-      },
-      onHover: {
-        hideCursor: true,
-        indic: {
-          animation: "hover",
-        },
-      },
-      selected: {
-        animation: "sheep_jump",
-        indic: {
-          animation: "indic",
-        },
-        moveIndic: {
-          animation: "blue",
-        },
-      },
-      shadow: {
-        animation: "shadow",
-      },
-      clearCloud: true,
-      dynamic: true,
+      definition: "sheep",
+      owner: 1,
     },
     {
       name: "grass",
@@ -323,6 +494,132 @@ export const worldData: Scene = {
         radius: .3,
         behind: true,
       },
+    },
+  ],
+  menu: [
+    {
+      name: "sheep",
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [1, 1],
+        frames: [6, 7],
+      },
+      items: [
+        {
+          name: "build",
+          imageSource: "./assets/tiles.png",
+          spriteSize: [64, 64] as [number, number],
+          padding: [1, 1],
+          frames: [27, 28, 29],
+          label: "build\nsettlement",
+          actions: [
+            {
+              deselect: true,
+              create: {
+                name: "house",
+                type: "house",
+                level: 1,
+                gameObject: {
+                  offset: [0, .7] as [number, number],
+                  size: [2, 2] as [number, number],
+                },
+                animation: {
+                  name: "house",
+                },
+                onHover: {
+                  hideCursor: true,
+                  indic: {
+                    animation: "hover",
+                  },
+                },
+                selected: {
+                  animation: "house",
+                  indic: {
+                    animation: "indic",
+                  },
+                },
+                dynamic: true,
+              },
+            },
+            {
+              destroy: true,
+            },
+          ],
+        },
+      ],
+    },
+    {
+      name: "house",
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [1, 1],
+        frames: [27, 28, 29],
+      },
+      items: [
+        {
+          name: "sheep",
+          imageSource: "./assets/tiles.png",
+          spriteSize: [64, 64] as [number, number],
+          padding: [1, 1],
+          frames: [6],
+          label: "spawn\nsheep",
+          hidden: {
+            occupied: ["unit", "Tile occupied\nby a unit"],
+          },
+          disabled: {
+            levelBelowEqual: [1, "Level\ntoo low"],
+          },
+          actions: [
+            {
+              deselect: true,
+              level: -1,
+              create: {
+                definition: "sheep",
+              },
+            },
+          ],
+        },
+        {
+          name: "dog",
+          imageSource: "./assets/tiles.png",
+          spriteSize: [64, 64] as [number, number],
+          padding: [1, 1],
+          frames: [46],
+          label: "spawn\ndog",
+          hidden: {
+            occupied: ["unit", "Tile occupied\nby a unit"],
+          },
+          actions: [
+            {
+              deselect: true,
+              create: {
+                definition: "dog",
+              },
+            },
+          ],
+        },
+        {
+          name: "cow",
+          imageSource: "./assets/tiles.png",
+          spriteSize: [64, 64] as [number, number],
+          padding: [1, 1],
+          frames: [51],
+          label: "spawn\ncow",
+          hidden: {
+            occupied: ["unit", "Tile occupied\nby a unit"],
+          },
+          actions: [
+            {
+              deselect: true,
+              create: {
+                definition: "cow",
+              },
+            },
+          ],
+        },
+      ],
     },
   ],
 };

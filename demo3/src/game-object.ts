@@ -1,4 +1,4 @@
-import { Color, EngineObject, mouseIsDown, mousePos, mouseWasPressed, mouseWasReleased, randColor, TileInfo, vec2, Vector2 } from "littlejsengine";
+import { Color, drawTextScreen, EngineObject, mouseIsDown, mousePos, mouseWasPressed, mouseWasReleased, randColor, TileInfo, vec2, Vector2 } from "littlejsengine";
 import type { Elem } from "./definition/elem";
 import type { Manager } from "./manager";
 import type { AnimationInfo } from "./animation/animation-manager";
@@ -7,6 +7,7 @@ export class GameObject extends EngineObject {
   animationInfo?: AnimationInfo;
   hoveredAnimationInfo?: AnimationInfo;
   selectedAnimationInfo?: AnimationInfo;
+  moveAnimationInfo?: AnimationInfo;
   shadowAnimationInfo?: AnimationInfo;
   frameRate: number = 60;
   mouseFollower?: { offset: Vector2; snap?: number };
@@ -18,17 +19,27 @@ export class GameObject extends EngineObject {
   hovered: boolean = false;
   decors: EngineObject[] = [];
   shadow?: EngineObject;
+  label?: EngineObject;
   updated?: boolean = false;
   moveOptions?: EngineObject[];
   clearedCloud?: boolean;
   lastDx: number = 1;
+  bornTime: number = Date.now();
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
   }
 
   refresh(elem: Elem) {
-    this.elem = elem;
+    if (!this.elem) {
+      const definition = this.manager.scene.definitions.find((def) => def.name === elem.definition);
+      if (definition) {
+        this.elem = JSON.parse(JSON.stringify(definition));
+      } else {
+        this.elem = elem;
+      }
+    }
+    elem = this.elem!;
     const config = elem.gameObject;
     if (config) {
       this.type = elem.type;
@@ -36,10 +47,12 @@ export class GameObject extends EngineObject {
       if (this.type === "cursor") {
         this.manager.cursor = this;
       }
-      const px = this.gridShift.x + config.pos[0];
-      const py = this.gridShift.y + config.pos[1];
+      const px = this.gridShift.x + (config.pos?.[0] ?? 0);
+      const py = this.gridShift.y + (config.pos?.[1] ?? 0);
       this.setPosition(px, py, true);
-      this.pos.set(px, py);
+      const offset = this.elem?.gameObject?.offset ?? [0, 0];
+      this.pos.set(px + offset[0], py + offset[1]);
+      this.updateSize();
       this.size.set(
         this.visible ? config.size?.[0] : 0,
         this.visible ? config.size?.[1] : 0,
@@ -66,6 +79,11 @@ export class GameObject extends EngineObject {
       if (elem.selected) {
         if (elem.selected.animation) {
           this.selectedAnimationInfo = this.manager.animation.getInfo(elem.selected.animation);
+        }
+      }
+      if (elem.move) {
+        if (elem.move.animation) {
+          this.moveAnimationInfo = this.manager.animation.getInfo(elem.move.animation);
         }
       }
       if (elem.shadow) {
@@ -131,16 +149,41 @@ export class GameObject extends EngineObject {
           }
         }
       }
+      if (elem.level) {
+        if (!this.label) {
+          this.label = new EngineObject(vec2(0, 0), vec2(1, 1));
+          this.addChild(this.label, vec2(0, 0));
+          this.label.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${elem.level % 10}`));
+          console.log(elem.level);
+        }
+      }
     } else {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
+      }
+      if (this.manager.selected === this) {
+        this.manager.setSelection(undefined);
       }
       this.destroy();
     }
   }
 
   private getTag() {
-    return `${this.type}_${this.px}_${this.py}`;
+    return GameObject.getTag(this.type, this.px, this.py);
+  }
+
+  static getTag(type: string | undefined, px: number, py: number) {
+    return `${type}_${px}_${py}`;
+  }
+
+  updateSize() {
+    const age = Date.now() - this.bornTime;
+    const scale = Math.min(1, age / 200);
+    const config = this.elem?.gameObject;
+    this.size.set(
+      scale * (this.visible ? (config?.size?.[0] ?? 0) : 0) * (this.lastDx || 1),
+      scale * (this.visible ? (config?.size?.[1] ?? 0) : 0),
+    );
   }
 
   setPosition(px: number, py: number, force?: boolean) {
@@ -149,12 +192,8 @@ export class GameObject extends EngineObject {
       delete this.manager.grid[this.getTag()];
     }
     if (this.px !== px) {
-      const config = this.elem?.gameObject;
       this.lastDx = Math.sign(px - this.px);
-      this.size.set(
-        (this.visible ? (config?.size?.[0] ?? 0) : 0) * this.lastDx,
-        this.visible ? (config?.size?.[1] ?? 0) : 0,
-      );
+      this.updateSize();
     }
 
     this.px = px;
@@ -176,9 +215,19 @@ export class GameObject extends EngineObject {
   }
 
   canMove(px: number, py: number) {
+    if (this.elem?.type !== "unit") {
+      return false;
+    }
     const dx = px - this.px;
     const dy = py - this.py;
-    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    if (dx === 0 && dy === 0) {
+      return false;
+    }
+    const dist = this.elem.move?.distance ?? 1;
+    if (Math.abs(dx) > dist || Math.abs(dy) > dist) {
+      return false;
+    }
+    if (this.manager.grid[`unit_${px}_${py}`]) {
       return false;
     }
     if (this.manager.grid[`decor_${px}_${py}`]) {
@@ -200,11 +249,7 @@ export class GameObject extends EngineObject {
   show() {
     if (!this.visible) {
       this.visible = true;
-      const config = this.elem?.gameObject;
-      this.size.set(
-        (this.visible ? (config?.size?.[0] ?? 0) : 0) * this.lastDx,
-        this.visible ? (config?.size?.[1] ?? 0) : 0,
-      );
+      this.updateSize();
     }
   }
 
@@ -222,8 +267,9 @@ export class GameObject extends EngineObject {
           const scale = this.elem.onHover.indic.scale ?? 1;
           this.hoverIndic.size.set(this.size.x * scale, this.size.y * scale);
           this.hoverIndic.tileInfo = this.manager.animation.getInfo(this.elem.onHover.indic.animation).tileInfos[0];
-          this.hoverIndic.pos.set(this.pos.x, this.pos.y);
-          this.addChild(this.hoverIndic);
+          this.hoverIndic.pos.set(this.px, this.py);
+          const offset = this.elem?.gameObject?.offset ?? [0, 0];
+          this.addChild(this.hoverIndic, vec2(-offset[0], -offset[1]));
           this.updated = false;
         }
       } else {
@@ -245,18 +291,19 @@ export class GameObject extends EngineObject {
         this.selectIndic = new EngineObject();
         const scale = this.elem.selected.indic.scale ?? 1;
         this.selectIndic.size.set(this.size.x * scale, this.size.y * scale);
-        this.selectIndic.renderOrder = this.renderOrder - 1;
+        this.selectIndic.renderOrder = this.renderOrder - .1;
         this.selectIndic.tileInfo = this.manager.animation.getInfo(this.elem.selected.indic.animation).tileInfos[0];
-        this.selectIndic.pos.set(this.pos.x, this.pos.y);
-        this.addChild(this.selectIndic);
+        const offset = this.elem?.gameObject?.offset ?? [0, 0];
+        this.addChild(this.selectIndic, vec2(-offset[0], -offset[1]));
+        this.selectIndic.pos.set(this.px, this.py);
 
         //  show move options
-        for (let y = -1; y <= 1; y++) {
-          for (let x = -1; x <= 1; x++) {
+        const distance = this.elem.move?.distance ?? 1;
+        for (let y = -distance; y <= distance; y++) {
+          for (let x = -distance; x <= distance; x++) {
             this.addMoveOption(x, y);
           }
         }
-
       }
     } else {
       if (this.elem?.selected?.indic && this.selectIndic) {
@@ -284,8 +331,9 @@ export class GameObject extends EngineObject {
       obj.color = new Color(0, 0, 0, .3);
       obj.tileInfo = this.tileInfo;
     }
-    obj.pos.set(this.pos.x, this.pos.y);
-    this.addChild(obj, vec2(x, y));
+    const offset = this.elem?.gameObject?.offset ?? [0, 0];
+    obj.pos.set(this.px, this.py);
+    this.addChild(obj, vec2(x - offset[0], y - offset[1]));
     if (!this.moveOptions) {
       this.moveOptions = [];
     }
@@ -305,7 +353,10 @@ export class GameObject extends EngineObject {
 
   update() {
     super.update();
-    if (this.updated && !this.elem?.dynamic && !this.doomed) {
+    if (this.updated && !this.elem?.dynamic && !this.doomed && Date.now() - this.bornTime < 1000) {
+      return;
+    }
+    if (this.manager.inUI) {
       return;
     }
     const nowHoverered = this.manager.hovered(this);
@@ -328,9 +379,10 @@ export class GameObject extends EngineObject {
       }
       this.setPosition(px, py);
     }
-    const dx = this.px - this.pos.x;
-    const dy = this.py - this.pos.y;
-    const animInfo = this.selectedAnimationInfo && (this.manager.selected === this || dx || dy) ? this.selectedAnimationInfo : this.hoveredAnimationInfo && this.manager.hovered(this) ? this.hoveredAnimationInfo : this.animationInfo;
+    const offset = this.elem?.gameObject?.offset ?? [0, 0];
+    const dx = (this.px + offset[0]) - this.pos.x;
+    const dy = (this.py + offset[1]) - this.pos.y;
+    const animInfo = this.moveAnimationInfo && (dx || dy) ? this.moveAnimationInfo : this.selectedAnimationInfo && (this.manager.selected === this) ? this.selectedAnimationInfo : this.hoveredAnimationInfo && this.manager.hovered(this) ? this.hoveredAnimationInfo : this.animationInfo;
     if (animInfo) {
       this.tileInfo = this.getTileInfoAnimate(animInfo);
     }
@@ -343,7 +395,7 @@ export class GameObject extends EngineObject {
           const speed = Math.min(dist, this.elem?.gameObject?.speed ?? .5);
           this.pos.set(this.pos.x + dx / dist * speed, this.pos.y + dy / dist * speed);
         } else {
-          this.pos.set(this.px, this.py);
+          this.pos.set(this.px + offset[0], this.py + offset[1]);
         }
       }
     }
@@ -358,19 +410,23 @@ export class GameObject extends EngineObject {
     }
 
 
-    const renderOrder = -Math.round(this.pos.y) + this.manager.layers?.indexOf(this.type ?? "") * 10000;
+    const coLayers = this.manager.scene?.colayers;
+    const renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.type ?? ""] ?? 0) * .001;
     if (this.renderOrder !== renderOrder || !this.updated) {
       this.renderOrder = renderOrder;
       this.decors.forEach((decor) => {
-        decor.renderOrder = this.renderOrder + (this.elem?.spread?.behind ? -1 : 1);
+        decor.renderOrder = this.renderOrder + (this.elem?.spread?.behind ? -.1 : .1);
       });
-      this.moveOptions?.forEach(moveOption => moveOption.renderOrder = this.renderOrder - 1);
+      this.moveOptions?.forEach(moveOption => moveOption.renderOrder = this.renderOrder - .1);
 
       if (this.shadow) {
         this.shadow.renderOrder = this.renderOrder - .1;
       }
       if (this.hoverIndic) {
-        this.hoverIndic.renderOrder = this.renderOrder - 1;
+        this.hoverIndic.renderOrder = this.renderOrder - .1;
+      }
+      if (this.label) {
+        this.label.renderOrder = this.renderOrder + .2;
       }
     }
     if (this.elem?.clearCloud && !this.clearedCloud) {
@@ -388,6 +444,10 @@ export class GameObject extends EngineObject {
 
     this.updated = true;
 
+    if (this.elem?.dynamic && Date.now() - this.bornTime < 1000) {
+      this.updateSize();
+    }
+
     if (this.doomed) {
       this.decors.forEach((decor: any) => {
         const time = Date.now() - decor.doomTime;
@@ -399,10 +459,10 @@ export class GameObject extends EngineObject {
   }
 
   doomed?: boolean = false;
-  doom() {
+  doom(immediate?: boolean) {
     this.doomed = true;
     this.size.set(0, 0);
-    const DURATION = 300;
+    const DURATION = immediate ? 0 : 300;
     setTimeout(() => {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
@@ -412,8 +472,10 @@ export class GameObject extends EngineObject {
         decor.destroy();
       });
     }, DURATION * 2);
-    this.decors.forEach((decor) => {
-      (decor as any).doomTime = Date.now() + DURATION * Math.random();
-    });
+    if (!immediate) {
+      this.decors.forEach((decor) => {
+        (decor as any).doomTime = Date.now() + DURATION * Math.random();
+      });
+    }
   }
 }

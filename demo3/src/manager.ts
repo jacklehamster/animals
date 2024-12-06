@@ -18,16 +18,16 @@ export class Manager {
   readonly revealed: Set<string> = new Set();
   cursor?: GameObject
   selected?: GameObject
-  layers: string[];
   mousePosDown?: Vector2;
   readonly camShift = vec2(0, 0);
   shifting = false;
-  hud = new Hud();
+  hud;
   worldChanged = true;
+  inUI?: boolean;
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
-    this.layers = scene.layers ?? [];
+    this.hud = new Hud(this);
     if (scene.scale) {
       setCameraScale(scene.scale);
     }
@@ -84,7 +84,23 @@ export class Manager {
     setCameraPos(cameraPos.set(Math.floor((cameraPos.x + dx * mul) * cameraScale) / cameraScale, Math.floor((cameraPos.y + dy * mul) * cameraScale) / cameraScale));
   }
 
+  defineElem(elem: Elem) {
+    if (elem.definition) {
+      const defintion = this.scene.definitions.find(def => def.name === elem.definition);
+      if (defintion) {
+        Object.entries(defintion).forEach(([key, value]) => {
+          const e = elem as Record<string, any>;
+          if (e[key] === undefined) {
+            e[key] = JSON.parse(JSON.stringify(value));
+          }
+        });
+        delete elem.definition;
+      }
+    }
+  }
+
   private refreshElem(elem: Elem) {
+    this.defineElem(elem);
     if (elem.gameObject) {
       const entry = this.ensureElem(elem);
       if (entry.updateTime !== elem.lastUpdate) {
@@ -175,12 +191,12 @@ export class Manager {
   }
 
   onTap(x: number, y: number, mouseX: number, mouseY: number) {
-    const tag = `unit_${x}_${y}`;
-    const previousSelected = this.selected;
     if (this.selected?.canMove(x, y)) {
       this.selected.setPosition(x, y);
     }
-    this.setSelection(this.grid[tag] === this.selected ? undefined : this.grid[tag]);
+    const unit = this.grid[`unit_${x}_${y}`];
+    const house = this.grid[`house_${x}_${y}`];
+    this.setSelection(unit === this.selected ? house : unit);
   }
 
   setSelection(gameObject: GameObject | undefined) {
