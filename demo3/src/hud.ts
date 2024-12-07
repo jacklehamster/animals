@@ -176,6 +176,10 @@ export class Hud {
               if (action.deselect) {
                 this.manager.setSelection(undefined);
               }
+              if (action.level && obj.elem) {
+                obj.elem.level = (obj.elem.level ?? 0) + action.level;
+                obj.refreshLevel();
+              }
             });
 
             e.preventDefault();

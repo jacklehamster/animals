@@ -14,7 +14,6 @@ export class Manager {
   readonly entries: Map<Elem, Entry> = new Map();
   readonly animation: AnimationManager;
   readonly grid: Record<string, GameObject> = {};
-  readonly moveOptions: Record<string, EngineObject> = {};
   readonly revealed: Set<string> = new Set();
   cursor?: GameObject
   selected?: GameObject
@@ -138,8 +137,7 @@ export class Manager {
                 continue;
               }
 
-              const tag = `${elem.type}_${xx}_${yy}`;
-              if (elem.type === "cloud" && this.revealed.has(tag)) {
+              if (elem.type === "cloud" && this.revealed.has(`${xx}_${yy}`)) {
                 continue;
               }
               const gameObject = new GameObject(this, vec2(xx, yy));
@@ -167,13 +165,25 @@ export class Manager {
     }
   }
 
+  countRevealPotential(x: number, y: number) {
+    let count = 0;
+    for (let xx = -1; xx <= 1; xx++) {
+      for (let yy = -1; yy <= 1; yy++) {
+        if (this.grid[`tile_${x + xx}_${y + yy}`] && !this.revealed.has(`${x + xx}_${y + yy}`)) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }
+
   clearCloud(x: number, y: number) {
-    const tag = `cloud_${x}_${y}`;
+    const tag = `${x}_${y}`;
     if (this.revealed.has(tag)) {
       return;
     }
     this.revealed.add(tag);
-    const gameObject = this.grid[tag];
+    const gameObject = this.grid[`cloud_${x}_${y}`];
     if (gameObject) {
       gameObject.doom();
       const elem = gameObject.elem;
@@ -191,8 +201,10 @@ export class Manager {
   }
 
   onTap(x: number, y: number, mouseX: number, mouseY: number) {
-    if (this.selected?.canMove(x, y)) {
-      this.selected.setPosition(x, y);
+    if (this.selected?.canMoveTo(x, y)) {
+      this.selected.moveTo(x, y);
+      this.setSelection(undefined);
+      return;
     }
     const unit = this.grid[`unit_${x}_${y}`];
     const house = this.grid[`house_${x}_${y}`];

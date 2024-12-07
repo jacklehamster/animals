@@ -19,12 +19,13 @@ export class GameObject extends EngineObject {
   hovered: boolean = false;
   decors: EngineObject[] = [];
   shadow?: EngineObject;
-  label?: EngineObject;
+  labels?: EngineObject[];
   updated?: boolean = false;
-  moveOptions?: EngineObject[];
+  moveOptions?: Record<string, EngineObject>;
   clearedCloud?: boolean;
   lastDx: number = 1;
   bornTime: number = Date.now();
+  moveQueue?: Vector2[];
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -149,14 +150,7 @@ export class GameObject extends EngineObject {
           }
         }
       }
-      if (elem.level) {
-        if (!this.label) {
-          this.label = new EngineObject(vec2(0, 0), vec2(1, 1));
-          this.addChild(this.label, vec2(0, 0));
-          this.label.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${elem.level % 10}`));
-          console.log(elem.level);
-        }
-      }
+      this.refreshLevel();
     } else {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
@@ -166,6 +160,34 @@ export class GameObject extends EngineObject {
       }
       this.destroy();
     }
+  }
+
+  refreshLevel() {
+    if (!this.elem?.level) {
+      return;
+    }
+    if (!this.labels) {
+      this.labels = [];
+    }
+    let l = this.elem.level;
+    for (let i = 0; l > 0 || i < this.labels.length; i++) {
+      if (!l) {
+        if (this.labels[i]) {
+          this.labels[i].size.set(0, 0);
+        }
+      } else {
+        const d = l % 10;
+        if (!this.labels[i]) {
+          this.labels[i] = new EngineObject(vec2(0, 0), vec2(.5, .5));
+          this.addChild(this.labels[i], vec2(-.5 + -i * .2, 0));
+        }
+        const digit = this.labels[i];
+        digit.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${d}`));
+        digit.size.set(.5, .5);
+        l = Math.floor(l / 10);
+      }
+    }
+    this.labels.forEach(label => label.renderOrder = this.renderOrder + .2);
   }
 
   private getTag() {
@@ -184,6 +206,23 @@ export class GameObject extends EngineObject {
       scale * (this.visible ? (config?.size?.[0] ?? 0) : 0) * (this.lastDx || 1),
       scale * (this.visible ? (config?.size?.[1] ?? 0) : 0),
     );
+  }
+
+  moveTo(px: number, py: number) {
+    const moveOption = this.moveOptions?.[`${px}_${py}`];
+    if (!moveOption) {
+      if (this.moveQueue)
+        this.moveQueue.length = 0;
+      return;
+    }
+    if (!this.moveQueue) {
+      this.moveQueue = [];
+    }
+    this.moveQueue.push(vec2(px, py));
+    const from = (moveOption as any).from;
+    if (from.x !== this.px || from.y !== this.py) {
+      this.moveTo(from.x, from.y);
+    }
   }
 
   setPosition(px: number, py: number, force?: boolean) {
@@ -208,23 +247,20 @@ export class GameObject extends EngineObject {
       this.manager.onCursorMove(px, py);
     }
     if (this.type === "cloud") {
-      this.manager.revealed.delete(this.getTag());
+      this.manager.revealed.delete(`${px}_${py}`);
     }
     this.clearedCloud = false;
     this.updated = false;
   }
 
-  canMove(px: number, py: number) {
+  canMoveTo(px: number, py: number) {
+    if (this.px === px && this.py === py) {
+      return false;
+    }
+    if (!this.manager.revealed.has(`${px}_${py}`)) {
+      return false;
+    }
     if (this.elem?.type !== "unit") {
-      return false;
-    }
-    const dx = px - this.px;
-    const dy = py - this.py;
-    if (dx === 0 && dy === 0) {
-      return false;
-    }
-    const dist = this.elem.move?.distance ?? 1;
-    if (Math.abs(dx) > dist || Math.abs(dy) > dist) {
       return false;
     }
     if (this.manager.grid[`unit_${px}_${py}`]) {
@@ -298,11 +334,8 @@ export class GameObject extends EngineObject {
         this.selectIndic.pos.set(this.px, this.py);
 
         //  show move options
-        const distance = this.elem.move?.distance ?? 1;
-        for (let y = -distance; y <= distance; y++) {
-          for (let x = -distance; x <= distance; x++) {
-            this.addMoveOption(x, y);
-          }
+        if (this.elem.move) {
+          this.addMoveOptions(this.elem.move?.distance ?? 1, vec2(this.px, this.py));
         }
       }
     } else {
@@ -310,36 +343,79 @@ export class GameObject extends EngineObject {
         this.selectIndic.destroy();
         this.selectIndic = undefined;
       }
-      this.moveOptions?.forEach((moveOption) => moveOption.destroy());
-      for (let k in this.manager.moveOptions) {
-        delete this.manager.moveOptions[k];
+      if (this.moveOptions) {
+        Object.values(this.moveOptions).forEach(moveOption => moveOption.destroy());
+        delete this.moveOptions;
       }
-      delete this.moveOptions;
     }
   }
 
-  addMoveOption(x: number, y: number) {
-    if (!this.canMove(this.px + x, this.py + y)) {
+  addMoveOptions(movePoints: number, from: Vector2, revealPotential = 0, distanceTravelled = 0) {
+    if (!movePoints) {
       return;
     }
+    const DIRECTIONS = [
+      [-1, 0], [0, -1], [1, 0], [0, 1],
+      [-1, -1], [1, -1], [-1, 1], [1, 1],
+    ];
+    const froms: [Vector2, number, number][] = [];
+    DIRECTIONS.forEach(([dx, dy]) => {
+      if (!this.canMoveTo(from.x + dx, from.y + dy)) {
+        return;
+      }
+      const newDistanceTravelled = distanceTravelled + Math.sqrt(dx * dx + dy * dy);
+      const existingMoveOption = this.moveOptions?.[`${from.x + dx}_${from.y + dy}`] as any;
+      if (existingMoveOption) {
+        const canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
+        let shouldReplace = false;
+        if (existingMoveOption.movePoints < movePoints) {
+          console.log("existingMoveOption.movePoints < movePoints", existingMoveOption.movePoints, movePoints);
+          //  this route takes less points
+          shouldReplace = true;
+        } else if (existingMoveOption.movePoints === movePoints) {
+          if (existingMoveOption.distanceTravelled > newDistanceTravelled) {
+            console.log("existingMoveOption.distanceTravelled > newDistanceTravelled", existingMoveOption.distanceTravelled, newDistanceTravelled);
+            //  this route takes same points but less distance
+            shouldReplace = true;
+          } else if (existingMoveOption.distanceTravelled === newDistanceTravelled && existingMoveOption.canReveal < canReveal) {
+            console.log("existingMoveOption.canReveal < canReveal", existingMoveOption.canReveal, canReveal);
+            //  this route takes same points and distance but more revealing
+            shouldReplace = true
+          }
+        }
+        if (shouldReplace) {
+          existingMoveOption.canReveal = canReveal;
+          existingMoveOption.from = from;
+          existingMoveOption.movePoints = movePoints;
+          existingMoveOption.distanceTravelled = newDistanceTravelled;
+          froms.push([vec2(from.x + dx, from.y + dy), canReveal, newDistanceTravelled]);
+        }
+        return;
+      }
 
-    const obj = new EngineObject();
-    obj.size.set(this.size.x, this.size.y);
-    if (this.elem?.selected?.moveIndic) {
-      obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
-    } else {
-      obj.color = new Color(0, 0, 0, .3);
-      obj.tileInfo = this.tileInfo;
-    }
-    const offset = this.elem?.gameObject?.offset ?? [0, 0];
-    obj.pos.set(this.px, this.py);
-    this.addChild(obj, vec2(x - offset[0], y - offset[1]));
-    if (!this.moveOptions) {
-      this.moveOptions = [];
-    }
-    this.moveOptions.push(obj);
-    this.manager.moveOptions[`${x}_${y}`] = obj;
-    this.updated = false;
+      const obj = new EngineObject();
+      obj.size.set(this.size.x, this.size.y);
+      if (this.elem?.selected?.moveIndic) {
+        obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
+      } else {
+        obj.color = new Color(0, 0, 0, .3);
+        obj.tileInfo = this.tileInfo;
+      }
+      (obj as any).from = from;
+      (obj as any).canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
+      (obj as any).movePoints = movePoints;
+      (obj as any).distanceTravelled = newDistanceTravelled;
+      const offset = this.elem?.gameObject?.offset ?? [0, 0];
+      // obj.pos.set(this.px, this.py);
+      this.addChild(obj, vec2((from.x + dx - this.px) - offset[0], (from.y + dy - this.py) - offset[1]));
+      if (!this.moveOptions) {
+        this.moveOptions = {};
+      }
+      this.moveOptions[`${from.x + dx}_${from.y + dy}`] = obj;
+      froms.push([vec2(from.x + dx, from.y + dy), (obj as any).canReveal, (obj as any).distanceTravelled]);
+      this.updated = false;
+    });
+    froms.forEach(([from, revealing, newDistanceTravelled]) => this.addMoveOptions(movePoints - 1, from, revealing, newDistanceTravelled));
   }
 
   getFrame(animInfo?: AnimationInfo) {
@@ -390,12 +466,21 @@ export class GameObject extends EngineObject {
     if (dx || dy) {
       const doMove = !animInfo?.airFramesSet || animInfo.airFramesSet?.has(this.getFrame(animInfo));
       if (doMove) {
-        if (dx * dx + dy * dy > .001) {
+        if (dx * dx + dy * dy > .01) {
           const dist = this.elem?.gameObject?.speed ? Math.sqrt(dx * dx + dy * dy) : 1;
           const speed = Math.min(dist, this.elem?.gameObject?.speed ?? .5);
           this.pos.set(this.pos.x + dx / dist * speed, this.pos.y + dy / dist * speed);
         } else {
           this.pos.set(this.px + offset[0], this.py + offset[1]);
+        }
+      }
+    } else {
+      if (this.moveQueue?.length) {
+        console.log(this.moveQueue);
+        const dest = this.moveQueue.pop()!;
+        this.setPosition(dest.x, dest.y);
+        if (!this.moveQueue.length) {
+          delete this.moveQueue;
         }
       }
     }
@@ -417,7 +502,9 @@ export class GameObject extends EngineObject {
       this.decors.forEach((decor) => {
         decor.renderOrder = this.renderOrder + (this.elem?.spread?.behind ? -.1 : .1);
       });
-      this.moveOptions?.forEach(moveOption => moveOption.renderOrder = this.renderOrder - .1);
+      if (this.moveOptions) {
+        Object.values(this.moveOptions).forEach(moveOption => moveOption.renderOrder = this.renderOrder - .1);
+      }
 
       if (this.shadow) {
         this.shadow.renderOrder = this.renderOrder - .1;
@@ -425,9 +512,7 @@ export class GameObject extends EngineObject {
       if (this.hoverIndic) {
         this.hoverIndic.renderOrder = this.renderOrder - .1;
       }
-      if (this.label) {
-        this.label.renderOrder = this.renderOrder + .2;
-      }
+      this.labels?.forEach(label => label.renderOrder = this.renderOrder + .2);
     }
     if (this.elem?.clearCloud && !this.clearedCloud) {
       const SIZE = 1, LIMIT = 2;

@@ -26,7 +26,7 @@ export const worldData: Scene = {
       type: "unit",
       gameObject: {
         pos: [0, 0] as [number, number],
-        size: [1.5, 1.5] as [number, number],
+        size: [1.8, 1.8] as [number, number],
         speed: 0.08,
       },
       animation: {
@@ -60,8 +60,8 @@ export const worldData: Scene = {
       name: "dog",
       type: "unit",
       gameObject: {
-        size: [1.5, 1.5] as [number, number],
-        speed: 0.05,
+        size: [1.8, 1.8] as [number, number],
+        speed: 0.08,
       },
       animation: {
         name: "dog",
@@ -83,6 +83,7 @@ export const worldData: Scene = {
       },
       move: {
         animation: "dog_jump",
+        distance: 2,
       },
       shadow: {
         animation: "shadow",
@@ -95,7 +96,7 @@ export const worldData: Scene = {
       type: "unit",
       gameObject: {
         size: [1.8, 1.8] as [number, number],
-        speed: 0.04,
+        speed: 0.05,
       },
       animation: {
         name: "cow",
@@ -321,7 +322,7 @@ export const worldData: Scene = {
       name: "dog_jump",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
-      mul: 3,
+      mul: 2,
       frames: [
         47, 48, 49, 49, 50,
       ],
@@ -519,7 +520,7 @@ export const worldData: Scene = {
               create: {
                 name: "house",
                 type: "house",
-                level: 1,
+                level: 10,
                 gameObject: {
                   offset: [0, .7] as [number, number],
                   size: [2, 2] as [number, number],
