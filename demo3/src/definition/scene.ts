@@ -10,4 +10,5 @@ export interface Scene {
   layers?: Record<string, number>;
   colayers?: Record<string, number>;
   menu?: Menu[];
+  autoEnd?: boolean;
 }

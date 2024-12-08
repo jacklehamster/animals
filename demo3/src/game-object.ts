@@ -1,4 +1,4 @@
-import { Color, drawTextScreen, EngineObject, mouseIsDown, mousePos, mouseWasPressed, mouseWasReleased, randColor, TileInfo, vec2, Vector2 } from "littlejsengine";
+import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "littlejsengine";
 import type { Elem } from "./definition/elem";
 import type { Manager } from "./manager";
 import type { AnimationInfo } from "./animation/animation-manager";
@@ -26,6 +26,7 @@ export class GameObject extends EngineObject {
   lastDx: number = 1;
   bornTime: number = Date.now();
   moveQueue?: Vector2[];
+  resources: EngineObject[] = [];
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -150,7 +151,8 @@ export class GameObject extends EngineObject {
           }
         }
       }
-      this.refreshLevel();
+      this.refreshLabel();
+      this.refreshResources();
     } else {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
@@ -162,14 +164,18 @@ export class GameObject extends EngineObject {
     }
   }
 
-  refreshLevel() {
-    if (!this.elem?.level) {
+  private refreshLabel() {
+    let numToShow = this.elem?.level ?? this.elem?.hitpoints;
+    if (!numToShow) {
       return;
     }
+    const size = this.elem?.level ? .5 : .3;
+    const offset = this.elem?.level ? vec2(0, 0) : vec2(-.5, .2);
+    const charSize = this.elem?.level ? .2 : .15;
     if (!this.labels) {
       this.labels = [];
     }
-    let l = this.elem.level;
+    let l = numToShow;
     for (let i = 0; l > 0 || i < this.labels.length; i++) {
       if (!l) {
         if (this.labels[i]) {
@@ -179,15 +185,31 @@ export class GameObject extends EngineObject {
         const d = l % 10;
         if (!this.labels[i]) {
           this.labels[i] = new EngineObject(vec2(0, 0), vec2(.5, .5));
-          this.addChild(this.labels[i], vec2(-.5 + -i * .2, 0));
+          this.addChild(this.labels[i], offset.add(vec2(-i * charSize, 0)));
         }
         const digit = this.labels[i];
         digit.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${d}`));
-        digit.size.set(.5, .5);
+        digit.size.set(size, size);
         l = Math.floor(l / 10);
       }
     }
     this.labels.forEach(label => label.renderOrder = this.renderOrder + .2);
+  }
+
+  private refreshResources() {
+    const resources = this.elem?.resources;
+    if (!resources) {
+      return;
+    }
+    this.resources.forEach(resource => resource.destroy());
+    this.resources.length = 0;
+    for (let i = 0; i < (this.elem?.resources?.wheat ?? 0); i++) {
+      
+    }
+    for (let i = 0; i < (this.elem?.resources?.wood ?? 0); i++) {
+    }
+    for (let i = 0; i < (this.elem?.resources?.brain ?? 0); i++) {
+    }
   }
 
   private getTag() {

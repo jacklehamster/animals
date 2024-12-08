@@ -57,6 +57,19 @@ export class Hud {
 
     const endButton = this.overlay.appendChild(document.createElement("button"));
     endButton.textContent = "End turn";
+
+    const autoEndGroup = endButton.appendChild(document.createElement("div"));
+    const label = autoEndGroup.appendChild(document.createElement("label"));
+    label.textContent = "auto";
+    label.style.textTransform = "lowercase";
+    label.htmlFor = "autoEndCheck";
+    const autoEndCheck = autoEndGroup.appendChild(document.createElement("input"));
+    autoEndCheck.id = "autoEndCheck";
+    autoEndCheck.type = "checkbox";
+    autoEndCheck.checked = false
+    autoEndCheck.addEventListener("change", e => {
+      this.manager.scene.autoEnd = autoEndCheck.checked;
+    });
   }
 
   clear() {
@@ -178,7 +191,7 @@ export class Hud {
               }
               if (action.level && obj.elem) {
                 obj.elem.level = (obj.elem.level ?? 0) + action.level;
-                obj.refreshLevel();
+                obj.refreshLabel();
               }
             });
 

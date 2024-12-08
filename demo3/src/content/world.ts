@@ -24,6 +24,7 @@ export const worldData: Scene = {
     {
       name: "sheep",
       type: "unit",
+      hitpoints: 10,
       gameObject: {
         pos: [0, 0] as [number, number],
         size: [1.8, 1.8] as [number, number],
@@ -59,6 +60,7 @@ export const worldData: Scene = {
     {
       name: "dog",
       type: "unit",
+      hitpoints: 10,
       gameObject: {
         size: [1.8, 1.8] as [number, number],
         speed: 0.08,
@@ -94,6 +96,7 @@ export const worldData: Scene = {
     {
       name: "cow",
       type: "unit",
+      hitpoints: 15,
       gameObject: {
         size: [1.8, 1.8] as [number, number],
         speed: 0.05,
@@ -354,6 +357,30 @@ export const worldData: Scene = {
         51, 53, 54,
       ],
       airFrames: [54],
+    },
+    {
+      name: "wheat",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        55,
+      ],
+    },
+    {
+      name: "wood",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        56,
+      ],
+    },
+    {
+      name: "brain",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        57,
+      ],
     },
   ],
   elems: [

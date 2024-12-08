@@ -4,6 +4,7 @@ export interface Elem {
   name?: string;
   type?: string;
   level?: number;
+  hitpoints?: number;
   owner?: number;
   group?: {
     grid?: [number, number];
@@ -62,6 +63,11 @@ export interface Elem {
   mouseFollower?: {
     offset?: [number, number];
     snap?: number;
+  };
+  resources?: {
+    wheat?: number;
+    wood?: number;
+    brain?: number;
   };
   dynamic?: boolean;
   clearCloud?: boolean;
