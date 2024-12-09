@@ -1,15 +1,5 @@
-import type { Elem } from "./elem";
-
-export interface Condition {
-  levelBelowEqual?: [number, string];
-  occupied?: [string, string];
-}
-
-export type Action = {
-  deselect?: boolean;
-  create?: Elem;
-  [key: string]: any;
-}
+import type { Action } from "./action";
+import type { Condition } from "./condition";
 
 export interface MenuItem {
   name: string;
@@ -25,6 +15,7 @@ export interface MenuItem {
 
 export interface Menu {
   name: string;
+  description?: string;
   icon: {
     imageSource: string;
     spriteSize: [number, number];

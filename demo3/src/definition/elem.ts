@@ -1,3 +1,10 @@
+import type { Condition } from "./condition";
+
+interface TileCondition {
+  tile?: string;
+  noTile?: string;
+}
+
 export interface Elem {
   definition?: string;
   lastUpdate?: number;
@@ -5,11 +12,16 @@ export interface Elem {
   type?: string;
   level?: number;
   hitpoints?: number;
+  turn?: {
+    moves?: number;
+    attacks?: number;
+  };
   owner?: number;
   group?: {
     grid?: [number, number];
     chance?: number;
   };
+  condition?: TileCondition;
   gameObject?: {
     pos?: [number, number];
     offset?: [number, number];
@@ -56,6 +68,10 @@ export interface Elem {
   move?: {
     animation: string;
     distance?: number;
+    disabled?: Condition;
+  };
+  harvest?: {
+    animation: string;
   };
   shadow?: {
     animation: string;
@@ -64,6 +80,8 @@ export interface Elem {
     offset?: [number, number];
     snap?: number;
   };
+  worker?: boolean;
+  settler?: boolean;
   resources?: {
     wheat?: number;
     wood?: number;
@@ -71,4 +89,6 @@ export interface Elem {
   };
   dynamic?: boolean;
   clearCloud?: boolean;
+  water?: boolean;
+  harvesting?: boolean;
 }

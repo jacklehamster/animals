@@ -1,9 +1,10 @@
-import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2 } from "littlejsengine";
+import { cameraPos, cameraScale, Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2 } from "littlejsengine";
 import { AnimationManager } from "./animation/animation-manager";
 import type { Elem } from "./definition/elem";
 import type { Scene } from "./definition/scene";
 import { GameObject } from "./game-object";
 import { Hud } from "./hud";
+import type { Condition } from "./definition/condition";
 
 interface Entry {
   gameObject: Set<GameObject>;
@@ -15,8 +16,9 @@ export class Manager {
   readonly animation: AnimationManager;
   readonly grid: Record<string, GameObject> = {};
   readonly revealed: Set<string> = new Set();
-  cursor?: GameObject
-  selected?: GameObject
+  cursor?: GameObject;
+  selected?: GameObject;
+  private hovered?: GameObject;
   mousePosDown?: Vector2;
   readonly camShift = vec2(0, 0);
   shifting = false;
@@ -39,6 +41,7 @@ export class Manager {
   }
 
   refresh() {
+    this.initializeTurn();
     this.scene.elems.forEach((elem) => {
       this.sanitizeElem(elem);
       this.refreshElem(elem);
@@ -48,10 +51,64 @@ export class Manager {
       this.fixWorld();
       this.worldChanged = false;
     }
+    this.hud.refresh();
+  }
+
+  initializeTurn() {
+    if (!this.scene.turn) {
+      this.scene.turn = {
+        player: 1,
+        turn: 1,
+      };
+    }
+  }
+
+  iterateGridCell(x: number, y: number, callback: (gameObject: GameObject) => void) {
+    Object.keys(this.scene.layers).forEach((layer) => {
+      const tag = `${layer}_${x}_${y}`;
+      const gameObject = this.grid[tag];
+      if (gameObject) {
+        callback(gameObject);
+      }
+    });
+  }
+
+  getRevealedCells() {
+    const cells: Vector2[] = [];
+    this.revealed.forEach((tag) => {
+      const [x, y] = tag.split("_").map(Number);
+      cells.push(vec2(x, y));
+    });
+    return cells;
   }
 
   fixWorld() {
-
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.condition) {
+        let conditionMet = false;
+        if (gameObject.elem.condition.tile) {
+          this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
+            if (target?.elem?.name === gameObject.elem?.condition?.tile) {
+              conditionMet = true;
+            }
+          });
+        }
+        let violationMet = false;
+        if (gameObject.elem.condition.noTile) {
+          Object.keys(this.scene.layers).forEach((layer) => {
+            const tag = `${layer}_${gameObject.px}_${gameObject.py}`;
+            const target = this.grid[tag];
+            if (target?.elem?.name === gameObject.elem?.condition?.noTile) {
+              violationMet = true;
+            }
+          });
+        }
+        if (!conditionMet || violationMet) {
+          gameObject.doom(true);
+          delete this.grid[tag];
+        }
+      }
+    });
   }
 
   private shiftCamera() {
@@ -60,7 +117,9 @@ export class Manager {
     }
     if (this.mousePosDown && mouseWasReleased(0)) {
       this.mousePosDown = undefined;
-      this.cursor?.show();
+      if (!this.selected) {
+        this.cursor?.show();
+      }
       this.shifting = false;
     }
 
@@ -80,7 +139,7 @@ export class Manager {
     const dx = this.camShift.x - cameraPos.x;
     const dy = this.camShift.y - cameraPos.y;
     const mul = .1;
-    setCameraPos(cameraPos.set(Math.floor((cameraPos.x + dx * mul) * cameraScale) / cameraScale, Math.floor((cameraPos.y + dy * mul) * cameraScale) / cameraScale));
+    setCameraPos(cameraPos.set(Math.round((cameraPos.x + dx * mul) * cameraScale) / cameraScale, Math.round((cameraPos.y + dy * mul) * cameraScale) / cameraScale));
   }
 
   defineElem(elem: Elem) {
@@ -133,7 +192,7 @@ export class Manager {
             if (Math.random() <= chance) {
               const xx = x - Math.floor(col / 2);
               const yy = y - Math.floor(row / 2);
-              if ((elem.type === "decor" || elem.type === "water") && Math.abs(xx) <= 1 && Math.abs(yy) <= 1) {
+              if ((elem.type === "decor" || elem.water) && Math.abs(xx) <= 1 && Math.abs(yy) <= 1) {
                 continue;
               }
 
@@ -175,6 +234,20 @@ export class Manager {
       }
     }
     return count;
+  }
+
+  getResources(x: number, y: number) {
+    const resources: Elem["resources"] = {};
+    Object.keys(this.scene.layers).forEach((layer) => {
+      const tag = `${layer}_${x}_${y}`;
+      const gameObject = this.grid[tag];
+      if (gameObject) {
+        resources.wheat = (resources.wheat ?? 0) + (gameObject.elem?.resources?.wheat ?? 0);
+        resources.wood = (resources.wood ?? 0) + (gameObject.elem?.resources?.wood ?? 0);
+        resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resources?.brain ?? 0);
+      }
+    });
+    return Math.max(resources.wheat ?? 0, 0) + Math.max(resources.wood ?? 0, 0) + Math.max(resources.brain ?? 0, 0) ? resources : undefined;
   }
 
   clearCloud(x: number, y: number) {
@@ -222,7 +295,74 @@ export class Manager {
     this.hud.showSelected(this.selected);
   }
 
-  hovered(gameObject: GameObject) {
+  hovering(gameObject: GameObject) {
     return gameObject.px === this.cursor?.px && gameObject.py === this.cursor?.py;
+  }
+
+  setHovered(gameObject: GameObject | undefined) {
+    if (this.hovered === gameObject) {
+      return;
+    }
+    this.hovered = gameObject;
+    if (this.hovered) {
+      this.cursor?.hide();
+    } else {
+      this.cursor?.show();
+    }
+  }
+
+  checkCondition(condition?: Condition, obj?: GameObject) {
+    if (!condition) {
+      return null;
+    }
+    if (condition.levelBelowEqual && (obj?.elem?.level ?? 0) <= condition.levelBelowEqual[0]) {
+      return condition.levelBelowEqual[1] ?? "true";
+    }
+    if (condition.occupied && obj) {
+      const tag = GameObject.getTag(condition.occupied[0], obj?.px, obj?.py);
+      if (this.grid[tag]) {
+        condition.occupied[1] ?? "true";
+      }
+    }
+    if (condition.harvesting && obj && obj.elem?.harvesting) {
+      return "true";
+    }
+    if (condition.notHarvesting && obj && !obj.elem?.harvesting) {
+      return "true";
+    }
+    if (obj) {
+      let proxyCheck: string | null = null;
+      const PROXY_CHECK = [condition.proximity, condition.nonProximity];
+      PROXY_CHECK.forEach((check) => {
+        if (check && !proxyCheck) {
+          const [item, message] = check;
+          if (item) {
+            let nearby = null;
+            for (let y = -1; y <= 1; y++) {
+              for (let x = -1; x <= 1; x++) {
+                if (x === 0 && y === 0) {
+                  continue;
+                }
+                this.iterateGridCell(obj.px + x, obj.py + y, (cell) => {
+                  if (cell.elem?.name === item) {
+                    nearby = cell;
+                  }
+                });
+              }
+            }
+            if (condition.proximity && nearby) {
+              proxyCheck = message ?? "true";
+            }
+            if (condition.nonProximity && !nearby) {
+              proxyCheck = message ?? "true";
+            }
+          }
+        }
+      });
+      if (proxyCheck) {
+        return proxyCheck;
+      }
+    }
+    return null;
   }
 }

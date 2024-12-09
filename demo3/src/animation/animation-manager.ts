@@ -48,7 +48,7 @@ export class AnimationManager {
             animInfo.tileInfos.push(new TileInfo(undefined,
               size,
               this.imageSources.indexOf(imgSource),
-              1).frame(frame));
+              2).frame(frame));
           }
         });
       }

@@ -7,8 +7,12 @@ export interface Scene {
   definitions: Elem[];
   elems: Elem[];
   animations: Animation[];
-  layers?: Record<string, number>;
+  layers: Record<string, number>;
   colayers?: Record<string, number>;
   menu?: Menu[];
   autoEnd?: boolean;
+  turn?: {
+    player: number;
+    turn: number;
+  }
 }
