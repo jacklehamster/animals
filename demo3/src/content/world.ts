@@ -4,6 +4,14 @@ const SIZE = 30;
 
 export const worldData: Scene = {
   scale: 64,
+  players: [
+    {
+      resources: {
+        brain: 0,
+        gold: 0,
+      },
+    },
+  ],
   layers: {
     "tile": 0,
     "tile_overlay": 1,
@@ -99,7 +107,7 @@ export const worldData: Scene = {
       hitpoints: 15,
       gameObject: {
         size: [1.8, 1.8] as [number, number],
-        speed: 0.05,
+        speed: 0.06,
       },
       animation: {
         name: "cow",
@@ -146,6 +154,9 @@ export const worldData: Scene = {
       animation: {
         name: "river",
       },
+      condition: {
+        noTile: "lake",
+      },
     },
     {
       name: "house",
@@ -173,6 +184,7 @@ export const worldData: Scene = {
       dynamic: true,
       settler: true,
       harvesting: true,
+      building: true,
     },
   ],
   animations: [
@@ -399,7 +411,7 @@ export const worldData: Scene = {
       name: "cow_jump",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
-      mul: 10,
+      mul: 5,
       frames: [
         51, 53, 54,
       ],
@@ -411,7 +423,7 @@ export const worldData: Scene = {
       spriteSize: [64, 64] as [number, number],
       mul: 10,
       frames: [
-        58,
+        55,
       ],
     },
     {
@@ -419,7 +431,7 @@ export const worldData: Scene = {
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
       frames: [
-        55,
+        56,
       ],
     },
     {
@@ -427,7 +439,7 @@ export const worldData: Scene = {
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
       frames: [
-        56,
+        57,
       ],
     },
     {
@@ -435,7 +447,15 @@ export const worldData: Scene = {
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
       frames: [
-        57,
+        58,
+      ],
+    },
+    {
+      name: "gold",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        59,
       ],
     },
   ],
@@ -525,7 +545,7 @@ export const worldData: Scene = {
       name: "lake",
       type: "tile_overlay",
       resources: {
-        wheat: -2,
+        wheat: -1,
       },
       group: {
         grid: [SIZE + 1, SIZE + 1],
@@ -623,6 +643,9 @@ export const worldData: Scene = {
           padding: [2, 2],
           frames: [27, 28, 29],
           label: "build\nsettlement",
+          disabled: {
+            proximity: ["house", "Too close to\nanother house"],
+          },
           actions: [
             {
               deselect: true,
@@ -658,7 +681,7 @@ export const worldData: Scene = {
             occupied: ["unit", "Tile occupied\nby a unit"],
           },
           disabled: {
-            levelBelowEqual: [1, "Level\ntoo low"],
+            levelBelowEqual: [1, "Settlement\nlevel too low"],
           },
           actions: [
             {
@@ -680,9 +703,6 @@ export const worldData: Scene = {
           hidden: {
             occupied: ["unit", "Tile occupied\nby a unit"],
           },
-          disabled: {
-            levelBelowEqual: [1, "Level\ntoo low"],
-          },
           actions: [
             {
               deselect: true,
@@ -703,9 +723,6 @@ export const worldData: Scene = {
           hidden: {
             occupied: ["unit", "Tile occupied\nby a unit"],
           },
-          disabled: {
-            levelBelowEqual: [1, "Level\ntoo low"],
-          },
           actions: [
             {
               deselect: true,
@@ -720,7 +737,6 @@ export const worldData: Scene = {
     },
     {
       name: "cow",
-      description: "Cows gather resources.\nHave them harvest a tile with resources",
       icon: {
         imageSource: "./assets/tiles.png",
         spriteSize: [64, 64] as [number, number],
@@ -733,7 +749,7 @@ export const worldData: Scene = {
           imageSource: "./assets/tiles.png",
           spriteSize: [64, 64] as [number, number],
           padding: [2, 2],
-          frames: [58],
+          frames: [55],
           label: "harvest",
           hidden: {
             occupied: ["house", "No harvest on house"],
@@ -773,6 +789,42 @@ export const worldData: Scene = {
       ],
     },
   ],
+  resources: {
+    wheat: {
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [2, 2],
+        frames: [56],
+      },
+    },
+    wood: {
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [2, 2],
+        frames: [57],
+      },
+    },
+    brain: {
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [2, 2],
+        frames: [58],
+      },
+      global: true,
+    },
+    gold: {
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [2, 2],
+        frames: [59],
+      },
+      global: true,
+    },
+  }
 };
 
 (window as any).worldData = worldData;

@@ -1,4 +1,5 @@
 import type { Condition } from "./condition";
+import type { Resources } from "./resources";
 
 interface TileCondition {
   tile?: string;
@@ -17,6 +18,7 @@ export interface Elem {
     attacks?: number;
   };
   owner?: number;
+  home?: [number, number];
   group?: {
     grid?: [number, number];
     chance?: number;
@@ -82,13 +84,10 @@ export interface Elem {
   };
   worker?: boolean;
   settler?: boolean;
-  resources?: {
-    wheat?: number;
-    wood?: number;
-    brain?: number;
-  };
+  resources?: Resources;
   dynamic?: boolean;
   clearCloud?: boolean;
   water?: boolean;
   harvesting?: boolean;
+  building?: boolean;
 }

@@ -1,6 +1,7 @@
 import type { Animation } from "./animation";
 import type { Elem } from "./elem";
-import type { Menu } from "./menu";
+import type { Menu, MenuIcon } from "./menu";
+import type { Resources } from "./resources";
 
 export interface Scene {
   scale?: number;
@@ -14,5 +15,14 @@ export interface Scene {
   turn?: {
     player: number;
     turn: number;
+  };
+  players: {
+    resources: Resources;
+  }[];
+  resources: {
+    [key: string]: {
+      icon: MenuIcon;
+      global?: boolean;
+    };
   }
 }

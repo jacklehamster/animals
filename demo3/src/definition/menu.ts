@@ -1,6 +1,13 @@
 import type { Action } from "./action";
 import type { Condition } from "./condition";
 
+export interface MenuIcon {
+  imageSource: string;
+  spriteSize: [number, number];
+  padding?: [number, number];
+  frames: number[];
+}
+
 export interface MenuItem {
   name: string;
   imageSource?: string;

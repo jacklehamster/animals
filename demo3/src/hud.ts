@@ -1,11 +1,15 @@
 import { GameObject } from "./game-object";
 import type { Scene } from "./definition/scene";
 import type { Manager } from "./manager";
+import type { Resources } from "./definition/resources";
+import type { Elem } from "./definition/elem";
 
 export class Hud {
   ui: HTMLDivElement = document.createElement("div");
   bg: HTMLDivElement = document.createElement("div");
+  topBg: HTMLDivElement = document.createElement("div");
   overlay: HTMLDivElement = document.createElement("div");
+  resourceOverlay: HTMLDivElement = document.createElement("div");
   readonly itemsToDestroy = new Set<() => void>();
   readonly scene: Scene;
   nextButton: HTMLButtonElement = document.createElement("button");
@@ -24,7 +28,7 @@ export class Hud {
     });
     this.ui.addEventListener("mouseout", e => {
       this.manager.inUI = false;
-      this.manager.cursor?.show();
+      this.manager.refreshCursor();
     });
 
     this.bg.style.width = "100%";
@@ -52,6 +56,12 @@ export class Hud {
     this.overlay.style.transition = "right 0.2s";
     this.ui.appendChild(this.overlay);
     this.setHudButtons();
+
+    this.resourceOverlay.style.position = "absolute";
+    this.resourceOverlay.style.top = "0";
+    this.resourceOverlay.style.left = "0";
+    this.resourceOverlay.style.zIndex = "100";
+    this.ui.appendChild(this.resourceOverlay);
   }
 
   refresh() {
@@ -59,7 +69,51 @@ export class Hud {
       return;
     }
     this.endButton.textContent = `End turn ${this.scene.turn?.turn ?? 1}`;
+    this.refreshResources();
     this.updated = true;
+  }
+
+  refreshResources() {
+    //  display resources (wheat, wood, brain)
+    const player = this.scene.turn?.player ?? 1;
+    const RESOURCES: (keyof Resources)[] = Object.keys(this.scene.resources) as (keyof Resources)[];
+    RESOURCES.forEach(resource => {
+      if (!this.scene.resources[resource].global) {
+        return;
+      }
+      const { imageSource, spriteSize, frames, padding } = this.scene.resources[resource].icon;
+      let icon = document.getElementById(resource);
+      if (!icon) {
+        icon = this.resourceOverlay.appendChild(document.createElement("div"));
+        icon.id = resource;
+        icon.style.backgroundImage = `url(${imageSource})`;
+        icon.style.width = `${spriteSize[0]}px`;
+        icon.style.height = `${spriteSize[1]}px`;
+        icon.style.backgroundPosition = `-${(spriteSize[0] + (padding?.[0] ?? 0) * 2) * frames[0] + (padding?.[0] ?? 0) / 2}px 0`;
+        icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        icon.style.bottom = "0";
+        icon.style.left = "0";
+        icon.style.color = "white";
+        icon.style.borderRadius = "50%";
+        icon.style.display = "flex";
+        icon.style.alignSelf = "flex-end";
+        icon.style.justifyContent = "center";
+        icon.style.fontSize = "10pt";
+        icon.style.fontWeight = "bold";
+        icon.style.margin = "5px";
+        icon.style.transition = "background-color 0.2s";
+        icon.textContent = "0";
+        this.resourceOverlay.appendChild(icon);
+      }
+      const newText = `${this.scene.players[player - 1].resources[resource]}`;
+      if (icon.textContent !== newText) {
+        icon.textContent = `${this.scene.players[player - 1].resources[resource]}`;
+        icon.style.backgroundColor = "rgba(255, 50, 255, 0.5)";
+        setTimeout(() => {
+          icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+        }, 1500);
+      }
+    });
   }
 
   setHudButtons() {
@@ -68,21 +122,17 @@ export class Hud {
 
     const endButton = this.overlay.appendChild(this.endButton);
     endButton.textContent = "End turn";
-    /*
-        const autoEndGroup = this.overlay.appendChild(document.createElement("div"));
-        const label = autoEndGroup.appendChild(document.createElement("label"));
-        label.textContent = "auto end turn";
-        label.style.textTransform = "lowercase";
-        label.htmlFor = "autoEndCheck";
-        label.style.fontSize = "10pt";
-        const autoEndCheck = autoEndGroup.appendChild(document.createElement("input"));
-        autoEndCheck.id = "autoEndCheck";
-        autoEndCheck.type = "checkbox";
-        autoEndCheck.checked = false
-        autoEndCheck.addEventListener("change", e => {
-          this.manager.scene.autoEnd = autoEndCheck.checked;
-        });
-        */
+    endButton.addEventListener("click", e => {
+      this.manager.gotoNextTurn();
+    });
+    endButton.addEventListener("mousedown", e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    endButton.addEventListener("mouseup", e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
   }
 
   clear() {
@@ -96,6 +146,8 @@ export class Hud {
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
     this.overlay.style.right = obj ? "-200px" : "0";
     this.bg.innerHTML = "";
+
+    this.topBg.style.top = obj ? "0" : "-400px";
 
     this.clear();
 
@@ -203,9 +255,13 @@ export class Hud {
             actions.forEach(action => {
               if (action.create) {
                 this.manager.defineElem(action.create);
-                const elem = JSON.parse(JSON.stringify(action.create));
+                const elem: Elem = JSON.parse(JSON.stringify(action.create));
+                if (!elem.gameObject) {
+                  elem.gameObject = {};
+                }
                 elem.gameObject.pos = [obj?.px, obj?.py];
                 elem.owner = obj?.elem?.owner;
+                elem.home = [obj?.px, obj?.py];
                 this.scene.elems.push(elem);
               }
               if (action.destroy) {

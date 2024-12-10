@@ -25,6 +25,7 @@ export class Manager {
   hud;
   worldChanged = true;
   inUI?: boolean;
+  resourceIcons: EngineObject[] = [];
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -82,6 +83,19 @@ export class Manager {
     return cells;
   }
 
+  iterateRevealedCells(callback: (gameObject: GameObject) => void) {
+    const cells = this.getRevealedCells();
+    for (const cell of cells) {
+      Object.keys(this.scene.layers).forEach((layer) => {
+        const tag = `${layer}_${cell.x}_${cell.y}`;
+        const gameObject = this.grid[tag];
+        if (gameObject) {
+          callback(gameObject);
+        }
+      });
+    }
+  }
+
   fixWorld() {
     Object.entries(this.grid).forEach(([tag, gameObject]) => {
       if (gameObject.elem?.condition) {
@@ -118,7 +132,7 @@ export class Manager {
     if (this.mousePosDown && mouseWasReleased(0)) {
       this.mousePosDown = undefined;
       if (!this.selected) {
-        this.cursor?.show();
+        this.refreshCursor();
       }
       this.shifting = false;
     }
@@ -299,16 +313,20 @@ export class Manager {
     return gameObject.px === this.cursor?.px && gameObject.py === this.cursor?.py;
   }
 
-  setHovered(gameObject: GameObject | undefined) {
-    if (this.hovered === gameObject) {
-      return;
-    }
-    this.hovered = gameObject;
+  refreshCursor() {
     if (this.hovered) {
       this.cursor?.hide();
     } else {
       this.cursor?.show();
     }
+  }
+
+  setHovered(gameObject: GameObject | undefined) {
+    if (this.hovered === gameObject) {
+      return;
+    }
+    this.hovered = gameObject;
+    this.refreshCursor();
   }
 
   checkCondition(condition?: Condition, obj?: GameObject) {
@@ -364,5 +382,42 @@ export class Manager {
       }
     }
     return null;
+  }
+
+  gotoNextTurn() {
+    // Increase turn count
+    if (this.scene.turn) {
+      if (this.scene.turn.player < this.scene.players.length) {
+        this.scene.turn.player++;
+      } else {
+        this.scene.turn.player = 1;
+        this.scene.turn.turn++;
+      }
+      this.collectResources(this.scene.turn.player);
+    }
+
+    this.hud.updated = false;
+  }
+
+  collectResources(player: number) {
+    const playerResources = this.scene.players[player - 1]?.resources;
+    if (!playerResources) {
+      return;
+    }
+    this.iterateRevealedCells((gameObject) => {
+      const elem = gameObject.elem;
+      if (elem?.owner === player && elem.harvesting) {
+        const resources = this.getResources(gameObject.px, gameObject.py);
+        if (resources) {
+          playerResources.wheat = (playerResources.wheat ?? 0) + (resources.wheat ?? 0);
+          playerResources.wood = (playerResources.wood ?? 0) + (resources.wood ?? 0);
+          playerResources.brain = (playerResources.brain ?? 0) + (resources.brain ?? 0);
+          gameObject.showResources(gameObject.px, gameObject.py, player, true);
+          gameObject.accumulateResources(resources);
+          delete elem.lastUpdate;
+        }
+      }
+    });
+    this.hud.updated = true;
   }
 }

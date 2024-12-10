@@ -2,6 +2,7 @@ import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randC
 import type { Elem } from "./definition/elem";
 import type { Manager } from "./manager";
 import type { AnimationInfo } from "./animation/animation-manager";
+import type { Resources } from "./definition/resources";
 
 export class GameObject extends EngineObject {
   animationInfo?: AnimationInfo;
@@ -13,6 +14,7 @@ export class GameObject extends EngineObject {
   frameRate: number = 60;
   mouseFollower?: { offset: Vector2; snap?: number };
   px: number = 0; py: number = 0;
+  positionDetached?: boolean;
   type?: string;
   onHoverHideCursor?: boolean;
   visible: boolean = true;
@@ -28,6 +30,9 @@ export class GameObject extends EngineObject {
   bornTime: number = Date.now();
   moveQueue?: Vector2[];
   resources: EngineObject[] = [];
+  floatResources?: number;
+  resourcesAccumulated?: Record<keyof Resources | string, number>;
+  resourceBars: EngineObject[] = [];
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -50,18 +55,20 @@ export class GameObject extends EngineObject {
       if (this.type === "cursor") {
         this.manager.cursor = this;
       }
-      const px = this.gridShift.x + (config.pos?.[0] ?? 0);
-      const py = this.gridShift.y + (config.pos?.[1] ?? 0);
-      this.setPosition(px, py, true);
-      const offset = this.elem?.gameObject?.offset ?? [0, 0];
-      this.pos.set(px + offset[0], py + offset[1]);
-      this.updateSize();
-      this.size.set(
-        this.visible ? config.size?.[0] : 0,
-        this.visible ? config.size?.[1] : 0,
-      );
-      if (config.rotation) {
-        this.angle = config.rotation;
+      if (!this.positionDetached) {
+        const px = this.gridShift.x + (config.pos?.[0] ?? 0);
+        const py = this.gridShift.y + (config.pos?.[1] ?? 0);
+        this.setPosition(px, py, true);
+        const offset = this.elem?.gameObject?.offset ?? [0, 0];
+        this.pos.set(px + offset[0], py + offset[1]);
+        this.updateSize();
+        this.size.set(
+          this.visible ? config.size?.[0] : 0,
+          this.visible ? config.size?.[1] : 0,
+        );
+        if (config.rotation) {
+          this.angle = config.rotation;
+        }
       }
       if (config.color) {
         if (config.color === "random") {
@@ -133,11 +140,13 @@ export class GameObject extends EngineObject {
           let pos = vec2(this.pos.x, this.pos.y);
           const directions: [number, number][] = [[-1, 0], [0, -1], [1, 0], [0, 1]];
           let lastDir: [number, number] | undefined;
+          let prePos: Vector2 = pos;
           for (let i = 0; i < actualCount; i++) {
             const oppositeDirIndex = lastDir ? (directions.indexOf(lastDir) + 2) % 4 : undefined;
             const filteredDirections = directions.filter((_dir, index) => index !== oppositeDirIndex);
             const dir = filteredDirections[Math.floor(Math.random() * filteredDirections.length)];
-            const rot = Math.atan2(-dir[1], dir[0]);
+            pos = pos.add(vec2(dir[0], dir[1]));
+            const rot = Math.atan2((pos.y - prePos.y), -(pos.x - prePos.x));
 
             this.manager.scene.elems.push({
               name: "river",
@@ -154,12 +163,13 @@ export class GameObject extends EngineObject {
                 name: animation,
               },
             });
-            pos = pos.add(vec2(dir[0], dir[1]));
+            prePos = pos;
             lastDir = dir;
           }
         }
       }
       this.refreshLabel();
+      this.refreshBars();
     } else {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
@@ -169,6 +179,36 @@ export class GameObject extends EngineObject {
       }
       this.destroy();
     }
+  }
+
+  refreshBars() {
+    if (!this.resourcesAccumulated) {
+      return;
+    }
+    this.resourceBars.forEach(bar => bar.destroy());
+    this.resourceBars.length = 0;
+    Object.entries(this.resourcesAccumulated).forEach(([key, value], i) => {
+      if (this.manager.scene.resources[key as keyof Resources]?.global) {
+        return;
+      }
+      // const 
+      // if (!this.resourceBars[i]) {
+      //   this.resourceBars[i] = new EngineObject();
+      //   this.addChild(this.resourceBars[i], vec2(-.5 + i * .2, 1.5));
+      // }
+      if (!value) {
+        return;
+      }
+      const barIcon = new EngineObject(vec2(0, 0), vec2(.2, .2));
+      barIcon.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(key));
+      this.addChild(barIcon, vec2(-.5 + i * .2, 1.5));
+      this.resourceBars.push(barIcon);
+
+      const bar = new EngineObject(vec2(0, 0), vec2(.2 * value, .2));
+      bar.color = new Color(1, 1, 0, 1);
+      this.addChild(bar, vec2(-.5 + i * .2, 1.5));
+      this.resourceBars.push(bar);
+    });
   }
 
   refreshLabel() {
@@ -213,11 +253,15 @@ export class GameObject extends EngineObject {
     this.resources.length = 0;
   }
 
-  private showResources(x: number, y: number, owner?: number) {
+  showResources(x: number, y: number,
+    owner?: number,
+    floatResources: boolean = false
+  ) {
     const resources = this.manager.getResources(x, y);
     if (!resources) {
       return;
     }
+    const resourceSpacing = .15;
     const offset = this.elem?.gameObject?.offset ?? [0, 0];
     const offX = x - this.px - offset[0], offY = y - this.py - offset[1];
     let count = 0;
@@ -234,25 +278,27 @@ export class GameObject extends EngineObject {
         const indic = new EngineObject(vec2(0, 0), vec2(.5, .5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
         indic.color = new Color(255, 255, 255, 1);
-        this.addChild(indic, vec2(offX + (count - (total - 1) / 2) * .2, offY));
+        this.addChild(indic, vec2(offX + (count - (total - 1) / 2) * resourceSpacing, offY));
         this.resources.push(indic);
         count++;
       }
     });
-
-    {
-      let harvesting = false;
+    let harvesting = floatResources;
+    if (!floatResources) {
       this.manager.iterateGridCell(x, y, (elem) => {
         if (elem.elem?.owner === owner && elem.elem?.harvesting) {
           harvesting = true;
         }
       });
-      const indic = new EngineObject(vec2(0, 0), vec2(count * .2 + .2, .3));
-      indic.color = harvesting ? new Color(1, .5, 1, .8) : new Color(.5, .5, .5, .8);
-      this.addChild(indic, vec2(offX, offY));
-      this.resources.push(indic);
     }
+    const indic = new EngineObject(vec2(0, 0), vec2(count * resourceSpacing + .2, .3));
+    indic.color = harvesting ? new Color(1, .5, 1, .8) : new Color(.5, .5, .5, .8);
+    this.addChild(indic, vec2(offX, offY));
+    this.resources.push(indic);
     this.updated = false;
+    if (floatResources) {
+      this.floatResources = Date.now();
+    }
   }
 
   private getTag() {
@@ -288,6 +334,7 @@ export class GameObject extends EngineObject {
     if (from.x !== this.px || from.y !== this.py) {
       this.moveTo(from.x, from.y);
     }
+    this.positionDetached = true;
   }
 
   setPosition(px: number, py: number, force?: boolean) {
@@ -402,14 +449,13 @@ export class GameObject extends EngineObject {
         if (this.elem.move && !this.manager.checkCondition(this.elem.move.disabled, this)) {
           this.addMoveOptions(this.elem.move?.distance ?? 1, vec2(this.px, this.py));
         }
-        if (this.elem.settler) {
+        const home = this.elem.settler ? this : this.elem.worker ? this.home : undefined;
+        if (home) {
           for (let y = -1; y <= 1; y++) {
             for (let x = -1; x <= 1; x++) {
-              this.showResources(this.px + x, this.py + y, this.elem?.owner);
+              this.showResources(home.px + x, home.py + y, this.elem?.owner);
             }
           }
-        } else if (this.elem.worker) {
-          this.showResources(this.px, this.py, this.elem?.owner);
         }
       }
     } else {
@@ -498,17 +544,30 @@ export class GameObject extends EngineObject {
 
   getTileInfoAnimate(animInfo: AnimationInfo) {
     const t = this.getFrame(animInfo);
-    return animInfo.tileInfos[t];
+    return animInfo?.tileInfos?.[t];
+  }
+
+  accumulateResources(resources: Resources) {
+    if (this.home) {
+      this.home.accumulateResources(resources);
+      return;
+    }
+    Object.entries(resources).forEach(([key, value]) => {
+      if (!this.resourcesAccumulated) {
+        this.resourcesAccumulated = {};
+      }
+      this.resourcesAccumulated[key] = (this.resourcesAccumulated[key] ?? 0) + value;
+    });
   }
 
   update() {
     super.update();
-    if (this.updated && !this.elem?.dynamic && !this.doomed && Date.now() - this.bornTime < 1000) {
+    if (this.updated && !this.elem?.dynamic && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
-    if (this.manager.inUI) {
-      return;
-    }
+    // if (this.manager.inUI) {
+    //   return;
+    // }
     const nowHoverered = this.manager.hovering(this);
     if (this.hovered !== nowHoverered) {
       this.hovered = nowHoverered;
@@ -587,6 +646,7 @@ export class GameObject extends EngineObject {
       }
       this.labels?.forEach(label => label.renderOrder = this.renderOrder + .2);
       this.resources.forEach((resource) => resource.renderOrder = 100000 + (resource.tileInfo ? .1 : -.1));
+      this.resourceBars.forEach((resource) => resource.renderOrder = this.renderOrder + .1);
     }
     if (this.elem?.clearCloud && !this.clearedCloud) {
       const SIZE = 1, LIMIT = 2;
@@ -597,7 +657,6 @@ export class GameObject extends EngineObject {
           }
         }
       }
-
       this.clearedCloud = true;
     }
 
@@ -615,6 +674,22 @@ export class GameObject extends EngineObject {
         }
       });
     }
+
+    if (this.floatResources) {
+      if (Date.now() - this.floatResources > 2000) {
+        this.floatResources = undefined;
+        this.hideResources();
+      } else {
+        this.resources.forEach(res => res.localPos.y += .005);
+      }
+    }
+  }
+
+  get home(): GameObject | undefined {
+    if (this.elem?.home && !this.elem?.building) {
+      return this.manager.grid[GameObject.getTag("house", this.elem.home[0], this.elem?.home[1])] ?? undefined;
+    }
+    return undefined;
   }
 
   doomed?: boolean = false;
