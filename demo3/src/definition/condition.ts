@@ -6,4 +6,6 @@ export interface Condition {
   nonProximity?: [string, string];
   harvesting?: boolean;
   notHarvesting?: boolean;
+  cannotAct?: [boolean, string];
+  unitLimit?: [string, string];
 }

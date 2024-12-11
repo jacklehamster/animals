@@ -11,18 +11,19 @@ export interface Scene {
   layers: Record<string, number>;
   colayers?: Record<string, number>;
   menu?: Menu[];
-  autoEnd?: boolean;
   turn?: {
     player: number;
     turn: number;
   };
   players: {
     resources: Resources;
+    tax?: number;
   }[];
   resources: {
     [key: string]: {
       icon: MenuIcon;
       global?: boolean;
+      hidden?: boolean;
     };
   }
 }

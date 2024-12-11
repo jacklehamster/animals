@@ -4,6 +4,7 @@ import type { Resources } from "./resources";
 interface TileCondition {
   tile?: string;
   noTile?: string;
+  zeroUnit?: boolean;
 }
 
 export interface Elem {
@@ -13,9 +14,11 @@ export interface Elem {
   type?: string;
   level?: number;
   hitpoints?: number;
+  maxHitPoints?: number;
   turn?: {
-    moves?: number;
-    attacks?: number;
+    moves: number;
+    attacks: number;
+    actions?: number;
   };
   owner?: number;
   home?: [number, number];
@@ -64,6 +67,7 @@ export interface Elem {
     };
     moveIndic?: {
       animation: string;
+      selectedAnimation: string;
       scale?: number;
     }
   };
@@ -84,10 +88,13 @@ export interface Elem {
   };
   worker?: boolean;
   settler?: boolean;
-  resources?: Resources;
+  resourcesProduced?: Resources;
+  resourcesAccumulated?: Resources;
   dynamic?: boolean;
   clearCloud?: boolean;
   water?: boolean;
   harvesting?: boolean;
   building?: boolean;
+  closeToHome?: boolean;
+  endlessMove?: boolean;
 }

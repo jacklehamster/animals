@@ -26,6 +26,7 @@ export class Manager {
   worldChanged = true;
   inUI?: boolean;
   resourceIcons: EngineObject[] = [];
+  autoEndTurn = false;
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -117,6 +118,13 @@ export class Manager {
             }
           });
         }
+        if (gameObject.elem.condition.zeroUnit) {
+          const tag = `unit_${gameObject.px}_${gameObject.py}`;
+          const target = this.grid[tag];
+          if (target) {
+            violationMet = true;
+          }
+        }
         if (!conditionMet || violationMet) {
           gameObject.doom(true);
           delete this.grid[tag];
@@ -126,6 +134,9 @@ export class Manager {
   }
 
   private shiftCamera() {
+    if (this.inUI) {
+      return;
+    }
     if (!this.mousePosDown && mouseWasPressed(0)) {
       this.mousePosDown = vec2(mousePos.x, mousePos.y);
     }
@@ -251,17 +262,24 @@ export class Manager {
   }
 
   getResources(x: number, y: number) {
-    const resources: Elem["resources"] = {};
+    const resources: Elem["resourcesProduced"] = {};
     Object.keys(this.scene.layers).forEach((layer) => {
       const tag = `${layer}_${x}_${y}`;
       const gameObject = this.grid[tag];
       if (gameObject) {
-        resources.wheat = (resources.wheat ?? 0) + (gameObject.elem?.resources?.wheat ?? 0);
-        resources.wood = (resources.wood ?? 0) + (gameObject.elem?.resources?.wood ?? 0);
-        resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resources?.brain ?? 0);
+        resources.wheat = (resources.wheat ?? 0) + (gameObject.elem?.resourcesProduced?.wheat ?? 0);
+        resources.wood = (resources.wood ?? 0) + (gameObject.elem?.resourcesProduced?.wood ?? 0);
+        resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resourcesProduced?.brain ?? 0);
+        resources.gold = (resources.gold ?? 0) + (gameObject.elem?.resourcesProduced?.gold ?? 0);
+        resources.trade = (resources.trade ?? 0) + (gameObject.elem?.resourcesProduced?.trade ?? 0);
       }
     });
-    return Math.max(resources.wheat ?? 0, 0) + Math.max(resources.wood ?? 0, 0) + Math.max(resources.brain ?? 0, 0) ? resources : undefined;
+    return Math.max(resources.wheat ?? 0, 0)
+      + Math.max(resources.wood ?? 0, 0)
+      + Math.max(resources.brain ?? 0, 0)
+      + Math.max(resources.gold ?? 0, 0)
+      + Math.max(resources.trade ?? 0, 0)
+      ? resources : undefined;
   }
 
   clearCloud(x: number, y: number) {
@@ -290,10 +308,14 @@ export class Manager {
   onTap(x: number, y: number, mouseX: number, mouseY: number) {
     if (this.selected?.canMoveTo(x, y)) {
       this.selected.moveTo(x, y);
+      // this.selected.elem?.turn
       this.setSelection(undefined);
       return;
     }
-    const unit = this.grid[`unit_${x}_${y}`];
+    let unit: GameObject | undefined = this.grid[`unit_${x}_${y}`];
+    if (!unit?.canAct()) {
+      unit = undefined;
+    }
     const house = this.grid[`house_${x}_${y}`];
     this.setSelection(unit === this.selected ? house : unit);
   }
@@ -338,8 +360,9 @@ export class Manager {
     }
     if (condition.occupied && obj) {
       const tag = GameObject.getTag(condition.occupied[0], obj?.px, obj?.py);
+      console.log(tag, this.grid[tag]);
       if (this.grid[tag]) {
-        condition.occupied[1] ?? "true";
+        return condition.occupied[1] ?? "true";
       }
     }
     if (condition.harvesting && obj && obj.elem?.harvesting) {
@@ -381,6 +404,17 @@ export class Manager {
         return proxyCheck;
       }
     }
+    if (condition.cannotAct) {
+      return !obj?.canAct() ? condition.cannotAct[1] : null;
+    }
+    if (condition.unitLimit) {
+      const level = obj?.elem?.level ?? 0;
+      const [unit, message] = condition.unitLimit;
+      const support = obj?.countUnitSupport(unit);
+      if (support && support >= level) {
+        return message ?? "true";
+      }
+    }
     return null;
   }
 
@@ -394,9 +428,18 @@ export class Manager {
         this.scene.turn.turn++;
       }
       this.collectResources(this.scene.turn.player);
+      this.giveUnitsTurns();
     }
 
     this.hud.updated = false;
+  }
+
+  giveUnitsTurns() {
+    this.iterateRevealedCells((gameObject) => {
+      if (gameObject.elem?.owner === this.scene.turn?.player) {
+        gameObject.giveTurn();
+      }
+    });
   }
 
   collectResources(player: number) {

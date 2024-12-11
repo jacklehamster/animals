@@ -3,4 +3,5 @@ export interface Resources {
   wood?: number;
   gold?: number;
   brain?: number;
+  trade?: number;
 }

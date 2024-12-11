@@ -78,7 +78,7 @@ export class Hud {
     const player = this.scene.turn?.player ?? 1;
     const RESOURCES: (keyof Resources)[] = Object.keys(this.scene.resources) as (keyof Resources)[];
     RESOURCES.forEach(resource => {
-      if (!this.scene.resources[resource].global) {
+      if (!this.scene.resources[resource].global || this.scene.resources[resource].hidden) {
         return;
       }
       const { imageSource, spriteSize, frames, padding } = this.scene.resources[resource].icon;
@@ -114,6 +114,18 @@ export class Hud {
         }, 1500);
       }
     });
+    //  add knob to adjust tax
+    const tax = document.getElementById("tax") as HTMLInputElement ?? (this.resourceOverlay.appendChild(document.createElement("input")));
+    tax.id = "tax";
+    tax.type = "range";
+    tax.min = "0";
+    tax.max = "100";
+    tax.step = "1";
+    tax.value = `${this.scene.players[player - 1].tax ?? 0}`;
+    tax.style.width = "60px";
+    tax.addEventListener("input", e => {
+      this.scene.players[player - 1].tax = parseInt(tax.value);
+    });
   }
 
   setHudButtons() {
@@ -132,6 +144,18 @@ export class Hud {
     endButton.addEventListener("mouseup", e => {
       e.preventDefault();
       e.stopPropagation();
+    });
+
+    const autoEndGroup = this.overlay.appendChild(document.createElement("div"));
+    const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
+    autoEndLabel.textContent = "Auto end turn";
+    autoEndLabel.htmlFor = "autoEndCheckbox";
+    const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
+    autoEndCheckbox.id = "autoEndCheckbox";
+    autoEndCheckbox.type = "checkbox";
+    autoEndCheckbox.checked = this.manager.autoEndTurn;
+    autoEndCheckbox.addEventListener("change", e => {
+      this.manager.autoEndTurn = autoEndCheckbox.checked;
     });
   }
 
@@ -181,7 +205,8 @@ export class Hud {
       label.style.fontSize = "10pt";
       label.style.color = "silver";
 
-      const desc = this.bg.appendChild(document.createElement("div"));
+      const descDiv = this.bg.appendChild(document.createElement("div"));
+      const desc = descDiv.appendChild(document.createElement("div"));
       desc.style.margin = "20px 20px";
       desc.style.color = "silver";
       desc.style.width = "0px";
@@ -190,6 +215,36 @@ export class Hud {
       descContent.style.maxWidth = "200px";
       descContent.textContent = menu.description ?? "";
 
+      const healthDiv = descDiv.appendChild(document.createElement("div"));
+      healthDiv.style.position = "absolute";
+      healthDiv.style.right = "0";
+      if (obj.elem?.type === "house") {
+        //  show weath resource
+        const wheat = healthDiv.appendChild(document.createElement("div"));
+        wheat.style.display = "flex";
+        wheat.style.flexDirection = "row";
+        wheat.style.alignItems = "center";
+        wheat.style.justifyContent = "center";
+        wheat.style.margin = "0 10px";
+        wheat.style.gap = "10px";
+        const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
+        const icon = wheat.appendChild(document.createElement("div"));
+        icon.style.backgroundImage = `url(${imageSource})`;
+        icon.style.width = `${spriteSize[0]}px`;
+        icon.style.height = `${spriteSize[1]}px`;
+        icon.style.transform = "scale(.5)";
+        const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+        icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+        // show wheat amount
+
+        // calculate wheat cost for next level
+        const cost = obj.nextLevelCost();
+
+        const label = wheat.appendChild(document.createElement("div"));
+        label.style.fontSize = "10pt";
+        label.style.color = "gold";
+        label.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
+      }
     }
     {
       const menuDiv = this.bg.appendChild(document.createElement("div"));
@@ -271,15 +326,17 @@ export class Hud {
                 this.manager.setSelection(undefined);
               }
               if (action.level && obj.elem) {
-                obj.elem.level = (obj.elem.level ?? 0) + action.level;
+                obj.updateLevel((obj.elem.level ?? 0) + action.level)
                 obj.refreshLabel();
               }
               if (action.harvest && obj.elem) {
                 obj.elem.harvesting = true;
+                obj.spendActions();
               }
               if (action.stopHarvest && obj.elem) {
                 obj.elem.harvesting = false;
               }
+              obj.refreshLabel();
             });
             this.updated = false;
 
@@ -288,12 +345,13 @@ export class Hud {
           });
         }
         if (disabled) {
-          menuItemDiv.style.filter = "grayscale(100%)";
-          menuItemDiv.style.opacity = "0.5";
+          icon.style.filter = "grayscale(100%)";
+          icon.style.opacity = "0.5";
           menuItemDiv.style.cursor = "not-allowed";
         } else {
-          menuItemDiv.style.filter = "";
-          menuItemDiv.style.opacity = "";
+          icon.style.filter = "";
+          icon.style.opacity = "";
+          menuItemDiv.style.cursor = "pointer";
         }
       });
     }

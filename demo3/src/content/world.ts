@@ -32,6 +32,7 @@ export const worldData: Scene = {
       name: "sheep",
       type: "unit",
       hitpoints: 10,
+      maxHitPoints: 10,
       gameObject: {
         pos: [0, 0] as [number, number],
         size: [1.8, 1.8] as [number, number],
@@ -53,6 +54,7 @@ export const worldData: Scene = {
         },
         moveIndic: {
           animation: "blue",
+          selectedAnimation: "blue_selected",
         },
       },
       move: {
@@ -64,11 +66,16 @@ export const worldData: Scene = {
       clearCloud: true,
       dynamic: true,
       settler: true,
+      turn: {
+        moves: 1,
+        attacks: 1,
+      },
     },
     {
       name: "dog",
       type: "unit",
       hitpoints: 10,
+      maxHitPoints: 10,
       gameObject: {
         size: [1.8, 1.8] as [number, number],
         speed: 0.08,
@@ -89,22 +96,28 @@ export const worldData: Scene = {
         },
         moveIndic: {
           animation: "blue",
+          selectedAnimation: "blue_selected",
         },
       },
       move: {
         animation: "dog_jump",
-        distance: 2,
+        distance: 1,
       },
       shadow: {
         animation: "shadow",
       },
       clearCloud: true,
       dynamic: true,
+      turn: {
+        moves: 1,
+        attacks: 1,
+      },
     },
     {
       name: "cow",
       type: "unit",
       hitpoints: 15,
+      maxHitPoints: 15,
       gameObject: {
         size: [1.8, 1.8] as [number, number],
         speed: 0.06,
@@ -125,10 +138,13 @@ export const worldData: Scene = {
         },
         moveIndic: {
           animation: "blue",
+          selectedAnimation: "blue_selected",
         },
       },
+      clearCloud: true,
       move: {
         animation: "cow_jump",
+        distance: 2,
         disabled: {
           harvesting: true,
         },
@@ -139,13 +155,18 @@ export const worldData: Scene = {
       shadow: {
         animation: "shadow",
       },
-      clearCloud: true,
       worker: true,
+      turn: {
+        moves: 1,
+        attacks: 0,
+        actions: 1,
+      },
+      closeToHome: true,
     },
     {
       name: "river",
       type: "road",
-      resources: {
+      resourcesProduced: {
         wheat: 1,
       },
       gameObject: {
@@ -185,6 +206,24 @@ export const worldData: Scene = {
       settler: true,
       harvesting: true,
       building: true,
+      turn: {
+        moves: 0,
+        attacks: 0,
+      },
+      resourcesProduced: {
+        trade: 1,
+      }
+    },
+    {
+      name: "cabana",
+      type: "house",
+      gameObject: {
+        offset: [0, .2] as [number, number],
+        size: [2, 2] as [number, number],
+      },
+      animation: {
+        name: "cabana",
+      },
     },
   ],
   animations: [
@@ -355,6 +394,14 @@ export const worldData: Scene = {
       ],
       mul: 20,
     },
+    {
+      name: "cabana",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        61,
+      ],
+    },
     ...new Array(10).fill(36).map((base, i) => ({
       name: `num_${i}`,
       imageSource: "./assets/tiles.png",
@@ -458,6 +505,14 @@ export const worldData: Scene = {
         59,
       ],
     },
+    {
+      name: "trade",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      frames: [
+        60,
+      ],
+    },
   ],
   elems: [
     {
@@ -496,11 +551,15 @@ export const worldData: Scene = {
     {
       definition: "sheep",
       owner: 1,
+      turn: {
+        moves: 1,
+        attacks: 1,
+      },
     },
     {
       name: "grass",
       type: "tile",
-      resources: {
+      resourcesProduced: {
         wheat: 2,
       },
       group: {
@@ -521,7 +580,7 @@ export const worldData: Scene = {
     {
       name: "plain",
       type: "tile_overlay",
-      resources: {
+      resourcesProduced: {
         wood: 1,
         wheat: -1,
       },
@@ -544,7 +603,7 @@ export const worldData: Scene = {
     {
       name: "lake",
       type: "tile_overlay",
-      resources: {
+      resourcesProduced: {
         wheat: -1,
       },
       group: {
@@ -572,7 +631,7 @@ export const worldData: Scene = {
     {
       name: "tree",
       type: "decor",
-      resources: {
+      resourcesProduced: {
         wheat: -1,
         wood: 1,
       },
@@ -600,7 +659,7 @@ export const worldData: Scene = {
     {
       name: "mountain",
       type: "decor",
-      resources: {
+      resourcesProduced: {
         wheat: -2,
       },
       group: {
@@ -623,6 +682,19 @@ export const worldData: Scene = {
         radius: .3,
         behind: true,
       },
+    },
+    {
+      name: "cabana",
+      group: {
+        grid: [SIZE + 1, SIZE + 1],
+        chance: 0.01,
+      },
+      condition: {
+        tile: "plain",
+        noTile: "lake",
+        zeroUnit: true,
+      },
+      definition: "cabana",
     },
   ],
   menu: [
@@ -662,7 +734,7 @@ export const worldData: Scene = {
     },
     {
       name: "house",
-      description: "Use settlements to grow your animal civilization.",
+      description: "Use settlements to grow your animal kingdom.",
       icon: {
         imageSource: "./assets/tiles.png",
         spriteSize: [64, 64] as [number, number],
@@ -682,6 +754,7 @@ export const worldData: Scene = {
           },
           disabled: {
             levelBelowEqual: [1, "Settlement\nlevel too low"],
+            cannotAct: [true, "Wait next turn"],
           },
           actions: [
             {
@@ -703,10 +776,12 @@ export const worldData: Scene = {
           hidden: {
             occupied: ["unit", "Tile occupied\nby a unit"],
           },
+          disabled: {
+            cannotAct: [true, "Wait next turn"],
+          },
           actions: [
             {
               deselect: true,
-              level: -1,
               create: {
                 definition: "dog",
               },
@@ -722,11 +797,13 @@ export const worldData: Scene = {
           label: "spawn\ncow",
           hidden: {
             occupied: ["unit", "Tile occupied\nby a unit"],
+            unitLimit: ["cow", "Increase level\nto spawn more"],
+          },
+          disabled: {
           },
           actions: [
             {
               deselect: true,
-              level: -1,
               create: {
                 definition: "cow",
               },
@@ -737,6 +814,7 @@ export const worldData: Scene = {
     },
     {
       name: "cow",
+      description: "Cows are your workers.\nUse them to harvest resources.",
       icon: {
         imageSource: "./assets/tiles.png",
         spriteSize: [64, 64] as [number, number],
@@ -823,6 +901,16 @@ export const worldData: Scene = {
         frames: [59],
       },
       global: true,
+    },
+    trade: {
+      icon: {
+        imageSource: "./assets/tiles.png",
+        spriteSize: [64, 64] as [number, number],
+        padding: [2, 2],
+        frames: [60],
+      },
+      global: true,
+      hidden: true,
     },
   }
 };

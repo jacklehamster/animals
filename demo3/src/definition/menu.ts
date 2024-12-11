@@ -1,5 +1,6 @@
 import type { Action } from "./action";
 import type { Condition } from "./condition";
+import type { Resources } from "./resources";
 
 export interface MenuIcon {
   imageSource: string;
@@ -18,6 +19,7 @@ export interface MenuItem {
   actions: Action[];
   disabled?: Condition;
   hidden?: Condition;
+  resourceCost?: Resources;
 }
 
 export interface Menu {
