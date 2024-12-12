@@ -30,7 +30,7 @@ export class Manager {
   worldChanged = true;
   inUI?: boolean;
   resourceIcons: EngineObject[] = [];
-  autoEndTurn = false;
+  autoEndTurn = true;
   showLabels = true;
 
   constructor(readonly scene: Scene) {
@@ -182,6 +182,7 @@ export class Manager {
       if (this.shifting) {
         this.shifting = 0;
         this.doneShifting = Date.now();
+        this.refreshCursor();
       }
     }
 
@@ -346,6 +347,9 @@ export class Manager {
     if (Date.now() - this.doneShifting < 100) {
       return;
     }
+    if (this.inUI) {
+      return;
+    }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOption(x, y)) {
       this.selected.moveTo(x, y);
       return;
@@ -367,6 +371,22 @@ export class Manager {
     previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
     this.hud.showSelected(this.selected);
+    if (!this.shifting && this.selected) {
+      this.makeWithinView(this.selected);
+    }
+  }
+
+  makeWithinView(gameObject: GameObject) {
+    const finalDestination = gameObject.finalDestination();
+    const dx = finalDestination.x - this.camShift.x;
+    const dy = finalDestination.y - this.camShift.y;
+    const diffX = 4, diffY = 2;
+    if (Math.abs(dx) > diffX) {
+      this.camShift.set(finalDestination.x, this.camShift.y);
+    }
+    if (Math.abs(dy) > diffY) {
+      this.camShift.set(this.camShift.x, finalDestination.y);
+    }
   }
 
   hovering(gameObject: GameObject) {
@@ -530,7 +550,7 @@ export class Manager {
         this.hud.flashEndTurn(true);
         setTimeout(() => {
           this.gotoNextTurn();
-        }, 300);
+        }, 500);
       } else {
         this.hud.flashEndTurn();
       }
@@ -562,16 +582,28 @@ export class Manager {
   }
 
   selectNext() {
-    let cellsRotation: GameObject[] = [];
+    const cellsRotation: GameObject[] = [];
     this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct() && !gameObject.elem?.harvesting) {
+      let include = false;
+      if (this.selected === gameObject) {
+        include = true;
+      } else if (gameObject.elem?.owner === this.scene.turn?.player
+        && gameObject.canAct()) {
+        if (gameObject.elem?.type === "unit"
+          && !gameObject.elem?.harvesting) {
+          include = true;
+        } else if (gameObject?.elem?.type === "house"
+          && gameObject.canAffordMoreHarvester()) {
+          include = true;
+        }
+      }
+      if (include) {
         cellsRotation.push(gameObject);
       }
     });
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
     // rotate cells
-    let nextIndex = currentIndex + 1;
-    cellsRotation = cellsRotation.slice(nextIndex).concat(cellsRotation.slice(0, nextIndex));
-    this.setSelection(cellsRotation[0]);
+    let nextIndex = (currentIndex + 1) % cellsRotation.length;
+    this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
   }
 }

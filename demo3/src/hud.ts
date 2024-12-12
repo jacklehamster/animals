@@ -288,34 +288,63 @@ export class Hud {
       const healthDiv = descDiv.appendChild(document.createElement("div"));
       healthDiv.style.position = "absolute";
       healthDiv.style.right = "0";
+      healthDiv.style.top = "0";
       if (obj.elem?.type === "house") {
-        //  show weath resource
-        const wheat = healthDiv.appendChild(document.createElement("div"));
-        wheat.style.display = "flex";
-        wheat.style.flexDirection = "row";
-        wheat.style.alignItems = "center";
-        wheat.style.justifyContent = "center";
-        wheat.style.margin = "0 10px";
-        wheat.style.gap = "10px";
-        if (this.scene.resources.wheat) {
-          const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
-          const icon = wheat.appendChild(document.createElement("div"));
-          icon.style.backgroundImage = `url(${imageSource})`;
-          icon.style.width = `${spriteSize[0]}px`;
-          icon.style.height = `${spriteSize[1]}px`;
-          icon.style.transform = "scale(.5)";
-          const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
-          icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+        {
+          //  show weath resource
+          const wheat = healthDiv.appendChild(document.createElement("div"));
+          wheat.style.display = "flex";
+          wheat.style.flexDirection = "row";
+          wheat.style.alignItems = "center";
+          wheat.style.justifyContent = "left";
+          wheat.style.margin = "3px 10px";
+          wheat.style.height = "20px";
+          if (this.scene.resources.wheat) {
+            const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
+            const icon = wheat.appendChild(document.createElement("div"));
+            icon.style.backgroundImage = `url(${imageSource})`;
+            icon.style.width = `${spriteSize[0]}px`;
+            icon.style.height = `${spriteSize[1]}px`;
+            icon.style.transform = "scale(.5)";
+            const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+            icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+          }
+          // show wheat amount
+
+          // calculate wheat cost for next level
+          const cost = obj.nextLevelCost();
+
+          const label = wheat.appendChild(document.createElement("div"));
+          label.style.fontSize = "10pt";
+          label.style.color = "gold";
+          label.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
         }
-        // show wheat amount
-
-        // calculate wheat cost for next level
-        const cost = obj.nextLevelCost();
-
-        const label = wheat.appendChild(document.createElement("div"));
-        label.style.fontSize = "10pt";
-        label.style.color = "gold";
-        label.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
+        {
+          //  show wood resource
+          const wood = healthDiv.appendChild(document.createElement("div"));
+          wood.style.display = "flex";
+          wood.style.flexDirection = "row";
+          wood.style.alignItems = "center";
+          wood.style.justifyContent = "left";
+          wood.style.margin = "3px 10px";
+          wood.style.height = "10px";
+          if (this.scene.resources.wood) {
+            const { imageSource, spriteSize, frames, padding } = this.scene.resources.wood.icon;
+            const icon = wood.appendChild(document.createElement("div"));
+            icon.style.backgroundImage = `url(${imageSource})`;
+            icon.style.width = `${spriteSize[0]}px`;
+            icon.style.height = `${spriteSize[1]}px`;
+            icon.style.transform = "scale(.5)";
+            const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+            icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+          }
+          // show wood amount
+          const label = wood.appendChild(document.createElement("div"));
+          label.style.fontSize = "10pt";
+          label.style.color = "orange";
+          const capacity = obj.resourceCapacity();
+          label.textContent = `${obj.elem.resourcesAccumulated?.wood ?? 0} / ${capacity}`;
+        }
       }
     }
     {
@@ -378,6 +407,12 @@ export class Hud {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
           });
           menuItemDiv.addEventListener("mousedown", e => {
+            menuItemDiv.style.backgroundColor = "rgba(250, 250, 150, .5)";
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          menuItemDiv.addEventListener("mouseup", e => {
+            menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             const actions = item.actions ?? [];
             actions.forEach(action => {
               if (action.destroy) {

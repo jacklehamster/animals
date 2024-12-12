@@ -1,1248 +1,4 @@
-var __defProp = Object.defineProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, {
-      get: all[name],
-      enumerable: true,
-      configurable: true,
-      set: (newValue) => all[name] = () => newValue
-    });
-};
-
 // dist/littlejs.esm.min.js
-var exports_littlejs_esm_min = {};
-__export(exports_littlejs_esm_min, {
-  zzfx: () => {
-    {
-      return zzfx;
-    }
-  },
-  worldToScreen: () => {
-    {
-      return worldToScreen;
-    }
-  },
-  wave: () => {
-    {
-      return wave;
-    }
-  },
-  vibrateStop: () => {
-    {
-      return vibrateStop;
-    }
-  },
-  vibrateEnable: () => {
-    {
-      return vibrateEnable;
-    }
-  },
-  vibrate: () => {
-    {
-      return vibrate;
-    }
-  },
-  vec2: () => {
-    {
-      return vec2;
-    }
-  },
-  touchGamepadSize: () => {
-    {
-      return touchGamepadSize;
-    }
-  },
-  touchGamepadEnable: () => {
-    {
-      return touchGamepadEnable;
-    }
-  },
-  touchGamepadAnalog: () => {
-    {
-      return touchGamepadAnalog;
-    }
-  },
-  touchGamepadAlpha: () => {
-    {
-      return touchGamepadAlpha;
-    }
-  },
-  toggleFullscreen: () => {
-    {
-      return toggleFullscreen;
-    }
-  },
-  timeReal: () => {
-    {
-      return timeReal;
-    }
-  },
-  timeDelta: () => {
-    {
-      return timeDelta;
-    }
-  },
-  time: () => {
-    {
-      return time;
-    }
-  },
-  tileSizeDefault: () => {
-    {
-      return tileSizeDefault;
-    }
-  },
-  tileFixBleedScale: () => {
-    {
-      return tileFixBleedScale;
-    }
-  },
-  tileCollisionTest: () => {
-    {
-      return tileCollisionTest;
-    }
-  },
-  tileCollisionSize: () => {
-    {
-      return tileCollisionSize;
-    }
-  },
-  tileCollisionRaycast: () => {
-    {
-      return tileCollisionRaycast;
-    }
-  },
-  tileCollision: () => {
-    {
-      return tileCollision;
-    }
-  },
-  tile: () => {
-    {
-      return tile;
-    }
-  },
-  textureInfos: () => {
-    {
-      return textureInfos;
-    }
-  },
-  speakStop: () => {
-    {
-      return speakStop;
-    }
-  },
-  speak: () => {
-    {
-      return speak;
-    }
-  },
-  soundVolume: () => {
-    {
-      return soundVolume;
-    }
-  },
-  soundEnable: () => {
-    {
-      return soundEnable;
-    }
-  },
-  soundDefaultTaper: () => {
-    {
-      return soundDefaultTaper;
-    }
-  },
-  soundDefaultRange: () => {
-    {
-      return soundDefaultRange;
-    }
-  },
-  smoothStep: () => {
-    {
-      return smoothStep;
-    }
-  },
-  sign: () => {
-    {
-      return sign;
-    }
-  },
-  showWatermark: () => {
-    {
-      return showWatermark;
-    }
-  },
-  showSplashScreen: () => {
-    {
-      return showSplashScreen;
-    }
-  },
-  setVibrateEnable: () => {
-    {
-      return setVibrateEnable;
-    }
-  },
-  setTouchInputEnable: () => {
-    {
-      return setTouchInputEnable;
-    }
-  },
-  setTouchGamepadSize: () => {
-    {
-      return setTouchGamepadSize;
-    }
-  },
-  setTouchGamepadEnable: () => {
-    {
-      return setTouchGamepadEnable;
-    }
-  },
-  setTouchGamepadAnalog: () => {
-    {
-      return setTouchGamepadAnalog;
-    }
-  },
-  setTouchGamepadAlpha: () => {
-    {
-      return setTouchGamepadAlpha;
-    }
-  },
-  setTileSizeDefault: () => {
-    {
-      return setTileSizeDefault;
-    }
-  },
-  setTileFixBleedScale: () => {
-    {
-      return setTileFixBleedScale;
-    }
-  },
-  setTileCollisionData: () => {
-    {
-      return setTileCollisionData;
-    }
-  },
-  setSoundVolume: () => {
-    {
-      return setSoundVolume;
-    }
-  },
-  setSoundEnable: () => {
-    {
-      return setSoundEnable;
-    }
-  },
-  setSoundDefaultTaper: () => {
-    {
-      return setSoundDefaultTaper;
-    }
-  },
-  setSoundDefaultRange: () => {
-    {
-      return setSoundDefaultRange;
-    }
-  },
-  setShowWatermark: () => {
-    {
-      return setShowWatermark;
-    }
-  },
-  setShowSplashScreen: () => {
-    {
-      return setShowSplashScreen;
-    }
-  },
-  setPaused: () => {
-    {
-      return setPaused;
-    }
-  },
-  setParticleEmitRateScale: () => {
-    {
-      return setParticleEmitRateScale;
-    }
-  },
-  setObjectMaxSpeed: () => {
-    {
-      return setObjectMaxSpeed;
-    }
-  },
-  setObjectDefaultMass: () => {
-    {
-      return setObjectDefaultMass;
-    }
-  },
-  setObjectDefaultFriction: () => {
-    {
-      return setObjectDefaultFriction;
-    }
-  },
-  setObjectDefaultElasticity: () => {
-    {
-      return setObjectDefaultElasticity;
-    }
-  },
-  setObjectDefaultDamping: () => {
-    {
-      return setObjectDefaultDamping;
-    }
-  },
-  setObjectDefaultAngleDamping: () => {
-    {
-      return setObjectDefaultAngleDamping;
-    }
-  },
-  setMedalsPreventUnlock: () => {
-    {
-      return setMedalsPreventUnlock;
-    }
-  },
-  setMedalDisplayTime: () => {
-    {
-      return setMedalDisplayTime;
-    }
-  },
-  setMedalDisplaySlideTime: () => {
-    {
-      return setMedalDisplaySlideTime;
-    }
-  },
-  setMedalDisplaySize: () => {
-    {
-      return setMedalDisplaySize;
-    }
-  },
-  setMedalDisplayIconSize: () => {
-    {
-      return setMedalDisplayIconSize;
-    }
-  },
-  setInputWASDEmulateDirection: () => {
-    {
-      return setInputWASDEmulateDirection;
-    }
-  },
-  setHeadlessMode: () => {
-    {
-      return setHeadlessMode;
-    }
-  },
-  setGravity: () => {
-    {
-      return setGravity;
-    }
-  },
-  setGlOverlay: () => {
-    {
-      return setGlOverlay;
-    }
-  },
-  setGlEnable: () => {
-    {
-      return setGlEnable;
-    }
-  },
-  setGamepadsEnable: () => {
-    {
-      return setGamepadsEnable;
-    }
-  },
-  setGamepadDirectionEmulateStick: () => {
-    {
-      return setGamepadDirectionEmulateStick;
-    }
-  },
-  setFontDefault: () => {
-    {
-      return setFontDefault;
-    }
-  },
-  setEnablePhysicsSolver: () => {
-    {
-      return setEnablePhysicsSolver;
-    }
-  },
-  setDebugKey: () => {
-    {
-      return setDebugKey;
-    }
-  },
-  setCanvasPixelated: () => {
-    {
-      return setCanvasPixelated;
-    }
-  },
-  setCanvasMaxSize: () => {
-    {
-      return setCanvasMaxSize;
-    }
-  },
-  setCanvasFixedSize: () => {
-    {
-      return setCanvasFixedSize;
-    }
-  },
-  setCameraScale: () => {
-    {
-      return setCameraScale;
-    }
-  },
-  setCameraPos: () => {
-    {
-      return setCameraPos;
-    }
-  },
-  setBlendMode: () => {
-    {
-      return setBlendMode;
-    }
-  },
-  screenToWorld: () => {
-    {
-      return screenToWorld;
-    }
-  },
-  rgb: () => {
-    {
-      return rgb;
-    }
-  },
-  randVector: () => {
-    {
-      return randVector;
-    }
-  },
-  randSign: () => {
-    {
-      return randSign;
-    }
-  },
-  randInt: () => {
-    {
-      return randInt;
-    }
-  },
-  randInCircle: () => {
-    {
-      return randInCircle;
-    }
-  },
-  randColor: () => {
-    {
-      return randColor;
-    }
-  },
-  rand: () => {
-    {
-      return rand;
-    }
-  },
-  preventDefaultInput: () => {
-    {
-      return preventDefaultInput;
-    }
-  },
-  playSamples: () => {
-    {
-      return playSamples;
-    }
-  },
-  playAudioFile: () => {
-    {
-      return playAudioFile;
-    }
-  },
-  percent: () => {
-    {
-      return percent;
-    }
-  },
-  paused: () => {
-    {
-      return paused;
-    }
-  },
-  particleEmitRateScale: () => {
-    {
-      return particleEmitRateScale;
-    }
-  },
-  overlayContext: () => {
-    {
-      return overlayContext;
-    }
-  },
-  overlayCanvas: () => {
-    {
-      return overlayCanvas;
-    }
-  },
-  objectMaxSpeed: () => {
-    {
-      return objectMaxSpeed;
-    }
-  },
-  objectDefaultMass: () => {
-    {
-      return objectDefaultMass;
-    }
-  },
-  objectDefaultFriction: () => {
-    {
-      return objectDefaultFriction;
-    }
-  },
-  objectDefaultElasticity: () => {
-    {
-      return objectDefaultElasticity;
-    }
-  },
-  objectDefaultDamping: () => {
-    {
-      return objectDefaultDamping;
-    }
-  },
-  objectDefaultAngleDamping: () => {
-    {
-      return objectDefaultAngleDamping;
-    }
-  },
-  nearestPowerOfTwo: () => {
-    {
-      return nearestPowerOfTwo;
-    }
-  },
-  mouseWheel: () => {
-    {
-      return mouseWheel;
-    }
-  },
-  mouseWasReleased: () => {
-    {
-      return mouseWasReleased;
-    }
-  },
-  mouseWasPressed: () => {
-    {
-      return mouseWasPressed;
-    }
-  },
-  mouseToScreen: () => {
-    {
-      return mouseToScreen;
-    }
-  },
-  mousePosScreen: () => {
-    {
-      return mousePosScreen;
-    }
-  },
-  mousePos: () => {
-    {
-      return mousePos;
-    }
-  },
-  mouseIsDown: () => {
-    {
-      return mouseIsDown;
-    }
-  },
-  mod: () => {
-    {
-      return mod;
-    }
-  },
-  min: () => {
-    {
-      return min;
-    }
-  },
-  medalsPreventUnlock: () => {
-    {
-      return medalsPreventUnlock;
-    }
-  },
-  medalsInit: () => {
-    {
-      return medalsInit;
-    }
-  },
-  medals: () => {
-    {
-      return medals;
-    }
-  },
-  medalDisplayTime: () => {
-    {
-      return medalDisplayTime;
-    }
-  },
-  medalDisplaySlideTime: () => {
-    {
-      return medalDisplaySlideTime;
-    }
-  },
-  medalDisplaySize: () => {
-    {
-      return medalDisplaySize;
-    }
-  },
-  medalDisplayIconSize: () => {
-    {
-      return medalDisplayIconSize;
-    }
-  },
-  max: () => {
-    {
-      return max;
-    }
-  },
-  mainContext: () => {
-    {
-      return mainContext;
-    }
-  },
-  mainCanvasSize: () => {
-    {
-      return mainCanvasSize;
-    }
-  },
-  mainCanvas: () => {
-    {
-      return mainCanvas;
-    }
-  },
-  lerpWrap: () => {
-    {
-      return lerpWrap;
-    }
-  },
-  lerpAngle: () => {
-    {
-      return lerpAngle;
-    }
-  },
-  lerp: () => {
-    {
-      return lerp;
-    }
-  },
-  keyWasReleased: () => {
-    {
-      return keyWasReleased;
-    }
-  },
-  keyWasPressed: () => {
-    {
-      return keyWasPressed;
-    }
-  },
-  keyIsDown: () => {
-    {
-      return keyIsDown;
-    }
-  },
-  isUsingGamepad: () => {
-    {
-      return isUsingGamepad;
-    }
-  },
-  isTouchDevice: () => {
-    {
-      return isTouchDevice;
-    }
-  },
-  isOverlapping: () => {
-    {
-      return isOverlapping;
-    }
-  },
-  isIntersecting: () => {
-    {
-      return isIntersecting;
-    }
-  },
-  isFullscreen: () => {
-    {
-      return isFullscreen;
-    }
-  },
-  isColor: () => {
-    {
-      return isColor;
-    }
-  },
-  inputWASDEmulateDirection: () => {
-    {
-      return inputWASDEmulateDirection;
-    }
-  },
-  initTileCollision: () => {
-    {
-      return initTileCollision;
-    }
-  },
-  hsl: () => {
-    {
-      return hsl;
-    }
-  },
-  headlessMode: () => {
-    {
-      return headlessMode;
-    }
-  },
-  gravity: () => {
-    {
-      return gravity;
-    }
-  },
-  glShader: () => {
-    {
-      return glShader;
-    }
-  },
-  glSetTexture: () => {
-    {
-      return glSetTexture;
-    }
-  },
-  glSetAntialias: () => {
-    {
-      return glSetAntialias;
-    }
-  },
-  glPositionData: () => {
-    {
-      return glPositionData;
-    }
-  },
-  glOverlay: () => {
-    {
-      return glOverlay;
-    }
-  },
-  glInstanceCount: () => {
-    {
-      return glInstanceCount;
-    }
-  },
-  glGeometryBuffer: () => {
-    {
-      return glGeometryBuffer;
-    }
-  },
-  glFlush: () => {
-    {
-      return glFlush;
-    }
-  },
-  glEnable: () => {
-    {
-      return glEnable;
-    }
-  },
-  glDraw: () => {
-    {
-      return glDraw;
-    }
-  },
-  glCreateTexture: () => {
-    {
-      return glCreateTexture;
-    }
-  },
-  glCreateProgram: () => {
-    {
-      return glCreateProgram;
-    }
-  },
-  glCopyToContext: () => {
-    {
-      return glCopyToContext;
-    }
-  },
-  glContext: () => {
-    {
-      return glContext;
-    }
-  },
-  glCompileShader: () => {
-    {
-      return glCompileShader;
-    }
-  },
-  glColorData: () => {
-    {
-      return glColorData;
-    }
-  },
-  glCanvas: () => {
-    {
-      return glCanvas;
-    }
-  },
-  glBatchAdditive: () => {
-    {
-      return glBatchAdditive;
-    }
-  },
-  glArrayBuffer: () => {
-    {
-      return glArrayBuffer;
-    }
-  },
-  glAntialias: () => {
-    {
-      return glAntialias;
-    }
-  },
-  glAdditive: () => {
-    {
-      return glAdditive;
-    }
-  },
-  glActiveTexture: () => {
-    {
-      return glActiveTexture;
-    }
-  },
-  getTileCollisionData: () => {
-    {
-      return getTileCollisionData;
-    }
-  },
-  getNoteFrequency: () => {
-    {
-      return getNoteFrequency;
-    }
-  },
-  getCameraSize: () => {
-    {
-      return getCameraSize;
-    }
-  },
-  gamepadsUpdate: () => {
-    {
-      return gamepadsUpdate;
-    }
-  },
-  gamepadsEnable: () => {
-    {
-      return gamepadsEnable;
-    }
-  },
-  gamepadWasReleased: () => {
-    {
-      return gamepadWasReleased;
-    }
-  },
-  gamepadWasPressed: () => {
-    {
-      return gamepadWasPressed;
-    }
-  },
-  gamepadStick: () => {
-    {
-      return gamepadStick;
-    }
-  },
-  gamepadIsDown: () => {
-    {
-      return gamepadIsDown;
-    }
-  },
-  gamepadDirectionEmulateStick: () => {
-    {
-      return gamepadDirectionEmulateStick;
-    }
-  },
-  frameRate: () => {
-    {
-      return frameRate;
-    }
-  },
-  frame: () => {
-    {
-      return frame;
-    }
-  },
-  formatTime: () => {
-    {
-      return formatTime;
-    }
-  },
-  fontDefault: () => {
-    {
-      return fontDefault;
-    }
-  },
-  engineVersion: () => {
-    {
-      return engineVersion;
-    }
-  },
-  engineObjectsUpdate: () => {
-    {
-      return engineObjectsUpdate;
-    }
-  },
-  engineObjectsRaycast: () => {
-    {
-      return engineObjectsRaycast;
-    }
-  },
-  engineObjectsDestroy: () => {
-    {
-      return engineObjectsDestroy;
-    }
-  },
-  engineObjectsCallback: () => {
-    {
-      return engineObjectsCallback;
-    }
-  },
-  engineObjects: () => {
-    {
-      return engineObjects;
-    }
-  },
-  engineName: () => {
-    {
-      return engineName;
-    }
-  },
-  engineInit: () => {
-    {
-      return engineInit;
-    }
-  },
-  engineFontImage: () => {
-    {
-      return engineFontImage;
-    }
-  },
-  engineAddPlugin: () => {
-    {
-      return engineAddPlugin;
-    }
-  },
-  enablePhysicsSolver: () => {
-    {
-      return enablePhysicsSolver;
-    }
-  },
-  drawTile: () => {
-    {
-      return drawTile;
-    }
-  },
-  drawTextScreen: () => {
-    {
-      return drawTextScreen;
-    }
-  },
-  drawText: () => {
-    {
-      return drawText;
-    }
-  },
-  drawRect: () => {
-    {
-      return drawRect;
-    }
-  },
-  drawPoly: () => {
-    {
-      return drawPoly;
-    }
-  },
-  drawLine: () => {
-    {
-      return drawLine;
-    }
-  },
-  drawEllipse: () => {
-    {
-      return drawEllipse;
-    }
-  },
-  drawCircle: () => {
-    {
-      return drawCircle;
-    }
-  },
-  drawCanvas2D: () => {
-    {
-      return drawCanvas2D;
-    }
-  },
-  distanceWrap: () => {
-    {
-      return distanceWrap;
-    }
-  },
-  distanceAngle: () => {
-    {
-      return distanceAngle;
-    }
-  },
-  debugText: () => {
-    {
-      return debugText;
-    }
-  },
-  debugSaveText: () => {
-    {
-      return debugSaveText;
-    }
-  },
-  debugSaveDataURL: () => {
-    {
-      return debugSaveDataURL;
-    }
-  },
-  debugSaveCanvas: () => {
-    {
-      return debugSaveCanvas;
-    }
-  },
-  debugRect: () => {
-    {
-      return debugRect;
-    }
-  },
-  debugPoly: () => {
-    {
-      return debugPoly;
-    }
-  },
-  debugPoint: () => {
-    {
-      return debugPoint;
-    }
-  },
-  debugOverlay: () => {
-    {
-      return debugOverlay;
-    }
-  },
-  debugOverlap: () => {
-    {
-      return debugOverlap;
-    }
-  },
-  debugLine: () => {
-    {
-      return debugLine;
-    }
-  },
-  debugClear: () => {
-    {
-      return debugClear;
-    }
-  },
-  debugCircle: () => {
-    {
-      return debugCircle;
-    }
-  },
-  debug: () => {
-    {
-      return debug;
-    }
-  },
-  clearInput: () => {
-    {
-      return clearInput;
-    }
-  },
-  clamp: () => {
-    {
-      return clamp;
-    }
-  },
-  canvasPixelated: () => {
-    {
-      return canvasPixelated;
-    }
-  },
-  canvasMaxSize: () => {
-    {
-      return canvasMaxSize;
-    }
-  },
-  canvasFixedSize: () => {
-    {
-      return canvasFixedSize;
-    }
-  },
-  cameraScale: () => {
-    {
-      return cameraScale;
-    }
-  },
-  cameraPos: () => {
-    {
-      return cameraPos;
-    }
-  },
-  audioContext: () => {
-    {
-      return audioContext;
-    }
-  },
-  abs: () => {
-    {
-      return abs;
-    }
-  },
-  YELLOW: () => {
-    {
-      return YELLOW;
-    }
-  },
-  WHITE: () => {
-    {
-      return WHITE;
-    }
-  },
-  Vector2: () => {
-    {
-      return Vector2;
-    }
-  },
-  Timer: () => {
-    {
-      return Timer;
-    }
-  },
-  TileLayerData: () => {
-    {
-      return TileLayerData;
-    }
-  },
-  TileLayer: () => {
-    {
-      return TileLayer;
-    }
-  },
-  TileInfo: () => {
-    {
-      return TileInfo;
-    }
-  },
-  TextureInfo: () => {
-    {
-      return TextureInfo;
-    }
-  },
-  SoundWave: () => {
-    {
-      return SoundWave;
-    }
-  },
-  Sound: () => {
-    {
-      return Sound;
-    }
-  },
-  RandomGenerator: () => {
-    {
-      return RandomGenerator;
-    }
-  },
-  RED: () => {
-    {
-      return RED;
-    }
-  },
-  ParticleEmitter: () => {
-    {
-      return ParticleEmitter;
-    }
-  },
-  Particle: () => {
-    {
-      return Particle;
-    }
-  },
-  PURPLE: () => {
-    {
-      return PURPLE;
-    }
-  },
-  PI: () => {
-    {
-      return PI;
-    }
-  },
-  ORANGE: () => {
-    {
-      return ORANGE;
-    }
-  },
-  Music: () => {
-    {
-      return Music;
-    }
-  },
-  Medal: () => {
-    {
-      return Medal;
-    }
-  },
-  MAGENTA: () => {
-    {
-      return MAGENTA;
-    }
-  },
-  GREEN: () => {
-    {
-      return GREEN;
-    }
-  },
-  GRAY: () => {
-    {
-      return GRAY;
-    }
-  },
-  FontImage: () => {
-    {
-      return FontImage;
-    }
-  },
-  EngineObject: () => {
-    {
-      return EngineObject;
-    }
-  },
-  Color: () => {
-    {
-      return Color;
-    }
-  },
-  CYAN: () => {
-    {
-      return CYAN;
-    }
-  },
-  BLUE: () => {
-    {
-      return BLUE;
-    }
-  },
-  BLACK: () => {
-    {
-      return BLACK;
-    }
-  },
-  ASSERT: () => {
-    {
-      return ASSERT;
-    }
-  }
-});
 var ASSERT = function() {
 };
 var debugInit = function() {
@@ -1253,25 +9,7 @@ var debugRender = function() {
 };
 var debugRect = function() {
 };
-var debugPoly = function() {
-};
-var debugCircle = function() {
-};
-var debugPoint = function() {
-};
-var debugLine = function() {
-};
 var debugOverlap = function() {
-};
-var debugText = function() {
-};
-var debugClear = function() {
-};
-var debugSaveCanvas = function() {
-};
-var debugSaveText = function() {
-};
-var debugSaveDataURL = function() {
 };
 var abs = function(a) {
   return Math.abs(a);
@@ -1297,74 +35,17 @@ var percent = function(a, b, c) {
 var lerp = function(a, b, c) {
   return b + clamp(a) * (c - b);
 };
-var distanceWrap = function(a, b, c = 1) {
-  a = (a - b) % c;
-  return 2 * a % c - a;
-};
-var lerpWrap = function(a, b, c, d = 1) {
-  return c + clamp(a) * distanceWrap(b, c, d);
-};
-var distanceAngle = function(a, b) {
-  return distanceWrap(a, b, 2 * PI);
-};
-var lerpAngle = function(a, b, c) {
-  return lerpWrap(a, b, c, 2 * PI);
-};
-var smoothStep = function(a) {
-  return a * a * (3 - 2 * a);
-};
-var nearestPowerOfTwo = function(a) {
-  return 2 ** Math.ceil(Math.log2(a));
-};
 var isOverlapping = function(a, b, c, d = vec2()) {
   return 2 * abs(a.x - c.x) < b.x + d.x && 2 * abs(a.y - c.y) < b.y + d.y;
-};
-var isIntersecting = function(a, b, c, d) {
-  c = c.subtract(d.scale(0.5));
-  d = c.add(d);
-  b = b.subtract(a);
-  c = a.subtract(c);
-  d = a.subtract(d);
-  a = [-b.x, b.x, -b.y, b.y];
-  b = [c.x, -d.x, c.y, -d.y];
-  c = 0;
-  d = 1;
-  for (let e = 4;e--; )
-    if (a[e]) {
-      const f = b[e] / a[e];
-      if (0 > a[e]) {
-        if (f > d)
-          return false;
-        c = max(f, c);
-      } else {
-        if (f < c)
-          return false;
-        d = min(f, d);
-      }
-    } else if (0 > b[e])
-      return false;
-  return true;
 };
 var wave = function(a = 1, b = 1, c = time) {
   return b / 2 * (1 - Math.cos(c * a * 2 * PI));
 };
-var formatTime = function(a) {
-  return (a / 60 | 0) + ":" + (10 > a % 60 ? "0" : "") + (a % 60 | 0);
-};
 var rand = function(a = 1, b = 0) {
   return b + Math.random() * (a - b);
 };
-var randInt = function(a, b = 0) {
-  return Math.floor(rand(a, b));
-};
-var randSign = function() {
-  return 2 * randInt(2) - 1;
-};
 var randVector = function(a = 1) {
   return new Vector2().setAngle(rand(2 * PI), a);
-};
-var randInCircle = function(a = 1, b = 0) {
-  return 0 < a ? randVector(a * rand(b / a, 1) ** 0.5) : new Vector2;
 };
 var randColor = function(a = new Color, b = new Color(0, 0, 0, 1), c = false) {
   return c ? a.lerp(b, rand()) : new Color(rand(a.r, b.r), rand(a.g, b.g), rand(a.b, b.b), rand(a.a, b.a));
@@ -1390,144 +71,17 @@ var setCameraPos = function(a) {
 var setCameraScale = function(a) {
   cameraScale = a;
 };
-var setCanvasMaxSize = function(a) {
-  canvasMaxSize = a;
-};
-var setCanvasFixedSize = function(a) {
-  canvasFixedSize = a;
-};
-var setCanvasPixelated = function(a) {
-  canvasPixelated = a;
-};
-var setFontDefault = function(a) {
-  fontDefault = a;
-};
-var setShowSplashScreen = function(a) {
-  showSplashScreen = a;
-};
-var setHeadlessMode = function(a) {
-  headlessMode = a;
-};
-var setGlEnable = function(a) {
-  glEnable = a;
-};
-var setGlOverlay = function(a) {
-  glOverlay = a;
-};
-var setTileSizeDefault = function(a) {
-  tileSizeDefault = a;
-};
-var setTileFixBleedScale = function(a) {
-  tileFixBleedScale = a;
-};
 var setEnablePhysicsSolver = function(a) {
   enablePhysicsSolver = a;
 };
-var setObjectDefaultMass = function(a) {
-  objectDefaultMass = a;
-};
-var setObjectDefaultDamping = function(a) {
-  objectDefaultDamping = a;
-};
-var setObjectDefaultAngleDamping = function(a) {
-  objectDefaultAngleDamping = a;
-};
-var setObjectDefaultElasticity = function(a) {
-  objectDefaultElasticity = a;
-};
-var setObjectDefaultFriction = function(a) {
-  objectDefaultFriction = a;
-};
-var setObjectMaxSpeed = function(a) {
-  objectMaxSpeed = a;
-};
-var setGravity = function(a) {
-  gravity = a;
-};
-var setParticleEmitRateScale = function(a) {
-  particleEmitRateScale = a;
-};
 var setGamepadsEnable = function(a) {
   gamepadsEnable = a;
-};
-var setGamepadDirectionEmulateStick = function(a) {
-  gamepadDirectionEmulateStick = a;
-};
-var setInputWASDEmulateDirection = function(a) {
-  inputWASDEmulateDirection = a;
-};
-var setTouchInputEnable = function(a) {
-  touchInputEnable = a;
-};
-var setTouchGamepadEnable = function(a) {
-  touchGamepadEnable = a;
-};
-var setTouchGamepadAnalog = function(a) {
-  touchGamepadAnalog = a;
-};
-var setTouchGamepadSize = function(a) {
-  touchGamepadSize = a;
-};
-var setTouchGamepadAlpha = function(a) {
-  touchGamepadAlpha = a;
-};
-var setVibrateEnable = function(a) {
-  vibrateEnable = a;
-};
-var setSoundEnable = function(a) {
-  soundEnable = a;
-};
-var setSoundVolume = function(a) {
-  soundVolume = a;
-  soundEnable && !headlessMode && audioGainNode && (audioGainNode.gain.value = a);
-};
-var setSoundDefaultRange = function(a) {
-  soundDefaultRange = a;
-};
-var setSoundDefaultTaper = function(a) {
-  soundDefaultTaper = a;
-};
-var setMedalDisplayTime = function(a) {
-  medalDisplayTime = a;
-};
-var setMedalDisplaySlideTime = function(a) {
-  medalDisplaySlideTime = a;
-};
-var setMedalDisplaySize = function(a) {
-  medalDisplaySize = a;
-};
-var setMedalDisplayIconSize = function(a) {
-  medalDisplayIconSize = a;
-};
-var setMedalsPreventUnlock = function(a) {
-  medalsPreventUnlock = a;
-};
-var setShowWatermark = function(a) {
-  showWatermark = a;
-};
-var setDebugKey = function(a) {
-  debugKey = a;
-};
-var tile = function(a = vec2(), b = tileSizeDefault, c = 0, d = 0) {
-  if (headlessMode)
-    return new TileInfo;
-  typeof b === "number" && (ASSERT(0 < b), b = vec2(b));
-  var e = textureInfos[c];
-  ASSERT(e, "Texture not loaded");
-  const f = b.add(vec2(2 * d));
-  e = e.size.x / f.x | 0;
-  typeof a === "number" && (a = vec2(a % e, a / e | 0));
-  a = vec2(a.x * f.x + d, a.y * f.y + d);
-  return new TileInfo(a, b, c, d);
 };
 var screenToWorld = function(a) {
   return new Vector2((a.x - mainCanvasSize.x / 2 + 0.5) / cameraScale + cameraPos.x, (a.y - mainCanvasSize.y / 2 + 0.5) / -cameraScale + cameraPos.y);
 };
 var worldToScreen = function(a) {
   return new Vector2((a.x - cameraPos.x) * cameraScale + mainCanvasSize.x / 2 - 0.5, (a.y - cameraPos.y) * -cameraScale + mainCanvasSize.y / 2 - 0.5);
-};
-var getCameraSize = function() {
-  return mainCanvasSize.scale(1 / cameraScale);
 };
 var drawTile = function(a, b = vec2(1), c, d = new Color, e = 0, f, g = new Color(0, 0, 0, 0), k = glEnable, h, m) {
   ASSERT(!m || !k, "context only supported in canvas 2D mode");
@@ -1564,26 +118,6 @@ var drawLine = function(a, b, c = 0.1, d, e, f, g) {
   c = vec2(c, 2 * b.length());
   drawRect(a.add(b), c, d, b.angle(), e, f, g);
 };
-var drawPoly = function(a, b = new Color, c = 0, d = new Color(0, 0, 0), e, f = mainContext) {
-  f.fillStyle = b.toString();
-  f.beginPath();
-  for (const g of e ? a : a.map(worldToScreen))
-    f.lineTo(g.x, g.y);
-  f.closePath();
-  f.fill();
-  c && (f.strokeStyle = d.toString(), f.lineWidth = e ? c : c * cameraScale, f.stroke());
-};
-var drawEllipse = function(a, b = 1, c = 1, d = 0, e = new Color, f = 0, g = new Color(0, 0, 0), k, h = mainContext) {
-  k || (a = worldToScreen(a), b *= cameraScale, c *= cameraScale, f *= cameraScale);
-  h.fillStyle = e.toString();
-  h.beginPath();
-  h.ellipse(a.x, a.y, b, c, d, 0, 9);
-  h.fill();
-  f && (h.strokeStyle = g.toString(), h.lineWidth = f, h.stroke());
-};
-var drawCircle = function(a, b = 1, c = new Color, d = 0, e = new Color(0, 0, 0), f, g = mainContext) {
-  drawEllipse(a, b, b, 0, c, d, e, f, g);
-};
 var drawCanvas2D = function(a, b, c, d, e, f, g = mainContext) {
   f || (a = worldToScreen(a), b = b.scale(cameraScale));
   g.save();
@@ -1592,35 +126,6 @@ var drawCanvas2D = function(a, b, c, d, e, f, g = mainContext) {
   g.scale(d ? -b.x : b.x, -b.y);
   e(g);
   g.restore();
-};
-var setBlendMode = function(a, b = glEnable, c) {
-  ASSERT(!c || !b, "context only supported in canvas 2D mode");
-  b ? glAdditive = a : (c ||= mainContext, c.globalCompositeOperation = a ? "lighter" : "source-over");
-};
-var drawText = function(a, b, c = 1, d, e = 0, f, g, k, h, m) {
-  drawTextScreen(a, worldToScreen(b), c * cameraScale, d, e * cameraScale, f, g, k, h, m);
-};
-var drawTextScreen = function(a, b, c = 1, d = new Color, e = 0, f = new Color(0, 0, 0), g = "center", k = fontDefault, h = overlayContext, m) {
-  h.fillStyle = d.toString();
-  h.lineWidth = e;
-  h.strokeStyle = f.toString();
-  h.textAlign = g;
-  h.font = c + "px " + k;
-  h.textBaseline = "middle";
-  h.lineJoin = "round";
-  b = b.copy();
-  (a + "").split("\n").forEach((n) => {
-    e && h.strokeText(n, b.x, b.y, m);
-    h.fillText(n, b.x, b.y, m);
-    b.y += c;
-  });
-};
-var isFullscreen = function() {
-  return !!document.fullscreenElement;
-};
-var toggleFullscreen = function() {
-  const a = mainCanvas.parentElement;
-  isFullscreen() ? document.exitFullscreen && document.exitFullscreen() : a.requestFullscreen && a.requestFullscreen();
 };
 var keyIsDown = function(a, b = 0) {
   ASSERT(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
@@ -1640,15 +145,6 @@ var clearInput = function() {
 };
 var gamepadIsDown = function(a, b = 0) {
   return keyIsDown(a, b + 1);
-};
-var gamepadWasPressed = function(a, b = 0) {
-  return keyWasPressed(a, b + 1);
-};
-var gamepadWasReleased = function(a, b = 0) {
-  return keyWasReleased(a, b + 1);
-};
-var gamepadStick = function(a, b = 0) {
-  return gamepadStickData[b] ? gamepadStickData[b][a] || vec2() : vec2();
 };
 var inputUpdate = function() {
   headlessMode || (touchInputEnable && isTouchDevice || document.hasFocus() || clearInput(), mousePos = screenToWorld(mousePosScreen), gamepadsUpdate());
@@ -1717,12 +213,6 @@ var gamepadsUpdate = function() {
         touchGamepadEnable && isUsingGamepad && touchGamepadTimer.unset();
       }
     }
-};
-var vibrate = function(a = 100) {
-  vibrateEnable && !headlessMode && navigator && navigator.vibrate && navigator.vibrate(a);
-};
-var vibrateStop = function() {
-  vibrate(0);
 };
 var touchInputInit = function() {
   function a(e) {
@@ -1795,97 +285,6 @@ var touchGamepadRender = function() {
 var audioInit = function() {
   soundEnable && !headlessMode && (audioGainNode = audioContext.createGain(), audioGainNode.connect(audioContext.destination), audioGainNode.gain.value = soundVolume);
 };
-var playAudioFile = function(a, b = 1, c = false) {
-  if (soundEnable && !headlessMode)
-    return new SoundWave(a, 0, 0, 0, (d) => d.play(undefined, b, 1, 1, c));
-};
-var speak = function(a, b = "", c = 1, d = 1, e = 1) {
-  if (soundEnable && !headlessMode && speechSynthesis)
-    return a = new SpeechSynthesisUtterance(a), a.lang = b, a.volume = 2 * c * soundVolume, a.rate = d, a.pitch = e, speechSynthesis.speak(a), a;
-};
-var speakStop = function() {
-  speechSynthesis && speechSynthesis.cancel();
-};
-var getNoteFrequency = function(a, b = 220) {
-  return b * 2 ** (a / 12);
-};
-var playSamples = function(a, b = 1, c = 1, d = 0, e = false, f = zzfxR, g) {
-  if (soundEnable && !headlessMode) {
-    var k = audioContext.createBuffer(a.length, a[0].length, f), h = audioContext.createBufferSource();
-    a.forEach((m, n) => k.getChannelData(n).set(m));
-    h.buffer = k;
-    h.playbackRate.value = c;
-    h.loop = e;
-    g = g || audioContext.createGain();
-    g.gain.value = b;
-    g.connect(audioGainNode);
-    a = new StereoPannerNode(audioContext, { pan: clamp(d, -1, 1) });
-    h.connect(a).connect(g);
-    audioContext.state != "running" ? audioContext.resume().then(() => h.start()) : h.start();
-    return h;
-  }
-};
-var zzfx = function(...a) {
-  return playSamples([zzfxG(...a)]);
-};
-var zzfxG = function(a = 1, b = 0.05, c = 220, d = 0, e = 0, f = 0.1, g = 0, k = 1, h = 0, m = 0, n = 0, l = 0, p = 0, q = 0, r = 0, x = 0, v = 0, D = 1, z = 0, E = 0, A = 0) {
-  let w = 2 * PI;
-  var t = zzfxR;
-  let F = h *= 500 * w / t / t;
-  b = c *= rand(1 + b, 1 - b) * w / t;
-  let C = [], y = 0, G = 0, u = 0, H = 1, R = 0, S = 0, B = 0, J;
-  var L = w * abs(A) * 2 / t, K = Math.cos(L), M = Math.sin(L) / 2 / 2, I = 1 + M;
-  L = -2 * K / I;
-  M = (1 - M) / I;
-  let N = (1 + sign(A) * K) / 2 / I;
-  K = -(sign(A) + K) / I;
-  let O = I = 0, P = 0, Q = 0;
-  d = d * t + 9;
-  z *= t;
-  e *= t;
-  f *= t;
-  v *= t;
-  m *= 500 * w / t ** 3;
-  r *= w / t;
-  n *= w / t;
-  l *= t;
-  p = p * t | 0;
-  for (J = d + z + e + f + v | 0;u < J; C[u++] = B * a)
-    ++S % (100 * x | 0) || (B = g ? 1 < g ? 2 < g ? 3 < g ? Math.sin(y ** 3) : clamp(Math.tan(y), 1, -1) : 1 - (2 * y / w % 2 + 2) % 2 : 1 - 4 * abs(Math.round(y / w) - y / w) : Math.sin(y), B = (p ? 1 - E + E * Math.sin(w * u / p) : 1) * sign(B) * abs(B) ** k * (u < d ? u / d : u < d + z ? 1 - (u - d) / z * (1 - D) : u < d + z + e ? D : u < J - v ? (J - u - v) / f * D : 0), B = v ? B / 2 + (v > u ? 0 : (u < J - v ? 1 : (J - u) / v) * C[u - v | 0] / 2 / a) : B, A && (B = Q = N * I + K * (I = O) + N * (O = B) - M * P - L * (P = Q))), t = (c += h += m) * Math.cos(r * G++), y += t + t * q * Math.sin(u ** 5), H && ++H > l && (c += n, b += n, H = 0), !p || ++R % p || (c = b, h = F, H = H || 1);
-  return C;
-};
-var zzfxM = function(a, b, c, d = 125) {
-  let e, f, g, k, h, m, n, l, p, q, r, x, v, D = 0, z, E = [], A = [], w = [], t = 0, F = 0, C = 1, y = {}, G = zzfxR / d * 60 >> 2;
-  for (;C; t++)
-    E = [C = l = x = 0], c.forEach((u, H) => {
-      n = b[u][t] || [0, 0, 0];
-      C |= b[u][t] && 1;
-      z = x + (b[u][0].length - 2 - (l ? 0 : 1)) * G;
-      v = H == c.length - 1;
-      e = 2;
-      for (g = x;e < n.length + v; l = ++e) {
-        h = n[e];
-        p = e == n.length + v - 1 && v || q != (n[0] || 0) || h | 0;
-        for (f = 0;f < G && l; f++ > G - 99 && p && 1 > r ? r += 1 / 99 : 0)
-          m = (1 - r) * E[D++] / 2 || 0, A[g] = (A[g] || 0) - m * F + m, w[g] = (w[g++] || 0) + m * F + m;
-        h && (r = h % 1, F = n[1] || 0, h |= 0) && (E = y[[q = n[D = 0] || 0, h]] = y[[q, h]] || (k = [...a[q]], k[2] *= 2 ** ((h - 12) / 12), 0 < h ? zzfxG(...k) : []));
-      }
-      x = z;
-    });
-  return [A, w];
-};
-var initTileCollision = function(a) {
-  tileCollisionSize = a;
-  tileCollision = [];
-  for (a = tileCollision.length = tileCollisionSize.area();a--; )
-    tileCollision[a] = 0;
-};
-var setTileCollisionData = function(a, b = 0) {
-  a.arrayCheck(tileCollisionSize) && (tileCollision[(a.y | 0) * tileCollisionSize.x + a.x | 0] = b);
-};
-var getTileCollisionData = function(a) {
-  return a.arrayCheck(tileCollisionSize) ? tileCollision[(a.y | 0) * tileCollisionSize.x + a.x | 0] : 0;
-};
 var tileCollisionTest = function(a, b = vec2(), c) {
   const d = max(a.x - b.x / 2 | 0, 0);
   var e = max(a.y - b.y / 2 | 0, 0);
@@ -1897,42 +296,6 @@ var tileCollisionTest = function(a, b = vec2(), c) {
         return true;
     }
   return false;
-};
-var tileCollisionRaycast = function(a, b, c) {
-  const d = b.subtract(a), e = d.length();
-  var f = d.normalize();
-  f = vec2(abs(1 / f.x), abs(1 / f.y));
-  let g = a.floor(), k = f.x * (0 > d.x ? a.x - g.x : g.x - a.x + 1), h = f.y * (0 > d.y ? a.y - g.y : g.y - a.y + 1);
-  for (;; ) {
-    const m = getTileCollisionData(g);
-    if (m && (!c || c.collideWithTile(m, g)))
-      return debugRaycast && debugLine(a, b, "#f00", 0.02), debugRaycast && debugPoint(g.add(vec2(0.5)), "#ff0"), g.add(vec2(0.5));
-    if (k > e && h > e)
-      break;
-    k > h ? (g.y += sign(d.y), h += f.y) : (g.x += sign(d.x), k += f.x);
-  }
-  debugRaycast && debugLine(a, b, "#00f", 0.02);
-};
-var medalsInit = function(a) {
-  medalsSaveName = a;
-  debugMedals || medalsForEach((b) => b.unlocked = !!localStorage[b.storageKey()]);
-  engineAddPlugin(undefined, function() {
-    if (medalsDisplayQueue.length) {
-      var b = medalsDisplayQueue[0], c = timeReal - medalsDisplayTimeLast;
-      if (medalsDisplayTimeLast)
-        if (c > medalDisplayTime)
-          medalsDisplayTimeLast = 0, medalsDisplayQueue.shift();
-        else {
-          const d = medalDisplayTime - medalDisplaySlideTime;
-          b.render(c < medalDisplaySlideTime ? 1 - c / medalDisplaySlideTime : c > d ? (c - d) / medalDisplaySlideTime : 0);
-        }
-      else
-        medalsDisplayTimeLast = timeReal;
-    }
-  });
-};
-var medalsForEach = function(a) {
-  Object.values(medals).forEach((b) => a(b));
 };
 var glInit = function() {
   if (glEnable && !headlessMode) {
@@ -2024,10 +387,6 @@ var glFlush = function() {
 var glCopyToContext = function(a, b = false) {
   glEnable && (glInstanceCount || b) && (glFlush(), glOverlay && !b || a.drawImage(glCanvas, 0, 0));
 };
-var glSetAntialias = function(a = true) {
-  ASSERT(!glCanvas, "must be called before engineInit");
-  glAntialias = a;
-};
 var glDraw = function(a, b, c, d, e, f, g, k, h, m, n = 0) {
   ASSERT(typeof m == "number" && typeof n == "number", "invalid color");
   (glInstanceCount >= gl_MAX_INSTANCES || glBatchAdditive != glAdditive) && glFlush();
@@ -2044,15 +403,6 @@ var glDraw = function(a, b, c, d, e, f, g, k, h, m, n = 0) {
   glColorData[l++] = n;
   glPositionData[l++] = e;
   glInstanceCount++;
-};
-var setPaused = function(a) {
-  paused = a;
-};
-var engineAddPlugin = function(a, b) {
-  ASSERT(!pluginUpdateList.includes(a));
-  ASSERT(!pluginRenderList.includes(b));
-  a && pluginUpdateList.push(a);
-  b && pluginRenderList.push(b);
 };
 var engineInit = function(a, b, c, d, e, f = [], g = document.body) {
   function k(n = 0) {
@@ -2151,37 +501,6 @@ var engineObjectsUpdate = function() {
   for (const b of engineObjects)
     b.parent || (a(b), b.updateTransforms());
   engineObjects = engineObjects.filter((b) => !b.destroyed);
-};
-var engineObjectsDestroy = function() {
-  for (const a of engineObjects)
-    a.parent || a.destroy();
-  engineObjects = engineObjects.filter((a) => !a.destroyed);
-};
-var engineObjectsCollect = function(a, b, c = engineObjects) {
-  const d = [];
-  if (a)
-    if (b instanceof Vector2)
-      for (const e of c)
-        isOverlapping(a, b, e.pos, e.size) && d.push(e);
-    else {
-      b *= b;
-      for (const e of c)
-        a.distanceSquared(e.pos) < b && d.push(e);
-    }
-  else
-    for (const e of c)
-      d.push(e);
-  return d;
-};
-var engineObjectsCallback = function(a, b, c, d = engineObjects) {
-  engineObjectsCollect(a, b, d).forEach((e) => c(e));
-};
-var engineObjectsRaycast = function(a, b, c = engineObjects) {
-  const d = [];
-  for (const e of c)
-    e.collideRaycast && isIntersecting(a, b, e.pos, e.size) && (debugRaycast && debugRect(e.pos, e.size, "#f00"), d.push(e));
-  debugRaycast && debugLine(a, b, d.length ? "#f00" : "#00f", 0.02);
-  return d;
 };
 var drawEngineSplashScreen = function(a) {
   const b = overlayContext;
@@ -2283,33 +602,10 @@ var drawEngineSplashScreen = function(a) {
   b.restore();
 };
 var showWatermark = 0;
-var debugKey = "";
 var debug = 0;
 var debugOverlay = 0;
 var debugPhysics = 0;
-var debugParticles = 0;
-var debugRaycast = 0;
-var debugMedals = 0;
 var PI = Math.PI;
-
-class RandomGenerator {
-  constructor(a) {
-    this.seed = a;
-  }
-  float(a = 1, b = 0) {
-    this.seed ^= this.seed << 13;
-    this.seed ^= this.seed >>> 17;
-    this.seed ^= this.seed << 5;
-    return b + (a - b) * abs(this.seed % 1e8) / 1e8;
-  }
-  int(a, b = 0) {
-    return Math.floor(this.float(a, b));
-  }
-  sign() {
-    return 0.5 < this.float() ? 1 : -1;
-  }
-}
-
 class Vector2 {
   constructor(a = 0, b = 0) {
     this.x = a;
@@ -2565,7 +861,6 @@ var cameraScale = 32;
 var canvasMaxSize = vec2(1920, 1080);
 var canvasFixedSize = vec2();
 var canvasPixelated = true;
-var fontDefault = "arial";
 var showSplashScreen = false;
 var headlessMode = false;
 var glEnable = true;
@@ -2580,7 +875,6 @@ var objectDefaultElasticity = 0;
 var objectDefaultFriction = 0.8;
 var objectMaxSpeed = 1;
 var gravity = 0;
-var particleEmitRateScale = 1;
 var gamepadsEnable = true;
 var gamepadDirectionEmulateStick = true;
 var inputWASDEmulateDirection = true;
@@ -2589,17 +883,9 @@ var touchGamepadEnable = false;
 var touchGamepadAnalog = true;
 var touchGamepadSize = 99;
 var touchGamepadAlpha = 0.3;
-var vibrateEnable = true;
 var soundEnable = true;
 var soundVolume = 0.3;
-var soundDefaultRange = 40;
-var soundDefaultTaper = 0.7;
-var medalDisplayTime = 5;
-var medalDisplaySlideTime = 0.5;
 var medalDisplaySize = vec2(640, 80);
-var medalDisplayIconSize = 50;
-var medalsPreventUnlock = false;
-
 class EngineObject {
   constructor(a = vec2(), b = vec2(1), c, d = 0, e = new Color, f = 0) {
     ASSERT(isVector2(a) && isVector2(b), "ensure pos and size are vec2s");
@@ -2829,41 +1115,6 @@ class TextureInfo {
     this.glTexture = glEnable && glCreateTexture(a);
   }
 }
-var engineFontImage;
-
-class FontImage {
-  constructor(a, b = vec2(8), c = vec2(0, 1), d = overlayContext) {
-    engineFontImage || ((engineFontImage = new Image).src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAAYAQAAAAA9+x6JAAAAAnRSTlMAAHaTzTgAAAGiSURBVHjaZZABhxxBEIUf6ECLBdFY+Q0PMNgf0yCgsSAGZcT9sgIPtBWwIA5wgAPEoHUyJeeSlW+gjK+fegWwtROWpVQEyWh2npdpBmTUFVhb29RINgLIukoXr5LIAvYQ5ve+1FqWEMqNKTX3FAJHyQDRZvmKWubAACcv5z5Gtg2oyCWE+Yk/8JZQX1jTTCpKAFGIgza+dJCNBF2UskRlsgwitHbSV0QLgt9sTPtsRlvJjEr8C/FARWA2bJ/TtJ7lko34dNDn6usJUMzuErP89UUBJbWeozrwLLncXczd508deAjLWipLO4Q5XGPcJvPu92cNDaN0P5G1FL0nSOzddZOrJ6rNhbXGmeDvO3TF7DeJWl4bvaYQTNHCTeuqKZmbjHaSOFes+IX/+IhHrnAkXOAsfn24EM68XieIECoccD4KZLk/odiwzeo2rovYdhvb2HYFgyznJyDpYJdYOmfXgVdJTaUi4xA2uWYNYec9BLeqdl9EsoTw582mSFDX2DxVLbNt9U3YYoeatBad1c2Tj8t2akrjaIGJNywKB/7h75/gN3vCMSaadIUTAAAAAElFTkSuQmCC");
-    this.image = a || engineFontImage;
-    this.tileSize = b;
-    this.paddingSize = c;
-    this.context = d;
-  }
-  drawText(a, b, c = 1, d) {
-    this.drawTextScreen(a, worldToScreen(b).floor(), c * cameraScale | 0, d);
-  }
-  drawTextScreen(a, b, c = 4, d) {
-    const e = this.context;
-    e.save();
-    e.imageSmoothingEnabled = !canvasPixelated;
-    const f = this.tileSize, g = f.add(this.paddingSize).scale(c), k = this.image.width / this.tileSize.x | 0;
-    (a + "").split("\n").forEach((h, m) => {
-      const n = d ? h.length * f.x * c / 2 | 0 : 0;
-      for (let q = h.length;q--; ) {
-        var l = h[q].charCodeAt(0);
-        if (32 > l || 127 < l)
-          l = 127;
-        var p = l - 32;
-        l = p % k;
-        p = p / k | 0;
-        const r = b.add(vec2(q, m).multiply(g));
-        e.drawImage(this.image, l * f.x, p * f.y, f.x, f.y, r.x - n, r.y, f.x * c, f.y * c);
-      }
-    });
-    e.restore();
-  }
-}
-var mouseIsDown = keyIsDown;
 var mouseWasPressed = keyWasPressed;
 var mouseWasReleased = keyWasReleased;
 var mousePos = vec2();
@@ -2879,323 +1130,8 @@ var touchGamepadButtons;
 var touchGamepadStick;
 var audioContext = new AudioContext;
 var audioGainNode;
-
-class Sound {
-  constructor(a, b = soundDefaultRange, c = soundDefaultTaper) {
-    soundEnable && !headlessMode && (this.range = b, this.taper = c, this.randomness = 0, this.gainNode = audioContext.createGain(), a && (this.randomness = a[1] != null ? a[1] : 0.05, a[1] = 0, this.sampleChannels = [zzfxG(...a)], this.sampleRate = zzfxR));
-  }
-  play(a, b = 1, c = 1, d = 1, e = false) {
-    if (soundEnable && !headlessMode && this.sampleChannels) {
-      var f;
-      if (a) {
-        if (f = this.range) {
-          const g = cameraPos.distanceSquared(a);
-          if (g > f * f)
-            return;
-          b *= percent(g ** 0.5, f, f * this.taper);
-        }
-        f = 2 * worldToScreen(a).x / mainCanvas.width - 1;
-      }
-      a = c + c * this.randomness * d * rand(-1, 1);
-      return this.source = playSamples(this.sampleChannels, b, a, f, e, this.sampleRate, this.gainNode);
-    }
-  }
-  setVolume(a = 1) {
-    this.gainNode.gain.value = a;
-  }
-  stop() {
-    this.source && this.source.stop();
-    this.source = undefined;
-  }
-  getSource() {
-    return this.source;
-  }
-  playNote(a, b, c) {
-    return this.play(b, c, 2 ** (a / 12), 0);
-  }
-  getDuration() {
-    return this.sampleChannels && this.sampleChannels[0].length / this.sampleRate;
-  }
-  isLoading() {
-    return !this.sampleChannels;
-  }
-}
-
-class SoundWave extends Sound {
-  constructor(a, b = 0, c, d, e) {
-    super(undefined, c, d);
-    soundEnable && !headlessMode && (this.randomness = b, fetch(a).then((f) => f.arrayBuffer()).then((f) => audioContext.decodeAudioData(f)).then((f) => {
-      this.sampleChannels = [];
-      for (let g = f.numberOfChannels;g--; )
-        this.sampleChannels[g] = Array.from(f.getChannelData(g));
-      this.sampleRate = f.sampleRate;
-    }).then(() => e && e(this)));
-  }
-}
-
-class Music extends Sound {
-  constructor(a) {
-    super(undefined);
-    soundEnable && !headlessMode && (this.randomness = 0, this.sampleChannels = zzfxM(...a), this.sampleRate = zzfxR);
-  }
-  playMusic(a, b = false) {
-    return super.play(undefined, a, 1, 1, b);
-  }
-}
-var zzfxR = 44100;
 var tileCollision = [];
 var tileCollisionSize = vec2();
-
-class TileLayerData {
-  constructor(a, b = 0, c = false, d = new Color) {
-    this.tile = a;
-    this.direction = b;
-    this.mirror = c;
-    this.color = d;
-  }
-  clear() {
-    this.tile = this.direction = 0;
-    this.mirror = false;
-    this.color = new Color;
-  }
-}
-
-class TileLayer extends EngineObject {
-  constructor(a, b = tileCollisionSize, c = tile(), d = vec2(1), e = 0) {
-    super(a, b, c, 0, undefined, e);
-    this.canvas = document.createElement("canvas");
-    this.context = this.canvas.getContext("2d");
-    this.scale = d;
-    this.isOverlay = false;
-    this.data = [];
-    for (a = this.size.area();a--; )
-      this.data.push(new TileLayerData);
-    headlessMode && (this.redraw = () => {
-    }, this.render = () => {
-    }, this.redrawStart = () => {
-    }, this.redrawEnd = () => {
-    }, this.drawTileData = () => {
-    }, this.drawCanvas2D = () => {
-    });
-  }
-  setData(a, b, c = false) {
-    a.arrayCheck(this.size) && (this.data[(a.y | 0) * this.size.x + a.x | 0] = b, c && this.drawTileData(a));
-  }
-  getData(a) {
-    return a.arrayCheck(this.size) && this.data[(a.y | 0) * this.size.x + a.x | 0];
-  }
-  update() {
-  }
-  render() {
-    ASSERT(mainContext != this.context, "must call redrawEnd() after drawing tiles");
-    glOverlay || this.isOverlay || glCopyToContext(mainContext);
-    const a = worldToScreen(this.pos.add(vec2(0, this.size.y * this.scale.y)));
-    (this.isOverlay ? overlayContext : mainContext).drawImage(this.canvas, a.x, a.y, cameraScale * this.size.x * this.scale.x, cameraScale * this.size.y * this.scale.y);
-  }
-  redraw() {
-    this.redrawStart(true);
-    for (let a = this.size.x;a--; )
-      for (let b = this.size.y;b--; )
-        this.drawTileData(vec2(a, b), false);
-    this.redrawEnd();
-  }
-  redrawStart(a = false) {
-    this.savedRenderSettings = [mainCanvas, mainContext, mainCanvasSize, cameraPos, cameraScale];
-    mainCanvas = this.canvas;
-    mainContext = this.context;
-    mainCanvasSize = this.size.multiply(this.tileInfo.size);
-    cameraPos = this.size.scale(0.5);
-    cameraScale = this.tileInfo.size.x;
-    a && (mainCanvas.width = mainCanvasSize.x, mainCanvas.height = mainCanvasSize.y);
-    this.context.imageSmoothingEnabled = !canvasPixelated;
-    glPreRender();
-  }
-  redrawEnd() {
-    ASSERT(mainContext == this.context, "must call redrawStart() before drawing tiles");
-    glCopyToContext(mainContext, true);
-    [mainCanvas, mainContext, mainCanvasSize, cameraPos, cameraScale] = this.savedRenderSettings;
-  }
-  drawTileData(a, b = true) {
-    var c = this.tileInfo.size;
-    b && (b = a.multiply(c), this.context.clearRect(b.x, this.canvas.height - b.y, c.x, -c.y));
-    b = this.getData(a);
-    b.tile != null && (ASSERT(mainContext == this.context, "must call redrawStart() before drawing tiles"), a = a.add(vec2(0.5)), c = tile(b.tile, c, this.tileInfo.textureIndex), drawTile(a, vec2(1), c, b.color, b.direction * PI / 2, b.mirror));
-  }
-  drawCanvas2D(a, b, c, d, e) {
-    const f = this.context;
-    f.save();
-    a = a.subtract(this.pos).multiply(this.tileInfo.size);
-    b = b.multiply(this.tileInfo.size);
-    f.translate(a.x, this.canvas.height - a.y);
-    f.rotate(c);
-    f.scale(d ? -b.x : b.x, b.y);
-    e(f);
-    f.restore();
-  }
-  drawTile(a, b = vec2(1), c, d = new Color, e, f) {
-    this.drawCanvas2D(a, b, e, f, (g) => {
-      const k = c && c.getTextureInfo();
-      k ? (g.globalAlpha = d.a, g.drawImage(k.image, c.pos.x, c.pos.y, c.size.x, c.size.y, -0.5, -0.5, 1, 1), g.globalAlpha = 1) : (g.fillStyle = d, g.fillRect(-0.5, -0.5, 1, 1));
-    });
-  }
-  drawRect(a, b, c, d) {
-    this.drawTile(a, b, undefined, c, d);
-  }
-}
-
-class ParticleEmitter extends EngineObject {
-  constructor(a, b, c = 0, d = 0, e = 100, f = PI, g, k = new Color, h = new Color, m = new Color(1, 1, 1, 0), n = new Color(1, 1, 1, 0), l = 0.5, p = 0.1, q = 1, r = 0.1, x = 0.05, v = 1, D = 1, z = 0, E = PI, A = 0.1, w = 0.2, t = false, F = false, C = true, y = F ? 1e9 : 0, G = false) {
-    super(a, vec2(), g, b, undefined, y);
-    this.emitSize = c;
-    this.emitTime = d;
-    this.emitRate = e;
-    this.emitConeAngle = f;
-    this.colorStartA = k;
-    this.colorStartB = h;
-    this.colorEndA = m;
-    this.colorEndB = n;
-    this.randomColorLinear = C;
-    this.particleTime = l;
-    this.sizeStart = p;
-    this.sizeEnd = q;
-    this.speed = r;
-    this.angleSpeed = x;
-    this.damping = v;
-    this.angleDamping = D;
-    this.gravityScale = z;
-    this.particleConeAngle = E;
-    this.fadeRate = A;
-    this.randomness = w;
-    this.collideTiles = t;
-    this.additive = F;
-    this.localSpace = G;
-    this.trailScale = 0;
-    this.particleCreateCallback = this.particleDestroyCallback = undefined;
-    this.emitTimeBuffer = 0;
-  }
-  update() {
-    this.parent && super.update();
-    if (!this.emitTime || this.getAliveTime() <= this.emitTime) {
-      if (this.emitRate * particleEmitRateScale) {
-        const a = 1 / this.emitRate / particleEmitRateScale;
-        for (this.emitTimeBuffer += timeDelta;0 < this.emitTimeBuffer; this.emitTimeBuffer -= a)
-          this.emitParticle();
-      }
-    } else
-      this.destroy();
-    debugParticles && debugRect(this.pos, vec2(this.emitSize), "#0f0", 0, this.angle);
-  }
-  emitParticle() {
-    var a = typeof this.emitSize === "number" ? randInCircle(this.emitSize / 2) : vec2(rand(-0.5, 0.5), rand(-0.5, 0.5)).multiply(this.emitSize).rotate(this.angle);
-    let b = rand(this.particleConeAngle, -this.particleConeAngle);
-    this.localSpace || (a = this.pos.add(a), b += this.angle);
-    const c = this.randomness;
-    var d = (l) => l + l * rand(c, -c);
-    const e = d(this.particleTime), f = d(this.sizeStart), g = d(this.sizeEnd), k = d(this.speed);
-    d = d(this.angleSpeed) * randSign();
-    var h = rand(this.emitConeAngle, -this.emitConeAngle);
-    const m = randColor(this.colorStartA, this.colorStartB, this.randomColorLinear), n = randColor(this.colorEndA, this.colorEndB, this.randomColorLinear);
-    h = this.localSpace ? h : this.angle + h;
-    a = new Particle(a, this.tileInfo, b, m, n, e, f, g, this.fadeRate, this.additive, this.trailScale, this.localSpace && this, this.particleDestroyCallback);
-    a.velocity = vec2().setAngle(h, k);
-    a.angleVelocity = d;
-    a.fadeRate = this.fadeRate;
-    a.damping = this.damping;
-    a.angleDamping = this.angleDamping;
-    a.elasticity = this.elasticity;
-    a.friction = this.friction;
-    a.gravityScale = this.gravityScale;
-    a.collideTiles = this.collideTiles;
-    a.renderOrder = this.renderOrder;
-    a.mirror = !!randInt(2);
-    this.particleCreateCallback && this.particleCreateCallback(a);
-    return a;
-  }
-  render() {
-  }
-}
-
-class Particle extends EngineObject {
-  constructor(a, b, c, d, e, f, g, k, h, m, n, l, p) {
-    super(a, vec2(), b, c);
-    this.colorStart = d;
-    this.colorEndDelta = e.subtract(d);
-    this.lifeTime = f;
-    this.sizeStart = g;
-    this.sizeEndDelta = k - g;
-    this.fadeRate = h;
-    this.additive = m;
-    this.trailScale = n;
-    this.localSpaceEmitter = l;
-    this.destroyCallback = p;
-    this.clampSpeedLinear = false;
-  }
-  render() {
-    const a = min((time - this.spawnTime) / this.lifeTime, 1), b = vec2(this.sizeStart + a * this.sizeEndDelta);
-    var c = this.fadeRate / 2;
-    c = new Color(this.colorStart.r + a * this.colorEndDelta.r, this.colorStart.g + a * this.colorEndDelta.g, this.colorStart.b + a * this.colorEndDelta.b, (this.colorStart.a + a * this.colorEndDelta.a) * (a < c ? a / c : a > 1 - c ? (1 - a) / c : 1));
-    this.additive && setBlendMode(true);
-    let d = this.pos, e = this.angle;
-    this.localSpaceEmitter && (d = this.localSpaceEmitter.pos.add(d.rotate(-this.localSpaceEmitter.angle)), e += this.localSpaceEmitter.angle);
-    if (this.trailScale) {
-      var f = this.velocity;
-      this.localSpaceEmitter && (f = f.rotate(-this.localSpaceEmitter.angle));
-      var g = f.length();
-      g && (f = f.scale(1 / g), g *= this.trailScale, b.y = max(b.x, g), e = f.angle(), drawTile(d.add(f.multiply(vec2(0, -g / 2))), b, this.tileInfo, c, e, this.mirror));
-    } else
-      drawTile(d, b, this.tileInfo, c, e, this.mirror);
-    this.additive && setBlendMode();
-    debugParticles && debugRect(d, b, "#f005", 0, e);
-    a == 1 && (this.color = c, this.size = b, this.destroyCallback && this.destroyCallback(this), this.destroyed = 1);
-  }
-}
-var medals = {};
-var medalsDisplayQueue = [];
-var medalsSaveName;
-var medalsDisplayTimeLast;
-
-class Medal {
-  constructor(a, b, c = "", d = "\uD83C\uDFC6", e) {
-    ASSERT(0 <= a && !medals[a]);
-    this.id = a;
-    this.name = b;
-    this.description = c;
-    this.icon = d;
-    this.unlocked = false;
-    e && ((this.image = new Image).src = e);
-    medals[a] = this;
-  }
-  unlock() {
-    medalsPreventUnlock || this.unlocked || (ASSERT(medalsSaveName, "save name must be set"), localStorage[this.storageKey()] = this.unlocked = true, medalsDisplayQueue.push(this));
-  }
-  render(a = 0) {
-    const b = overlayContext;
-    var c = min(medalDisplaySize.x, mainCanvas.width);
-    const d = overlayCanvas.width - c;
-    a *= -medalDisplaySize.y;
-    b.save();
-    b.beginPath();
-    b.fillStyle = new Color(0.9, 0.9, 0.9).toString();
-    b.strokeStyle = new Color(0, 0, 0).toString();
-    b.lineWidth = 3;
-    b.rect(d, a, c, medalDisplaySize.y);
-    b.fill();
-    b.stroke();
-    b.clip();
-    this.renderIcon(vec2(d + 15 + medalDisplayIconSize / 2, a + medalDisplaySize.y / 2));
-    c = vec2(d + medalDisplayIconSize + 30, a + 28);
-    drawTextScreen(this.name, c, 38, new Color(0, 0, 0), 0, undefined, "left");
-    c.y += 32;
-    drawTextScreen(this.description, c, 24, new Color(0, 0, 0), 0, undefined, "left");
-    b.restore();
-  }
-  renderIcon(a, b = medalDisplayIconSize) {
-    this.image ? overlayContext.drawImage(this.image, a.x - b / 2, a.y - b / 2, b, b) : drawTextScreen(this.icon, a, 0.7 * b, new Color(0, 0, 0));
-  }
-  storageKey() {
-    return medalsSaveName + "_" + this.id;
-  }
-}
 var glCanvas;
 var glContext;
 var glAntialias = true;
@@ -3543,7 +1479,7 @@ class GameObject extends EngineObject {
         this.resourceBars.push(barIcon);
       }
       if (value > 10) {
-        const color = new Color(255, 255, 255, 1);
+        const color = new Color(1, 1, 1, 1);
         const digits = this.generateEngineObjectsForDigit(value, 0.4, 0.16, vec2(0.5 - offX, count * 0.3 - offY - 0.3), color);
         this.resourceBars.push(...digits);
       }
@@ -3564,13 +1500,16 @@ class GameObject extends EngineObject {
     const size = this.elem?.level ? 0.5 : 0.3;
     const offset = this.elem?.level ? vec2(0, 0.25) : vec2(-0.5, 0.2);
     const charSize = this.elem?.level ? 0.2 : 0.15;
-    const color = this.elem?.hitpoints ? this.elem.hitpoints < (this.elem.maxHitPoints ?? 0) ? new Color(1, 1, 0, 1) : new Color(0, 1, 0, 1) : this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0) ? new Color(1, 0.7, 0.7, 1) : new Color(1, 1, 1, 1);
+    const color = this.elem?.hitpoints ? this.elem.hitpoints < (this.elem.maxHitPoints ?? 0) ? new Color(1, 1, 0, 1) : new Color(0, 1, 0, 1) : this.canAffordMoreHarvester() ? new Color(1, 0.7, 0.7, 1) : new Color(1, 1, 1, 1);
     if (!this.labels) {
       this.labels = [];
     }
     const digits = this.generateEngineObjectsForDigit(numToShow, size, charSize, offset, color);
     this.labels.push(...digits);
     this.labels.forEach((label) => label.renderOrder = this.renderOrder + 0.2);
+  }
+  canAffordMoreHarvester() {
+    return this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0);
   }
   generateDigits(num) {
     const digits = [];
@@ -3653,6 +1592,8 @@ class GameObject extends EngineObject {
         this.home?.refreshLabel();
         if (this.elem.harvesting) {
           this.spendActions();
+        } else {
+          this.manager.setSelection(this);
         }
       }
     }
@@ -3701,7 +1642,7 @@ class GameObject extends EngineObject {
   doneMoving() {
     this.refreshAlpha();
     this.manager.checkForAnyMove();
-    if (!this.canAct()) {
+    if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
     } else if (this.manager.selected === this) {
       this.showResourcesNearby();
@@ -3713,8 +1654,7 @@ class GameObject extends EngineObject {
     const elem = this.elem;
     if (elem && elem.turn?.actions) {
       elem.turn.actions--;
-      this.refreshAlpha();
-      this.manager.checkForAnyMove();
+      this.doneMoving();
     }
   }
   canAct() {
@@ -3995,11 +1935,12 @@ class GameObject extends EngineObject {
       return;
     }
     Object.entries(resources).forEach(([key, value]) => {
+      const maxCapacity = this.resourceCapacity();
       if (!elem.resourcesAccumulated) {
         elem.resourcesAccumulated = {};
       }
       const k = key;
-      elem.resourcesAccumulated[k] = (elem.resourcesAccumulated[k] ?? 0) + value;
+      elem.resourcesAccumulated[k] = Math.min(maxCapacity, (elem.resourcesAccumulated[k] ?? 0) + value);
     });
     if (elem.type === "house" && elem.resourcesAccumulated) {
       if ((elem.resourcesAccumulated.wheat ?? 0) >= this.nextLevelCost()) {
@@ -4035,8 +1976,11 @@ class GameObject extends EngineObject {
   }
   nextLevelCost() {
     const nextLevel = (this.elem?.level ?? 0) + 1;
-    const cost = nextLevel * 10;
-    return cost;
+    return nextLevel * 10;
+  }
+  resourceCapacity() {
+    const capacity = (this.elem?.level ?? 0) + 1;
+    return capacity * 10;
   }
   countUnitSupport(unit) {
     let count = 0;
@@ -4224,6 +2168,9 @@ class GameObject extends EngineObject {
       }
     }
     return set;
+  }
+  finalDestination() {
+    return this.moveQueue?.[0] ?? vec2(this.px, this.py);
   }
 }
 
@@ -4482,29 +2429,56 @@ class Hud {
       const healthDiv = descDiv.appendChild(document.createElement("div"));
       healthDiv.style.position = "absolute";
       healthDiv.style.right = "0";
+      healthDiv.style.top = "0";
       if (obj.elem?.type === "house") {
-        const wheat = healthDiv.appendChild(document.createElement("div"));
-        wheat.style.display = "flex";
-        wheat.style.flexDirection = "row";
-        wheat.style.alignItems = "center";
-        wheat.style.justifyContent = "center";
-        wheat.style.margin = "0 10px";
-        wheat.style.gap = "10px";
-        if (this.scene.resources.wheat) {
-          const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = this.scene.resources.wheat.icon;
-          const icon2 = wheat.appendChild(document.createElement("div"));
-          icon2.style.backgroundImage = `url(${imageSource2})`;
-          icon2.style.width = `${spriteSize2[0]}px`;
-          icon2.style.height = `${spriteSize2[1]}px`;
-          icon2.style.transform = "scale(.5)";
-          const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
-          icon2.style.backgroundPosition = `-${spriteWidth2 * frames2[0]}px 0`;
+        {
+          const wheat = healthDiv.appendChild(document.createElement("div"));
+          wheat.style.display = "flex";
+          wheat.style.flexDirection = "row";
+          wheat.style.alignItems = "center";
+          wheat.style.justifyContent = "left";
+          wheat.style.margin = "3px 10px";
+          wheat.style.height = "20px";
+          if (this.scene.resources.wheat) {
+            const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = this.scene.resources.wheat.icon;
+            const icon2 = wheat.appendChild(document.createElement("div"));
+            icon2.style.backgroundImage = `url(${imageSource2})`;
+            icon2.style.width = `${spriteSize2[0]}px`;
+            icon2.style.height = `${spriteSize2[1]}px`;
+            icon2.style.transform = "scale(.5)";
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
+            icon2.style.backgroundPosition = `-${spriteWidth2 * frames2[0]}px 0`;
+          }
+          const cost = obj.nextLevelCost();
+          const label2 = wheat.appendChild(document.createElement("div"));
+          label2.style.fontSize = "10pt";
+          label2.style.color = "gold";
+          label2.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
         }
-        const cost = obj.nextLevelCost();
-        const label2 = wheat.appendChild(document.createElement("div"));
-        label2.style.fontSize = "10pt";
-        label2.style.color = "gold";
-        label2.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
+        {
+          const wood = healthDiv.appendChild(document.createElement("div"));
+          wood.style.display = "flex";
+          wood.style.flexDirection = "row";
+          wood.style.alignItems = "center";
+          wood.style.justifyContent = "left";
+          wood.style.margin = "3px 10px";
+          wood.style.height = "10px";
+          if (this.scene.resources.wood) {
+            const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = this.scene.resources.wood.icon;
+            const icon2 = wood.appendChild(document.createElement("div"));
+            icon2.style.backgroundImage = `url(${imageSource2})`;
+            icon2.style.width = `${spriteSize2[0]}px`;
+            icon2.style.height = `${spriteSize2[1]}px`;
+            icon2.style.transform = "scale(.5)";
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
+            icon2.style.backgroundPosition = `-${spriteWidth2 * frames2[0]}px 0`;
+          }
+          const label2 = wood.appendChild(document.createElement("div"));
+          label2.style.fontSize = "10pt";
+          label2.style.color = "orange";
+          const capacity = obj.resourceCapacity();
+          label2.textContent = `${obj.elem.resourcesAccumulated?.wood ?? 0} / ${capacity}`;
+        }
       }
     }
     {
@@ -4562,6 +2536,12 @@ class Hud {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
           });
           menuItemDiv.addEventListener("mousedown", (e) => {
+            menuItemDiv.style.backgroundColor = "rgba(250, 250, 150, .5)";
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          menuItemDiv.addEventListener("mouseup", (e) => {
+            menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             const actions = item.actions ?? [];
             actions.forEach((action) => {
               if (action.destroy) {
@@ -4630,7 +2610,7 @@ class Manager {
   worldChanged = true;
   inUI;
   resourceIcons = [];
-  autoEndTurn = false;
+  autoEndTurn = true;
   showLabels = true;
   constructor(scene) {
     this.scene = scene;
@@ -4645,21 +2625,6 @@ class Manager {
       e.preventDefault();
     }, { passive: false });
     this.hud.initialize();
-    window.addEventListener("blur", (e) => {
-      this.hud.ui.classList.add("hidden");
-      this.showLabels = false;
-      this.setSelection(undefined);
-      this.cursor?.hide();
-      this.updateLabels();
-      exports_littlejs_esm_min.overlayCanvas.style.cursor = "default";
-    });
-    window.addEventListener("focus", (e) => {
-      this.hud.ui.classList.remove("hidden");
-      this.showLabels = true;
-      this.refreshCursor();
-      this.updateLabels();
-      exports_littlejs_esm_min.overlayCanvas.style.cursor = "";
-    });
   }
   updateLabels() {
     this.iterateRevealedCells((gameObject) => {
@@ -4722,9 +2687,9 @@ class Manager {
         let conditionMet = false;
         if (gameObject.elem.condition.tile) {
           const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
-          tiles.forEach((tile2) => {
+          tiles.forEach((tile) => {
             this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
-              if (target?.elem?.name === tile2) {
+              if (target?.elem?.name === tile) {
                 conditionMet = true;
               }
             });
@@ -4733,11 +2698,11 @@ class Manager {
         let violationMet = false;
         if (gameObject.elem.condition.noTile) {
           const tiles = Array.isArray(gameObject.elem.condition.noTile) ? gameObject.elem.condition.noTile : [gameObject.elem.condition.noTile];
-          tiles.forEach((tile2) => {
+          tiles.forEach((tile) => {
             Object.keys(this.scene.layers).forEach((layer) => {
               const tag2 = `${layer}_${gameObject.px}_${gameObject.py}`;
               const target = this.grid[tag2];
-              if (target?.elem?.name === tile2) {
+              if (target?.elem?.name === tile) {
                 violationMet = true;
               }
             });
@@ -4772,6 +2737,7 @@ class Manager {
       if (this.shifting) {
         this.shifting = 0;
         this.doneShifting = Date.now();
+        this.refreshCursor();
       }
     }
     if (this.mousePosDown) {
@@ -4919,6 +2885,9 @@ class Manager {
     if (Date.now() - this.doneShifting < 100) {
       return;
     }
+    if (this.inUI) {
+      return;
+    }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOption(x, y)) {
       this.selected.moveTo(x, y);
       return;
@@ -4939,6 +2908,21 @@ class Manager {
     previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
     this.hud.showSelected(this.selected);
+    if (!this.shifting && this.selected) {
+      this.makeWithinView(this.selected);
+    }
+  }
+  makeWithinView(gameObject) {
+    const finalDestination = gameObject.finalDestination();
+    const dx = finalDestination.x - this.camShift.x;
+    const dy = finalDestination.y - this.camShift.y;
+    const diffX = 4, diffY = 2;
+    if (Math.abs(dx) > diffX) {
+      this.camShift.set(finalDestination.x, this.camShift.y);
+    }
+    if (Math.abs(dy) > diffY) {
+      this.camShift.set(this.camShift.x, finalDestination.y);
+    }
   }
   hovering(gameObject) {
     return gameObject.px === this.cursor?.px && gameObject.py === this.cursor?.py;
@@ -5087,7 +3071,7 @@ class Manager {
         this.hud.flashEndTurn(true);
         setTimeout(() => {
           this.gotoNextTurn();
-        }, 300);
+        }, 500);
       } else {
         this.hud.flashEndTurn();
       }
@@ -5115,16 +3099,25 @@ class Manager {
     return resources;
   }
   selectNext() {
-    let cellsRotation = [];
+    const cellsRotation = [];
     this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct() && !gameObject.elem?.harvesting) {
+      let include = false;
+      if (this.selected === gameObject) {
+        include = true;
+      } else if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct()) {
+        if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting) {
+          include = true;
+        } else if (gameObject?.elem?.type === "house" && gameObject.canAffordMoreHarvester()) {
+          include = true;
+        }
+      }
+      if (include) {
         cellsRotation.push(gameObject);
       }
     });
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
-    let nextIndex = currentIndex + 1;
-    cellsRotation = cellsRotation.slice(nextIndex).concat(cellsRotation.slice(0, nextIndex));
-    this.setSelection(cellsRotation[0]);
+    let nextIndex = (currentIndex + 1) % cellsRotation.length;
+    this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
   }
 }
 
@@ -6406,4 +4399,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=956F515A8E22F48764756e2164756e21
+//# debugId=E5AB271D23D09AED64756e2164756e21

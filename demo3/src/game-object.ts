@@ -221,7 +221,7 @@ export class GameObject extends EngineObject {
         this.resourceBars.push(barIcon);
       }
       if (value > 10) {
-        const color = new Color(255, 255, 255, 1);
+        const color = new Color(1, 1, 1, 1);
         const digits = this.generateEngineObjectsForDigit(value, .4, .16, vec2(.5 - offX, count * .3 - offY - .3,), color);
         this.resourceBars.push(...digits);
       }
@@ -247,13 +247,19 @@ export class GameObject extends EngineObject {
       ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0)
         ? new Color(1, 1, 0, 1)
         : new Color(0, 1, 0, 1))
-      : this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0) ? new Color(1, .7, .7, 1) : new Color(1, 1, 1, 1);
+      : this.canAffordMoreHarvester()
+        ? new Color(1, .7, .7, 1)
+        : new Color(1, 1, 1, 1);
     if (!this.labels) {
       this.labels = [];
     }
     const digits = this.generateEngineObjectsForDigit(numToShow, size, charSize, offset, color);
     this.labels.push(...digits);
     this.labels.forEach(label => label.renderOrder = this.renderOrder + .2);
+  }
+
+  canAffordMoreHarvester() {
+    return this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0);
   }
 
   generateDigits(num: number) {
@@ -346,6 +352,8 @@ export class GameObject extends EngineObject {
         this.home?.refreshLabel();
         if (this.elem.harvesting) {
           this.spendActions();
+        } else {
+          this.manager.setSelection(this);
         }
       }
     }
@@ -408,7 +416,7 @@ export class GameObject extends EngineObject {
     this.refreshAlpha();
     this.manager.checkForAnyMove();
 
-    if (!this.canAct()) {
+    if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
     } else if (this.manager.selected === this) {
       this.showResourcesNearby();
@@ -421,8 +429,7 @@ export class GameObject extends EngineObject {
     const elem = this.elem;
     if (elem && elem.turn?.actions) {
       elem.turn.actions--;
-      this.refreshAlpha();
-      this.manager.checkForAnyMove();
+      this.doneMoving();
     }
   }
 
@@ -726,11 +733,12 @@ export class GameObject extends EngineObject {
       return;
     }
     Object.entries(resources).forEach(([key, value]) => {
+      const maxCapacity = this.resourceCapacity();
       if (!elem.resourcesAccumulated) {
         elem.resourcesAccumulated = {};
       }
       const k = key as keyof Resources;
-      elem.resourcesAccumulated[k] = (elem.resourcesAccumulated[k] ?? 0) + value;
+      elem.resourcesAccumulated[k] = Math.min(maxCapacity, (elem.resourcesAccumulated[k] ?? 0) + value);
     });
     if (elem.type === "house" && elem.resourcesAccumulated) {
       if ((elem.resourcesAccumulated.wheat ?? 0) >= this.nextLevelCost()) {
@@ -771,8 +779,12 @@ export class GameObject extends EngineObject {
   nextLevelCost() {
     // calculate wheat cost for next level
     const nextLevel = (this.elem?.level ?? 0) + 1;
-    const cost = nextLevel * 10;
-    return cost;
+    return nextLevel * 10;
+  }
+
+  resourceCapacity() {
+    const capacity = (this.elem?.level ?? 0) + 1;
+    return capacity * 10;
   }
 
   countUnitSupport(unit: string) {
@@ -987,5 +999,9 @@ export class GameObject extends EngineObject {
       }
     }
     return set;
+  }
+
+  finalDestination(): Vector2 {
+    return this.moveQueue?.[0] ?? vec2(this.px, this.py);
   }
 }
