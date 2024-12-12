@@ -1,11 +1,47 @@
 import type { Scene } from "../definition/scene";
+import { CABANA } from "./definitions/cabana";
+import { COW } from "./definitions/cow";
+import { DOG } from "./definitions/dog";
+import { HOUSE } from "./definitions/house";
+import { RIVER } from "./definitions/river";
+import { SHEEP } from "./definitions/sheep";
+import { COW_MENU } from "./menu/cow-menu";
+import { HOUSE_MENU } from "./menu/house-menu";
+import { SHEEP_MENU } from "./menu/sheep-menu";
+import { BEAVER_RESEARCH } from "./research/beaver";
+import { BOVINE_RESEARCH } from "./research/bovine";
+import { CANINE_RESEARCH } from "./research/canine";
+import { ELEPHANT_RESEARCH } from "./research/elephant";
+import { EAGLE_RESEARCH } from "./research/eagle";
+import { GOAT_RESEARCH } from "./research/goat";
+import { HORSE_RESEARCH } from "./research/horse";
+import { LAMA_RESEARCH } from "./research/lama";
+import { MONKEY_RESEARCH } from "./research/monkey";
+import { OWL_RESEARCH } from "./research/owl";
+import { PANDA_RESEARCH } from "./research/panda";
+import { PIG_RESEARCH } from "./research/pig";
+import { SKUNK_RESEARCH } from "./research/skunk";
+import { SQUIRREL_RESEARCH } from "./research/squirrel";
+import { TORTOISE_RESEARCH } from "./research/tortoise";
+import { WOLVES_RESEARCH } from "./research/wolves";
+import { BRAIN_RESOURCE } from "./resources/brain";
+import { GOLD_RESOURCE } from "./resources/gold";
+import { TRADE_RESOURCE } from "./resources/trade";
+import { WHEAT_RESOURCE } from "./resources/wheat";
+import { WOOD_RESOURCE } from "./resources/wood";
+import { RABBIT_RESEARCH } from "./research/rabbit";
+import { BLUE_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION } from "./animations/indicators";
+import { SHEEP_ANIMATION, SHEEP_JUMP_ANIMATION, SHEEP_WAIT_ANIMATION } from "./animations/sheep";
+import { GRASS_ANIMATION, GRASSLAND_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION } from "./animations/terrain";
+import { CLOUD_ANIMATION } from "./animations/cloud";
 
 const SIZE = 30;
 
 export const worldData: Scene = {
-  scale: 64,
+  scale: 80,
   players: [
     {
+      tax: 50,
       resources: {
         brain: 0,
         gold: 0,
@@ -28,322 +64,28 @@ export const worldData: Scene = {
     "unit": 3,
   },
   definitions: [
-    {
-      name: "sheep",
-      type: "unit",
-      hitpoints: 10,
-      maxHitPoints: 10,
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [1.8, 1.8] as [number, number],
-        speed: 0.08,
-      },
-      animation: {
-        name: "sheep",
-      },
-      onHover: {
-        hideCursor: true,
-        indic: {
-          animation: "hover",
-        },
-      },
-      selected: {
-        animation: "sheep_wait",
-        indic: {
-          animation: "indic",
-        },
-        moveIndic: {
-          animation: "blue",
-          selectedAnimation: "blue_selected",
-        },
-      },
-      move: {
-        animation: "sheep_jump",
-      },
-      shadow: {
-        animation: "shadow",
-      },
-      clearCloud: true,
-      dynamic: true,
-      settler: true,
-      turn: {
-        moves: 1,
-        attacks: 1,
-      },
-    },
-    {
-      name: "dog",
-      type: "unit",
-      hitpoints: 10,
-      maxHitPoints: 10,
-      gameObject: {
-        size: [1.8, 1.8] as [number, number],
-        speed: 0.08,
-      },
-      animation: {
-        name: "dog",
-      },
-      onHover: {
-        hideCursor: true,
-        indic: {
-          animation: "hover",
-        },
-      },
-      selected: {
-        animation: "dog_wait",
-        indic: {
-          animation: "indic",
-        },
-        moveIndic: {
-          animation: "blue",
-          selectedAnimation: "blue_selected",
-        },
-      },
-      move: {
-        animation: "dog_jump",
-        distance: 1,
-      },
-      shadow: {
-        animation: "shadow",
-      },
-      clearCloud: true,
-      dynamic: true,
-      turn: {
-        moves: 1,
-        attacks: 1,
-      },
-    },
-    {
-      name: "cow",
-      type: "unit",
-      hitpoints: 15,
-      maxHitPoints: 15,
-      gameObject: {
-        size: [1.8, 1.8] as [number, number],
-        speed: 0.06,
-      },
-      animation: {
-        name: "cow",
-      },
-      onHover: {
-        hideCursor: true,
-        indic: {
-          animation: "hover",
-        },
-      },
-      selected: {
-        animation: "cow_wait",
-        indic: {
-          animation: "indic",
-        },
-        moveIndic: {
-          animation: "blue",
-          selectedAnimation: "blue_selected",
-        },
-      },
-      clearCloud: true,
-      move: {
-        animation: "cow_jump",
-        distance: 2,
-        disabled: {
-          harvesting: true,
-        },
-      },
-      harvest: {
-        animation: "cow_sleep",
-      },
-      shadow: {
-        animation: "shadow",
-      },
-      worker: true,
-      turn: {
-        moves: 1,
-        attacks: 0,
-        actions: 1,
-      },
-      closeToHome: true,
-    },
-    {
-      name: "river",
-      type: "road",
-      resourcesProduced: {
-        wheat: 1,
-      },
-      gameObject: {
-        size: [2, 2],
-      },
-      animation: {
-        name: "river",
-      },
-      condition: {
-        noTile: "lake",
-      },
-    },
-    {
-      name: "house",
-      type: "house",
-      level: 1,
-      gameObject: {
-        offset: [0, .7] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "house",
-      },
-      onHover: {
-        hideCursor: true,
-        indic: {
-          animation: "hover",
-        },
-      },
-      selected: {
-        animation: "house",
-        indic: {
-          animation: "indic",
-        },
-      },
-      dynamic: true,
-      settler: true,
-      harvesting: true,
-      building: true,
-      turn: {
-        moves: 0,
-        attacks: 0,
-      },
-      resourcesProduced: {
-        trade: 1,
-      }
-    },
-    {
-      name: "cabana",
-      type: "house",
-      gameObject: {
-        offset: [0, .2] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "cabana",
-      },
-    },
+    SHEEP,
+    DOG,
+    COW,
+    RIVER,
+    HOUSE,
+    CABANA,
   ],
   animations: [
-    {
-      name: "triangle",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 2,
-      frames: [
-        0, 1, 2, 3,
-      ],
-    },
-    {
-      name: "sheep",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        6,
-      ],
-    },
-    {
-      name: "sheep_wait",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 20,
-      frames: [
-        6, 7,
-      ],
-    },
-    {
-      name: "sheep_jump",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 2,
-      frames: [
-        6, 7, 8, 8,
-      ],
-      airFrames: [8],
-    },
-    {
-      name: "hover",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        20,
-      ],
-    },
-    {
-      name: "indic",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 3,
-      frames: [
-        9, 9, 10, 11, 12, 11, 10,
-      ],
-    },
-    {
-      name: "blue",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        13,
-      ],
-    },
-    {
-      name: "grassland",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        14,
-      ],
-    },
-    {
-      name: "plain",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        30,
-      ],
-    },
-    {
-      name: "grass",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        15,
-      ],
-    },
-    {
-      name: "tree",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        16,
-      ],
-    },
-    {
-      name: "tree_leaf",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        17,
-      ],
-    },
-    {
-      name: "mountain",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        25,
-      ],
-    },
-    {
-      name: "cloud",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        18,
-      ],
-    },
+    TRIANGLE_ANIMATION,
+    SHEEP_ANIMATION,
+    SHEEP_WAIT_ANIMATION,
+    SHEEP_JUMP_ANIMATION,
+    HOVER_ANIMATION,
+    INDIC_ANIMATION,
+    BLUE_ANIMATION,
+    GRASSLAND_ANIMATION,
+    PLAIN_ANIMATION,
+    GRASS_ANIMATION,
+    TREE_ANIMATION,
+    TREE_LEAF_ANIMATION,
+    MOUNTAIN_ANIMATION,
+    CLOUD_ANIMATION,
     {
       name: "shadow",
       imageSource: "./assets/tiles.png",
@@ -545,7 +287,9 @@ export const worldData: Scene = {
       },
       spread: {
         animation: "cloud",
-        count: [8, 10] as [number, number],
+        count: [4, 5] as [number, number],
+        color: "#ffffffaa",
+        size: 1.2,
       },
     },
     {
@@ -605,6 +349,7 @@ export const worldData: Scene = {
       type: "tile_overlay",
       resourcesProduced: {
         wheat: -1,
+        trade: 2,
       },
       group: {
         grid: [SIZE + 1, SIZE + 1],
@@ -622,9 +367,11 @@ export const worldData: Scene = {
         count: [3, 7] as [number, number],
       },
       branchOut: {
-        animation: "river",
         count: [1, 5] as [number, number],
         chance: .2,
+        element: {
+          definition: "river",
+        },
       },
       water: true,
     },
@@ -698,221 +445,37 @@ export const worldData: Scene = {
     },
   ],
   menu: [
-    {
-      name: "sheep",
-      description: "The sheep is your settler.\nUse it to build settlements.",
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [6, 7],
-      },
-      items: [
-        {
-          name: "build",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [27, 28, 29],
-          label: "build\nsettlement",
-          disabled: {
-            proximity: ["house", "Too close to\nanother house"],
-          },
-          actions: [
-            {
-              deselect: true,
-              create: {
-                definition: "house",
-              },
-            },
-            {
-              destroy: true,
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: "house",
-      description: "Use settlements to grow your animal kingdom.",
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [27, 28, 29],
-      },
-      items: [
-        {
-          name: "sheep",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [6],
-          label: "spawn\nsheep",
-          hidden: {
-            occupied: ["unit", "Tile occupied\nby a unit"],
-          },
-          disabled: {
-            levelBelowEqual: [1, "Settlement\nlevel too low"],
-            cannotAct: [true, "Wait next turn"],
-          },
-          actions: [
-            {
-              deselect: true,
-              level: -1,
-              create: {
-                definition: "sheep",
-              },
-            },
-          ],
-        },
-        {
-          name: "dog",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [46],
-          label: "spawn\ndog",
-          hidden: {
-            occupied: ["unit", "Tile occupied\nby a unit"],
-          },
-          disabled: {
-            cannotAct: [true, "Wait next turn"],
-          },
-          actions: [
-            {
-              deselect: true,
-              create: {
-                definition: "dog",
-              },
-            },
-          ],
-        },
-        {
-          name: "cow",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [51],
-          label: "spawn\ncow",
-          hidden: {
-            occupied: ["unit", "Tile occupied\nby a unit"],
-            unitLimit: ["cow", "Increase level\nto spawn more"],
-          },
-          disabled: {
-          },
-          actions: [
-            {
-              deselect: true,
-              create: {
-                definition: "cow",
-              },
-            },
-          ],
-        },
-      ],
-    },
-    {
-      name: "cow",
-      description: "Cows are your workers.\nUse them to harvest resources.",
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [51],
-      },
-      items: [
-        {
-          name: "harvest",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [55],
-          label: "harvest",
-          hidden: {
-            occupied: ["house", "No harvest on house"],
-            harvesting: true,
-          },
-          disabled: {
-            nonProximity: ["house", "Must be\nnext to a house"],
-          },
-          actions: [
-            {
-              deselect: true,
-            },
-            {
-              harvest: true,
-            },
-          ],
-        },
-        {
-          name: "stopHarvest",
-          imageSource: "./assets/tiles.png",
-          spriteSize: [64, 64] as [number, number],
-          padding: [2, 2],
-          frames: [51],
-          label: "stop harvest",
-          hidden: {
-            notHarvesting: true,
-          },
-          actions: [
-            {
-              deselect: true,
-            },
-            {
-              stopHarvest: true,
-            },
-          ],
-        },
-      ],
-    },
+    SHEEP_MENU,
+    HOUSE_MENU,
+    COW_MENU,
   ],
   resources: {
-    wheat: {
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [56],
-      },
-    },
-    wood: {
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [57],
-      },
-    },
-    brain: {
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [58],
-      },
-      global: true,
-    },
-    gold: {
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [59],
-      },
-      global: true,
-    },
-    trade: {
-      icon: {
-        imageSource: "./assets/tiles.png",
-        spriteSize: [64, 64] as [number, number],
-        padding: [2, 2],
-        frames: [60],
-      },
-      global: true,
-      hidden: true,
-    },
-  }
+    wheat: WHEAT_RESOURCE,
+    wood: WOOD_RESOURCE,
+    brain: BRAIN_RESOURCE,
+    gold: GOLD_RESOURCE,
+    trade: TRADE_RESOURCE,
+  },
+  research: [
+    CANINE_RESEARCH,
+    BOVINE_RESEARCH,
+    WOLVES_RESEARCH,
+    BOVINE_RESEARCH,
+    TORTOISE_RESEARCH,
+    GOAT_RESEARCH,
+    SQUIRREL_RESEARCH,
+    SKUNK_RESEARCH,
+    HORSE_RESEARCH,
+    MONKEY_RESEARCH,
+    PANDA_RESEARCH,
+    PIG_RESEARCH,
+    ELEPHANT_RESEARCH,
+    BEAVER_RESEARCH,
+    OWL_RESEARCH,
+    LAMA_RESEARCH,
+    EAGLE_RESEARCH,
+    RABBIT_RESEARCH,
+  ],
 };
 
 (window as any).worldData = worldData;

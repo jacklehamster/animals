@@ -1,13 +1,15 @@
-import type { Animation } from "./animation";
+import type { Anim } from "./animation";
 import type { Elem } from "./elem";
-import type { Menu, MenuIcon } from "./menu";
+import type { Menu } from "./menu";
+import type { Research } from "./research";
+import type { ResourceType } from "./resource-type";
 import type { Resources } from "./resources";
 
 export interface Scene {
   scale?: number;
   definitions: Elem[];
   elems: Elem[];
-  animations: Animation[];
+  animations: Anim[];
   layers: Record<string, number>;
   colayers?: Record<string, number>;
   menu?: Menu[];
@@ -20,10 +22,7 @@ export interface Scene {
     tax?: number;
   }[];
   resources: {
-    [key: string]: {
-      icon: MenuIcon;
-      global?: boolean;
-      hidden?: boolean;
-    };
-  }
+    [key in keyof Resources]: ResourceType;
+  };
+  research: Research[];
 }

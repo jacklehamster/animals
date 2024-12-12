@@ -3,9 +3,10 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "build": "bun i && bun test && rm -rf public/dist/*.* && bun run bundler/bundler.ts && bun run test",
+    "build": "bun i && bun run copy-littlejsengine && bun test && rm -rf public/dist/*.* && bun run bundler/bundler.ts && bun run test",
     "start": "bun run build && bun run ./index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "copy-littlejsengine": "cp -r node_modules/littlejsengine/dist/littlejs.esm.min.js ./dist"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -16,6 +17,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "littlejsengine": "^1.10.4"
+    "littlejsengine": "^1.10.7"
   }
 }

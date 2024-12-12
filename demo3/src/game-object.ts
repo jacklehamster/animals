@@ -1,4 +1,4 @@
-import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "littlejsengine";
+import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "./lib/littlejs";
 import type { Elem } from "./definition/elem";
 import type { Manager } from "./manager";
 import type { AnimationInfo } from "./animation/animation-manager";
@@ -22,7 +22,7 @@ export class GameObject extends EngineObject {
   hovered: boolean = false;
   decors: EngineObject[] = [];
   shadow?: EngineObject;
-  labels?: EngineObject[];
+  labels: EngineObject[] = [];
   updated?: boolean = false;
   moveOptions?: Record<string, EngineObject>;
   clearedCloud?: boolean;
@@ -36,6 +36,14 @@ export class GameObject extends EngineObject {
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
+  }
+
+  getColor(color: string): Color {
+    if (color === "random") {
+      return randColor();
+    } else {
+      return new Color().setHex(color);
+    }
   }
 
   refresh(elem: Elem) {
@@ -71,11 +79,7 @@ export class GameObject extends EngineObject {
         }
       }
       if (config.color) {
-        if (config.color === "random") {
-          this.color = randColor();
-        } else {
-          this.color = new Color().setHex(config.color);
-        }
+        this.color = this.getColor(config.color);
       }
       if (elem.animation) {
         this.animationInfo = this.manager.animation.getInfo(elem.animation.name);
@@ -119,54 +123,56 @@ export class GameObject extends EngineObject {
         };
       }
       if (elem.spread) {
-        const { animation, count, radius } = elem.spread;
+        const { animation, count, radius, color, size } = elem.spread;
         const animInfo = this.manager.animation.getInfo(animation);
         const actualCount = count[0] + Math.floor(Math.random() * (count[1] - count[0]));
         for (let i = 0; i < actualCount; i++) {
-          const x = Math.random() - 1 / 2;
-          const y = Math.random() - 1 / 2;
+          const x = (Math.random() - 1 / 2) * (size ?? 1);
+          const y = (Math.random() - 1 / 2) * (size ?? 1);
           if (radius && x * x + y * y > radius * radius) {
             continue;
           }
           const decor = new EngineObject();
           decor.tileInfo = this.getTileInfoAnimate(animInfo);
           this.addChild(decor, vec2(x, y));
+          if (color) {
+            decor.color = this.getColor(color);
+          }
           this.decors.push(decor);
         }
         if (elem.branchOut) {
           const shouldBrachOut = Math.random() <= (elem.branchOut.chance ?? 1);
-          const { animation, count } = elem.branchOut;
+          const { count, element } = elem.branchOut;
           const actualCount = !shouldBrachOut ? 1 : count[0] + Math.floor(Math.random() * (count[1] - count[0]));
           let pos = vec2(this.pos.x, this.pos.y);
           const directions: [number, number][] = [[-1, 0], [0, -1], [1, 0], [0, 1]];
           let lastDir: [number, number] | undefined;
-          let prePos: Vector2 = pos;
+          let prePos: Vector2 = pos.copy();
           for (let i = 0; i < actualCount; i++) {
             const oppositeDirIndex = lastDir ? (directions.indexOf(lastDir) + 2) % 4 : undefined;
             const filteredDirections = directions.filter((_dir, index) => index !== oppositeDirIndex);
             const dir = filteredDirections[Math.floor(Math.random() * filteredDirections.length)];
-            pos = pos.add(vec2(dir[0], dir[1]));
+            pos.set(pos.x + dir[0], pos.y + dir[1]);
             const rot = Math.atan2((pos.y - prePos.y), -(pos.x - prePos.x));
 
-            this.manager.scene.elems.push({
-              name: "river",
-              type: "road",
-              resourcesProduced: {
-                wheat: 1,
-              },
-              gameObject: {
-                pos: [pos.x, pos.y],
-                size: [2, 2],
-                rotation: rot,
-              },
-              animation: {
-                name: animation,
-              },
-            });
-            prePos = pos;
+            this.manager.scene.elems.push(element);
+            if (!element.gameObject) {
+              element.gameObject = {};
+            }
+            if (!element.gameObject.noRotation) {
+              element.gameObject.rotation = rot;
+            }
+            element.gameObject.pos = [pos.x, pos.y];
+            prePos.set(pos.x, pos.y);
             lastDir = dir;
           }
         }
+      }
+      if (elem.selfSelect) {
+        elem.selfSelect = false;
+        setTimeout(() => {
+          this.manager.setSelection(this);
+        }, 300);
       }
       this.refreshLabel();
       this.refreshBars();
@@ -215,7 +221,8 @@ export class GameObject extends EngineObject {
         this.resourceBars.push(barIcon);
       }
       if (value > 10) {
-        const digits = this.generateEngineObjectsForDigit(value, .4, .16, vec2(.5 - offX, count * .3 - offY - .3));
+        const color = new Color(255, 255, 255, 1);
+        const digits = this.generateEngineObjectsForDigit(value, .4, .16, vec2(.5 - offX, count * .3 - offY - .3,), color);
         this.resourceBars.push(...digits);
       }
       count++;
@@ -224,10 +231,8 @@ export class GameObject extends EngineObject {
   }
 
   refreshLabel() {
-    if (this.labels) {
-      this.labels.forEach(label => label.destroy());
-      this.labels.length = 0;
-    }
+    this.labels.forEach(label => label.destroy());
+    this.labels.length = 0;
     if (this.elem?.harvesting && !this.elem?.level) {
       return;
     }
@@ -238,10 +243,15 @@ export class GameObject extends EngineObject {
     const size = this.elem?.level ? .5 : .3;
     const offset = this.elem?.level ? vec2(0, .25) : vec2(-.5, .2);
     const charSize = this.elem?.level ? .2 : .15;
+    const color = this.elem?.hitpoints
+      ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0)
+        ? new Color(1, 1, 0, 1)
+        : new Color(0, 1, 0, 1))
+      : this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0) ? new Color(1, .7, .7, 1) : new Color(1, 1, 1, 1);
     if (!this.labels) {
       this.labels = [];
     }
-    const digits = this.generateEngineObjectsForDigit(numToShow, size, charSize, offset);
+    const digits = this.generateEngineObjectsForDigit(numToShow, size, charSize, offset, color);
     this.labels.push(...digits);
     this.labels.forEach(label => label.renderOrder = this.renderOrder + .2);
   }
@@ -257,12 +267,12 @@ export class GameObject extends EngineObject {
     return digits;
   }
 
-  generateEngineObjectsForDigit(num: number, size: number, charSize: number, offset: Vector2) {
+  generateEngineObjectsForDigit(num: number, size: number, charSize: number, offset: Vector2, color: Color) {
     const digits = this.generateDigits(num);
     return digits.map((d, i) => {
       const digit = new EngineObject(vec2(0, 0), vec2(size, size));
       digit.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${d}`));
-      digit.color = this.elem?.hitpoints ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0) ? new Color(255, 255, 0, 1) : new Color(0, 255, 0, 1)) : new Color(255, 255, 255, 1);
+      digit.color = color;
       this.addChild(digit, offset.add(vec2(-i * charSize, 0)));
       return digit;
     });
@@ -302,7 +312,7 @@ export class GameObject extends EngineObject {
       for (let i = 0; i < value; i++) {
         const indic = new EngineObject(vec2(0, 0), vec2(.5, .5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
-        indic.color = new Color(255, 255, 255, 1);
+        indic.color = new Color(1, 1, 1, 1);
         this.addChild(indic, vec2(offX + (count - (total - 1) / 2) * resourceSpacing + rand, offY));
         this.resources.push(indic);
         count++;
@@ -326,6 +336,18 @@ export class GameObject extends EngineObject {
     this.updated = false;
     if (floatResources) {
       this.floatResources = Date.now();
+    }
+  }
+
+  setHarvesting(value: boolean) {
+    if (this.elem) {
+      if (this.elem.harvesting !== value) {
+        this.elem.harvesting = value;
+        this.home?.refreshLabel();
+        if (this.elem.harvesting) {
+          this.spendActions();
+        }
+      }
     }
   }
 
@@ -372,12 +394,26 @@ export class GameObject extends EngineObject {
 
   spendMove() {
     if (this.elem?.endlessMove) {
+      this.doneMoving();
       return;
     }
     const elem = this.elem;
     if (elem && elem.turn?.moves) {
       elem.turn.moves--;
-      this.refreshAlpha();
+      this.doneMoving();
+    }
+  }
+
+  doneMoving() {
+    this.refreshAlpha();
+    this.manager.checkForAnyMove();
+
+    if (!this.canAct()) {
+      this.manager.selectNext();
+    } else if (this.manager.selected === this) {
+      this.showResourcesNearby();
+      this.showMoveOptions();
+      this.manager.hud.showSelected(this);
     }
   }
 
@@ -386,6 +422,7 @@ export class GameObject extends EngineObject {
     if (elem && elem.turn?.actions) {
       elem.turn.actions--;
       this.refreshAlpha();
+      this.manager.checkForAnyMove();
     }
   }
 
@@ -415,6 +452,7 @@ export class GameObject extends EngineObject {
   }
 
   moveTo(px: number, py: number) {
+    this.positionDetached = true;
     const moveOption = this.moveOptions?.[`${px}_${py}`];
     if (!moveOption) {
       if (this.moveQueue)
@@ -428,8 +466,11 @@ export class GameObject extends EngineObject {
     const from = (moveOption as any).from;
     if (from.x !== this.px || from.y !== this.py) {
       this.moveTo(from.x, from.y);
+      return;
     }
-    this.positionDetached = true;
+    this.hideResources();
+    this.hideMoveOptions();
+    this.manager.hud.showSelected(undefined);
   }
 
   setPosition(px: number, py: number, force?: boolean) {
@@ -458,6 +499,10 @@ export class GameObject extends EngineObject {
     }
     this.clearedCloud = false;
     this.updated = false;
+  }
+
+  hasMoveOption(x: number, y: number) {
+    return this.moveOptions?.[`${x}_${y}`];
   }
 
   canMoveTo(px: number, py: number) {
@@ -536,6 +581,19 @@ export class GameObject extends EngineObject {
 
   selectIndic?: EngineObject;
 
+  showResourcesNearby() {
+    const home = this.elem?.settler ? this : this.elem?.worker ? this.home : undefined;
+    if (home) {
+      for (let y = -1; y <= 1; y++) {
+        for (let x = -1; x <= 1; x++) {
+          if (x === 0 && y === 0 || this.canMoveTo(home.px + x, home.py + y)) {
+            this.showResources(home.px + x, home.py + y, this.elem?.owner);
+          }
+        }
+      }
+    }
+  }
+
   onSelectChange() {
     if (this.manager.selected === this) {
       if (this.elem?.selected?.indic && !this.selectIndic) {
@@ -549,16 +607,9 @@ export class GameObject extends EngineObject {
         this.selectIndic.pos.set(this.px, this.py);
 
         //  show move options
-        if (this.elem.move && !this.manager.checkCondition(this.elem.move.disabled, this)) {
-          this.addMoveOptions(this.elem.move?.distance ?? 1, vec2(this.px, this.py));
-        }
-        const home = this.elem.settler ? this : this.elem.worker ? this.home : undefined;
-        if (home) {
-          for (let y = -1; y <= 1; y++) {
-            for (let x = -1; x <= 1; x++) {
-              this.showResources(home.px + x, home.py + y, this.elem?.owner);
-            }
-          }
+        this.showMoveOptions();
+        if (!this.moving) {
+          this.showResourcesNearby();
         }
         this.hideBars();
       }
@@ -567,14 +618,24 @@ export class GameObject extends EngineObject {
         this.selectIndic.destroy();
         this.selectIndic = undefined;
       }
-      if (this.moveOptions) {
-        Object.values(this.moveOptions).forEach(moveOption => moveOption.destroy());
-        delete this.moveOptions;
-      }
+      this.hideMoveOptions();
       if (this.elem?.animation) {
         this.hideResources();
       }
       this.refreshBars();
+    }
+  }
+
+  showMoveOptions() {
+    if (this.hasMove() && !this.manager.checkCondition(this.elem?.move?.disabled, this)) {
+      this.addMoveOptions(this.elem?.move?.distance ?? 1, vec2(this.px, this.py));
+    }
+  }
+
+  hideMoveOptions() {
+    if (this.moveOptions) {
+      Object.values(this.moveOptions).forEach(moveOption => moveOption.destroy());
+      delete this.moveOptions;
     }
   }
 
@@ -653,6 +714,9 @@ export class GameObject extends EngineObject {
   }
 
   accumulateResources(resources: Resources) {
+    if (this.doomed) {
+      return;
+    }
     if (this.home) {
       this.home.accumulateResources(resources);
       return;
@@ -699,6 +763,7 @@ export class GameObject extends EngineObject {
     if (this.elem?.type === "house") {
       this.elem.level = level;
       this.fixCows();
+      this.refreshLabel();
       this.updated = false;
     }
   }
@@ -790,9 +855,9 @@ export class GameObject extends EngineObject {
 
     if (this.type === "cursor") {
       if (mouseWasPressed(0)) {
-        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
       }
       if (mouseWasReleased(0)) {
+        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
         this.manager.mousePosDown = undefined;
       }
     }
@@ -871,22 +936,56 @@ export class GameObject extends EngineObject {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
       }
-      this.destroy();
+
       this.decors.forEach((decor) => {
         decor.destroy();
       });
+      this.labels?.forEach(label => label.destroy());
+      this.resources.forEach(resource => resource.destroy());
+      this.resourceBars.forEach(bar => bar.destroy());
+      if (this.shadow) {
+        this.shadow.destroy();
+      }
+      this.destroy();
     };
-    if (immediate) {
-      destroy();
-      return;
-    }
 
-    const DURATION = 300;
+    const DURATION = immediate ? 10 : 300;
     setTimeout(destroy, DURATION * 2);
     if (!immediate) {
       this.decors.forEach((decor) => {
         (decor as any).doomTime = Date.now() + DURATION * Math.random();
       });
     }
+  }
+
+  updateLabel(showLabel: boolean) {
+    if (showLabel) {
+      this.refreshLabel();
+      this.refreshBars();
+      this.refreshAlpha();
+    } else {
+      this.labels.forEach(label => label.destroy());
+      this.labels.length = 0;
+      this.resourceBars.forEach(bar => bar.destroy());
+      this.resourceBars.length = 0;
+      this.color = new Color(1, 1, 1, 1);
+    }
+  }
+
+  findNearby(cellCondition: (cell: GameObject) => boolean) {
+    const set: Set<GameObject> = new Set();
+    for (let y = -1; y <= 1; y++) {
+      for (let x = -1; x <= 1; x++) {
+        if (x === 0 && y === 0) {
+          continue;
+        }
+        this.manager.iterateGridCell(this.px + x, this.py + y, (cell) => {
+          if (cellCondition(cell)) {
+            set.add(cell);
+          }
+        });
+      }
+    }
+    return set;
   }
 }

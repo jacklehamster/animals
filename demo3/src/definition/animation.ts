@@ -1,4 +1,4 @@
-export interface Animation {
+export interface Anim {
   name: string;
   imageSource?: string;
   spriteSize?: [number, number];

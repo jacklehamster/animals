@@ -1,10 +1,13 @@
-import { cameraPos, cameraScale, Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2 } from "littlejsengine";
+import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2, LittleJS } from './lib/littlejs';
+
 import { AnimationManager } from "./animation/animation-manager";
 import type { Elem } from "./definition/elem";
 import type { Scene } from "./definition/scene";
 import { GameObject } from "./game-object";
 import { Hud } from "./hud";
 import type { Condition } from "./definition/condition";
+import type { Resources } from "./definition/resources";
+
 
 interface Entry {
   gameObject: Set<GameObject>;
@@ -21,12 +24,14 @@ export class Manager {
   private hovered?: GameObject;
   mousePosDown?: Vector2;
   readonly camShift = vec2(0, 0);
-  shifting = false;
+  shifting = 0;
+  doneShifting = 0;
   hud;
   worldChanged = true;
   inUI?: boolean;
   resourceIcons: EngineObject[] = [];
   autoEndTurn = false;
+  showLabels = true;
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -34,12 +39,35 @@ export class Manager {
     if (scene.scale) {
       setCameraScale(scene.scale);
     }
+
     document.addEventListener("wheel", (e) => {
       this.camShift.x += e.deltaX / cameraScale;
       this.camShift.y -= e.deltaY / cameraScale;
       e.preventDefault();
     }, { passive: false });
     this.hud.initialize();
+
+    window.addEventListener("blur", (e) => {
+      this.hud.ui.classList.add("hidden");
+      this.showLabels = false;
+      this.setSelection(undefined);
+      this.cursor?.hide();
+      this.updateLabels();
+      LittleJS.overlayCanvas.style.cursor = "default";
+    });
+    window.addEventListener("focus", (e) => {
+      this.hud.ui.classList.remove("hidden");
+      this.showLabels = true;
+      this.refreshCursor();
+      this.updateLabels();
+      LittleJS.overlayCanvas.style.cursor = "";
+    });
+  }
+
+  updateLabels() {
+    this.iterateRevealedCells((gameObject) => {
+      gameObject.updateLabel(this.showLabels);
+    });
   }
 
   refresh() {
@@ -102,20 +130,26 @@ export class Manager {
       if (gameObject.elem?.condition) {
         let conditionMet = false;
         if (gameObject.elem.condition.tile) {
-          this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
-            if (target?.elem?.name === gameObject.elem?.condition?.tile) {
-              conditionMet = true;
-            }
+          const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
+          tiles.forEach((tile) => {
+            this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
+              if (target?.elem?.name === tile) {
+                conditionMet = true;
+              }
+            });
           });
         }
         let violationMet = false;
         if (gameObject.elem.condition.noTile) {
-          Object.keys(this.scene.layers).forEach((layer) => {
-            const tag = `${layer}_${gameObject.px}_${gameObject.py}`;
-            const target = this.grid[tag];
-            if (target?.elem?.name === gameObject.elem?.condition?.noTile) {
-              violationMet = true;
-            }
+          const tiles = Array.isArray(gameObject.elem.condition.noTile) ? gameObject.elem.condition.noTile : [gameObject.elem.condition.noTile];
+          tiles.forEach((tile) => {
+            Object.keys(this.scene.layers).forEach((layer) => {
+              const tag = `${layer}_${gameObject.px}_${gameObject.py}`;
+              const target = this.grid[tag];
+              if (target?.elem?.name === tile) {
+                violationMet = true;
+              }
+            });
           });
         }
         if (gameObject.elem.condition.zeroUnit) {
@@ -145,7 +179,10 @@ export class Manager {
       if (!this.selected) {
         this.refreshCursor();
       }
-      this.shifting = false;
+      if (this.shifting) {
+        this.shifting = 0;
+        this.doneShifting = Date.now();
+      }
     }
 
     if (this.mousePosDown) {
@@ -155,9 +192,9 @@ export class Manager {
         const mul = 10;
         this.camShift.set(this.camShift.x - dx * mul, this.camShift.y - dy * mul);
         this.mousePosDown.set(mousePos.x, mousePos.y);
-        this.setSelection(undefined);
         this.cursor?.hide();
-        this.shifting = true;
+        this.shifting = Date.now();
+        this.doneShifting = 0;
       }
     }
 
@@ -266,7 +303,7 @@ export class Manager {
     Object.keys(this.scene.layers).forEach((layer) => {
       const tag = `${layer}_${x}_${y}`;
       const gameObject = this.grid[tag];
-      if (gameObject) {
+      if (gameObject && !gameObject?.doomed) {
         resources.wheat = (resources.wheat ?? 0) + (gameObject.elem?.resourcesProduced?.wheat ?? 0);
         resources.wood = (resources.wood ?? 0) + (gameObject.elem?.resourcesProduced?.wood ?? 0);
         resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resourcesProduced?.brain ?? 0);
@@ -306,10 +343,11 @@ export class Manager {
   }
 
   onTap(x: number, y: number, mouseX: number, mouseY: number) {
-    if (this.selected?.canMoveTo(x, y)) {
+    if (Date.now() - this.doneShifting < 100) {
+      return;
+    }
+    if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOption(x, y)) {
       this.selected.moveTo(x, y);
-      // this.selected.elem?.turn
-      this.setSelection(undefined);
       return;
     }
     let unit: GameObject | undefined = this.grid[`unit_${x}_${y}`];
@@ -317,7 +355,7 @@ export class Manager {
       unit = undefined;
     }
     const house = this.grid[`house_${x}_${y}`];
-    this.setSelection(unit === this.selected ? house : unit);
+    this.setSelection(!unit || unit === this.selected ? house : unit);
   }
 
   setSelection(gameObject: GameObject | undefined) {
@@ -360,7 +398,6 @@ export class Manager {
     }
     if (condition.occupied && obj) {
       const tag = GameObject.getTag(condition.occupied[0], obj?.px, obj?.py);
-      console.log(tag, this.grid[tag]);
       if (this.grid[tag]) {
         return condition.occupied[1] ?? "true";
       }
@@ -378,23 +415,11 @@ export class Manager {
         if (check && !proxyCheck) {
           const [item, message] = check;
           if (item) {
-            let nearby = null;
-            for (let y = -1; y <= 1; y++) {
-              for (let x = -1; x <= 1; x++) {
-                if (x === 0 && y === 0) {
-                  continue;
-                }
-                this.iterateGridCell(obj.px + x, obj.py + y, (cell) => {
-                  if (cell.elem?.name === item) {
-                    nearby = cell;
-                  }
-                });
-              }
-            }
-            if (condition.proximity && nearby) {
+            const nearby = obj.findNearby(obj => obj.elem?.name === item);
+            if (condition.proximity && nearby.size) {
               proxyCheck = message ?? "true";
             }
-            if (condition.nonProximity && !nearby) {
+            if (condition.nonProximity && !nearby.size) {
               proxyCheck = message ?? "true";
             }
           }
@@ -429,6 +454,7 @@ export class Manager {
       }
       this.collectResources(this.scene.turn.player);
       this.giveUnitsTurns();
+      this.selectNext();
     }
 
     this.hud.updated = false;
@@ -442,6 +468,28 @@ export class Manager {
     });
   }
 
+  calculateRevenue(player: number) {
+    const playerResources = this.scene.players[player - 1]?.resources;
+    if (!playerResources) {
+      return 0;
+    }
+    let trade = 0;
+    const visited = new Set<string>();
+    this.iterateRevealedCells((gameObject) => {
+      const elem = gameObject.elem;
+      if (elem?.owner === player && elem.harvesting) {
+        if (!visited.has(`${gameObject.px}_${gameObject.py}`)) {
+          visited.add(`${gameObject.px}_${gameObject.py}`);
+          const resources = this.getResources(gameObject.px, gameObject.py);
+          if (resources) {
+            trade += resources.trade ?? 0;
+          }
+        }
+      }
+    });
+    return trade;
+  }
+
   collectResources(player: number) {
     const playerResources = this.scene.players[player - 1]?.resources;
     if (!playerResources) {
@@ -452,15 +500,78 @@ export class Manager {
       if (elem?.owner === player && elem.harvesting) {
         const resources = this.getResources(gameObject.px, gameObject.py);
         if (resources) {
-          playerResources.wheat = (playerResources.wheat ?? 0) + (resources.wheat ?? 0);
-          playerResources.wood = (playerResources.wood ?? 0) + (resources.wood ?? 0);
-          playerResources.brain = (playerResources.brain ?? 0) + (resources.brain ?? 0);
           gameObject.showResources(gameObject.px, gameObject.py, player, true);
           gameObject.accumulateResources(resources);
           delete elem.lastUpdate;
         }
       }
     });
+
+    //  Save global resources
+    const globalResources = this.calculateResourceRevenue(player);
+    Object.entries(globalResources).forEach(([resource, value]) => {
+      const r = resource as keyof Resources;
+      playerResources[r] = (playerResources[r] ?? 0) + value;
+    });
+
     this.hud.updated = true;
+  }
+
+  checkForAnyMove() {
+    //  check if any unit can move
+    let canMove = false;
+    this.iterateRevealedCells((gameObject) => {
+      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct() && !gameObject.elem?.harvesting) {
+        canMove = true;
+      }
+    });
+    if (!canMove) {
+      if (this.autoEndTurn) {
+        this.hud.flashEndTurn(true);
+        setTimeout(() => {
+          this.gotoNextTurn();
+        }, 300);
+      } else {
+        this.hud.flashEndTurn();
+      }
+    }
+  }
+
+  calculateResourceRevenue(player: number) {
+    const revenue = this.calculateRevenue(player);
+    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
+      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
+      .sort((a, b) => a.localeCompare(b));
+    const resources: Record<keyof Resources, number> = {
+      wheat: 0,
+      wood: 0,
+      gold: 0,
+      brain: 0,
+      trade: 0
+    };
+    RESOURCES.forEach((resource, index) => {
+      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      let revenueValue = Math.round(revenue * taxValue / 100);
+      if (index === 0) {
+        taxValue = 100 - taxValue;
+        revenueValue = revenue - revenueValue;
+      }
+      resources[resource] = revenueValue;
+    });
+    return resources;
+  }
+
+  selectNext() {
+    let cellsRotation: GameObject[] = [];
+    this.iterateRevealedCells((gameObject) => {
+      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct() && !gameObject.elem?.harvesting) {
+        cellsRotation.push(gameObject);
+      }
+    });
+    const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
+    // rotate cells
+    let nextIndex = currentIndex + 1;
+    cellsRotation = cellsRotation.slice(nextIndex).concat(cellsRotation.slice(0, nextIndex));
+    this.setSelection(cellsRotation[0]);
   }
 }

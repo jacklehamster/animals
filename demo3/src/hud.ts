@@ -21,6 +21,8 @@ export class Hud {
   }
 
   initialize() {
+    this.ui.id = "hud";
+    this.ui.classList.add("hud");
     document.body.appendChild(this.ui);
     this.ui.addEventListener("mouseover", e => {
       this.manager.inUI = true;
@@ -62,23 +64,68 @@ export class Hud {
     this.resourceOverlay.style.left = "0";
     this.resourceOverlay.style.zIndex = "100";
     this.ui.appendChild(this.resourceOverlay);
+
+    document.addEventListener("keyup", e => {
+      if (e.code === "KeyE") {
+        this.endButton.click();
+      }
+      if (e.code === "KeyN") {
+        this.nextButton.click();
+      }
+    });
   }
 
   refresh() {
     if (this.updated) {
       return;
     }
-    this.endButton.textContent = `End turn ${this.scene.turn?.turn ?? 1}`;
+    this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.scene.turn?.turn ?? 1}`;
     this.refreshResources();
+    this.refreshTax();
     this.updated = true;
+  }
+
+  refreshTax() {
+    //  display resources (wheat, wood, brain)
+    const player = this.scene.turn?.player ?? 1;
+    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
+      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
+      .sort((a, b) => a.localeCompare(b));
+    const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    RESOURCES.forEach((resource, _) => {
+      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      let revenueValue = revenuePerResource[resource];
+      const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement;
+      if (taxText) {
+        taxText.textContent = `${revenueValue >= 0 ? '+' : ''}${revenueValue} (${taxValue}%)`;
+      }
+    });
+    //  add knob to adjust tax
+    let taxKnob = document.getElementById("tax") as HTMLInputElement;
+    if (!taxKnob) {
+      taxKnob = (this.resourceOverlay.appendChild(document.createElement("input")));
+      taxKnob.id = "tax";
+      taxKnob.type = "range";
+      taxKnob.min = "0";
+      taxKnob.max = "100";
+      taxKnob.step = "5";
+      taxKnob.value = `${this.scene.players[player - 1].tax ?? 0}`;
+      taxKnob.style.width = "60px";
+      taxKnob.addEventListener("input", e => {
+        this.scene.players[player - 1].tax = parseInt(taxKnob.value);
+        this.refreshTax();
+      });
+    }
   }
 
   refreshResources() {
     //  display resources (wheat, wood, brain)
     const player = this.scene.turn?.player ?? 1;
-    const RESOURCES: (keyof Resources)[] = Object.keys(this.scene.resources) as (keyof Resources)[];
-    RESOURCES.forEach(resource => {
-      if (!this.scene.resources[resource].global || this.scene.resources[resource].hidden) {
+    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
+      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
+      .sort((a, b) => a.localeCompare(b));
+    RESOURCES.forEach((resource, index) => {
+      if (!this.scene.resources[resource]) {
         return;
       }
       const { imageSource, spriteSize, frames, padding } = this.scene.resources[resource].icon;
@@ -98,43 +145,62 @@ export class Hud {
         icon.style.display = "flex";
         icon.style.alignSelf = "flex-end";
         icon.style.justifyContent = "center";
-        icon.style.fontSize = "10pt";
+        icon.style.fontSize = "12pt";
         icon.style.fontWeight = "bold";
-        icon.style.margin = "5px";
+        icon.style.marginTop = "15px";
         icon.style.transition = "background-color 0.2s";
         icon.textContent = "0";
         this.resourceOverlay.appendChild(icon);
       }
-      const newText = `${this.scene.players[player - 1].resources[resource]}`;
+      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      if (index === 0) {
+        taxValue = 100 - taxValue;
+      }
+
+      const newText = `${this.scene.players[player - 1].resources[resource] ?? 0}`;
       if (icon.textContent !== newText) {
-        icon.textContent = `${this.scene.players[player - 1].resources[resource]}`;
+        icon.textContent = newText;
         icon.style.backgroundColor = "rgba(255, 50, 255, 0.5)";
         setTimeout(() => {
           icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
         }, 1500);
       }
+      const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement ?? (this.resourceOverlay.appendChild(document.createElement("div")));
+      taxText.id = `${resource}-tax`;
+      taxText.style.color = "white";
+      taxText.style.width = "100%";
+      taxText.style.marginTop = "-20px";
+      taxText.style.textAlign = "center";
+      taxText.style.fontSize = "8pt";
     });
-    //  add knob to adjust tax
-    const tax = document.getElementById("tax") as HTMLInputElement ?? (this.resourceOverlay.appendChild(document.createElement("input")));
-    tax.id = "tax";
-    tax.type = "range";
-    tax.min = "0";
-    tax.max = "100";
-    tax.step = "1";
-    tax.value = `${this.scene.players[player - 1].tax ?? 0}`;
-    tax.style.width = "60px";
-    tax.addEventListener("input", e => {
-      this.scene.players[player - 1].tax = parseInt(tax.value);
-    });
+  }
+
+  flashEndTurn(temp = false) {
+    document.getElementById("endButton")?.classList.add(temp ? "flash-temp" : "flash");
+    if (temp) {
+      this.stopFlashEndTurn();
+      setTimeout(() => {
+        document.getElementById("endButton")?.classList.remove("flash-temp");
+      }, 1000);
+    }
+  }
+
+  stopFlashEndTurn() {
+    document.getElementById("endButton")?.classList.remove("flash");
   }
 
   setHudButtons() {
     const nextButton = this.overlay.appendChild(this.nextButton);
-    nextButton.textContent = "Next unit";
+    nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
+    nextButton.id = "nextButton";
+    nextButton.addEventListener("click", e => {
+      this.manager.selectNext();
+    });
 
     const endButton = this.overlay.appendChild(this.endButton);
-    endButton.textContent = "End turn";
+    endButton.id = "endButton";
     endButton.addEventListener("click", e => {
+      this.stopFlashEndTurn();
       this.manager.gotoNextTurn();
     });
     endButton.addEventListener("mousedown", e => {
@@ -148,7 +214,7 @@ export class Hud {
 
     const autoEndGroup = this.overlay.appendChild(document.createElement("div"));
     const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
-    autoEndLabel.textContent = "Auto end turn";
+    autoEndLabel.textContent = "auto-end turn";
     autoEndLabel.htmlFor = "autoEndCheckbox";
     const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
     autoEndCheckbox.id = "autoEndCheckbox";
@@ -156,6 +222,10 @@ export class Hud {
     autoEndCheckbox.checked = this.manager.autoEndTurn;
     autoEndCheckbox.addEventListener("change", e => {
       this.manager.autoEndTurn = autoEndCheckbox.checked;
+      if (this.manager.autoEndTurn) {
+        this.stopFlashEndTurn();
+        this.manager.checkForAnyMove();
+      }
     });
   }
 
@@ -168,7 +238,7 @@ export class Hud {
     const menu = this.scene.menu?.find((m) => m.name === obj?.elem?.name);
 
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
-    this.overlay.style.right = obj ? "-200px" : "0";
+    this.overlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
 
     this.topBg.style.top = obj ? "0" : "-400px";
@@ -227,14 +297,16 @@ export class Hud {
         wheat.style.justifyContent = "center";
         wheat.style.margin = "0 10px";
         wheat.style.gap = "10px";
-        const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
-        const icon = wheat.appendChild(document.createElement("div"));
-        icon.style.backgroundImage = `url(${imageSource})`;
-        icon.style.width = `${spriteSize[0]}px`;
-        icon.style.height = `${spriteSize[1]}px`;
-        icon.style.transform = "scale(.5)";
-        const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
-        icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+        if (this.scene.resources.wheat) {
+          const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
+          const icon = wheat.appendChild(document.createElement("div"));
+          icon.style.backgroundImage = `url(${imageSource})`;
+          icon.style.width = `${spriteSize[0]}px`;
+          icon.style.height = `${spriteSize[1]}px`;
+          icon.style.transform = "scale(.5)";
+          const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+          icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+        }
         // show wheat amount
 
         // calculate wheat cost for next level
@@ -308,6 +380,9 @@ export class Hud {
           menuItemDiv.addEventListener("mousedown", e => {
             const actions = item.actions ?? [];
             actions.forEach(action => {
+              if (action.destroy) {
+                obj.doom(true);
+              }
               if (action.create) {
                 this.manager.defineElem(action.create);
                 const elem: Elem = JSON.parse(JSON.stringify(action.create));
@@ -319,9 +394,6 @@ export class Hud {
                 elem.home = [obj?.px, obj?.py];
                 this.scene.elems.push(elem);
               }
-              if (action.destroy) {
-                obj.doom(true);
-              }
               if (action.deselect) {
                 this.manager.setSelection(undefined);
               }
@@ -330,11 +402,10 @@ export class Hud {
                 obj.refreshLabel();
               }
               if (action.harvest && obj.elem) {
-                obj.elem.harvesting = true;
-                obj.spendActions();
+                obj.setHarvesting(true);
               }
               if (action.stopHarvest && obj.elem) {
-                obj.elem.harvesting = false;
+                obj.setHarvesting(false);
               }
               obj.refreshLabel();
             });

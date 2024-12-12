@@ -2,8 +2,8 @@ import type { Condition } from "./condition";
 import type { Resources } from "./resources";
 
 interface TileCondition {
-  tile?: string;
-  noTile?: string;
+  tile?: string | string[];
+  noTile?: string | string[];
   zeroUnit?: boolean;
 }
 
@@ -35,17 +35,21 @@ export interface Elem {
     color?: string;
     speed?: number;
     rotation?: number;
+    noRotation?: boolean;
   };
   spread?: {
     animation: string;
     count: [number, number];
     radius?: number;
     behind?: boolean;
+    color?: string;
+    size?: number;
   };
   branchOut?: {
-    animation: string;
     count: [number, number];
     chance?: number;
+    color?: string;
+    element: Elem;
   };
   animation?: {
     name: string;
@@ -90,6 +94,7 @@ export interface Elem {
   settler?: boolean;
   resourcesProduced?: Resources;
   resourcesAccumulated?: Resources;
+  cost?: Resources;
   dynamic?: boolean;
   clearCloud?: boolean;
   water?: boolean;
@@ -97,4 +102,5 @@ export interface Elem {
   building?: boolean;
   closeToHome?: boolean;
   endlessMove?: boolean;
+  selfSelect?: boolean;
 }

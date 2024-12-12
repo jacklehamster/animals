@@ -1,8 +1,8 @@
-import { TileInfo, vec2 } from "littlejsengine";
-import type { Animation } from "../definition/animation";
+import { TileInfo, vec2 } from "../lib/littlejs";
+import type { Anim } from "../definition/animation";
 
 export interface AnimationInfo {
-  animation?: Animation;
+  animation?: Anim;
   tileInfos: TileInfo[];
   airFramesSet?: Set<number>;
 }
@@ -11,14 +11,14 @@ export class AnimationManager {
   private readonly animationInfos: Record<string, AnimationInfo> = {};
   readonly imageSources: string[] = [];
 
-  constructor(animations: Animation[]) {
+  constructor(animations: Anim[]) {
     this.saveImageSource(animations);
     this.registerAnimations(animations);
     this.registerTileInfos(animations);
     this.updateExtra(animations);
   }
 
-  private saveImageSource(animations: Animation[]) {
+  private saveImageSource(animations: Anim[]) {
     animations?.forEach((animation) => {
       if (animation.imageSource && !this.imageSources.includes(animation.imageSource)) {
         this.imageSources.push(animation.imageSource);
@@ -36,7 +36,7 @@ export class AnimationManager {
     return this.animationInfos[name];
   }
 
-  private registerTileInfos(animations: Animation[]) {
+  private registerTileInfos(animations: Anim[]) {
     animations.forEach((animation) => {
       const animInfo = this.ensureAnimationInfos(animation.name);
       const imgSource = animation.imageSource;
@@ -64,14 +64,14 @@ export class AnimationManager {
     });
   }
 
-  private registerAnimations(animations: Animation[]) {
+  private registerAnimations(animations: Anim[]) {
     animations?.forEach((animation) => {
       const animInfo = this.ensureAnimationInfos(animation.name);
       animInfo.animation = animation;
     });
   }
 
-  private updateExtra(animations: Animation[]) {
+  private updateExtra(animations: Anim[]) {
     animations.forEach((animation) => {
       const animInfo = this.ensureAnimationInfos(animation.name);
       if (animation.airFrames?.length) {

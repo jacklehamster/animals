@@ -3,11 +3,11 @@
 
 'use strict';
 
-import { engineInit } from "littlejsengine"
 import { Manager } from "./manager";
 import { worldData } from "./content/world";
+import { engineInit } from "./lib/littlejs";
 
-const manager = new Manager(worldData);
+let manager = new Manager(worldData);
 (window as any).manager = manager;
 
 function gameInit() {
