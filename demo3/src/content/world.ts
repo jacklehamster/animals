@@ -379,7 +379,6 @@ export const worldData: Scene = {
       name: "tree",
       type: "decor",
       resourcesProduced: {
-        wheat: -1,
         wood: 1,
       },
       group: {

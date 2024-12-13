@@ -7,4 +7,5 @@ export const WHEAT_RESOURCE: ResourceType = {
     padding: [2, 2],
     frames: [56],
   },
+  forGrowth: true,
 }

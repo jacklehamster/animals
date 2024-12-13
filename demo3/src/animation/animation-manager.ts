@@ -44,11 +44,12 @@ export class AnimationManager {
         const size = vec2(animation.spriteSize?.[0] ?? 0, animation.spriteSize?.[1] ?? 0);
         animation.frames?.forEach((frame) => {
           const mul = animation.mul ?? 1;
+          const cols = 30;
           for (let i = 0; i < mul; i++) {
             animInfo.tileInfos.push(new TileInfo(undefined,
               size,
               this.imageSources.indexOf(imgSource),
-              2).frame(frame));
+              2).frame(frame % cols).offset(vec2(0, Math.floor(frame / cols) * (size.y + 2))));
           }
         });
       }

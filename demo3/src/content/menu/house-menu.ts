@@ -17,6 +17,9 @@ export const HOUSE_MENU: Menu = {
       padding: [2, 2],
       frames: [6],
       label: "spawn\nsheep",
+      resourceCost: {
+        wood: 10,
+      },
       hidden: {
         occupied: ["unit", "Tile occupied\nby a unit"],
       },
@@ -42,11 +45,14 @@ export const HOUSE_MENU: Menu = {
       padding: [2, 2],
       frames: [46],
       label: "spawn\ndog",
+      resourceCost: {
+        wood: 10,
+      },
       hidden: {
-        occupied: ["unit", "Tile occupied\nby a unit"],
+        occupied: ["unit", "tile occupied\nby a unit"],
       },
       disabled: {
-        cannotAct: [true, "Wait next turn"],
+        cannotAct: [true, "wait\nnext turn"],
       },
       actions: [
         {

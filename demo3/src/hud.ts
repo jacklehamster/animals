@@ -4,12 +4,15 @@ import type { Manager } from "./manager";
 import type { Resources } from "./definition/resources";
 import type { Elem } from "./definition/elem";
 
+const SPRITESHEET_COLS = 30;
+
 export class Hud {
   ui: HTMLDivElement = document.createElement("div");
   bg: HTMLDivElement = document.createElement("div");
   topBg: HTMLDivElement = document.createElement("div");
   overlay: HTMLDivElement = document.createElement("div");
   resourceOverlay: HTMLDivElement = document.createElement("div");
+  blocker: HTMLDivElement = document.createElement("div");
   readonly itemsToDestroy = new Set<() => void>();
   readonly scene: Scene;
   nextButton: HTMLButtonElement = document.createElement("button");
@@ -65,6 +68,21 @@ export class Hud {
     this.resourceOverlay.style.zIndex = "100";
     this.ui.appendChild(this.resourceOverlay);
 
+    this.blocker.style.width = "100%";
+    this.blocker.style.height = "100%";
+    this.blocker.style.position = "absolute";
+    this.blocker.style.zIndex = "100";
+    this.blocker.style.top = "0";
+    this.blocker.style.left = "0";
+    this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    this.blocker.style.display = "none";
+    this.ui.appendChild(this.blocker);
+
+
+    this.setupShortcutKeys();
+  }
+
+  setupShortcutKeys() {
     document.addEventListener("keyup", e => {
       if (e.code === "KeyE") {
         this.endButton.click();
@@ -92,8 +110,11 @@ export class Hud {
       .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
       .sort((a, b) => a.localeCompare(b));
     const revenuePerResource = this.manager.calculateResourceRevenue(player);
-    RESOURCES.forEach((resource, _) => {
+    RESOURCES.forEach((resource, index) => {
       let taxValue = this.scene.players[player - 1].tax ?? 0;
+      if (index === 0) {
+        taxValue = 100 - taxValue;
+      }
       let revenueValue = revenuePerResource[resource];
       const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement;
       if (taxText) {
@@ -111,6 +132,7 @@ export class Hud {
       taxKnob.step = "5";
       taxKnob.value = `${this.scene.players[player - 1].tax ?? 0}`;
       taxKnob.style.width = "60px";
+      taxKnob.style.marginTop = "20px";
       taxKnob.addEventListener("input", e => {
         this.scene.players[player - 1].tax = parseInt(taxKnob.value);
         this.refreshTax();
@@ -129,6 +151,8 @@ export class Hud {
         return;
       }
       const { imageSource, spriteSize, frames, padding } = this.scene.resources[resource].icon;
+      const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+      const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
       let icon = document.getElementById(resource);
       if (!icon) {
         icon = this.resourceOverlay.appendChild(document.createElement("div"));
@@ -136,7 +160,7 @@ export class Hud {
         icon.style.backgroundImage = `url(${imageSource})`;
         icon.style.width = `${spriteSize[0]}px`;
         icon.style.height = `${spriteSize[1]}px`;
-        icon.style.backgroundPosition = `-${(spriteSize[0] + (padding?.[0] ?? 0) * 2) * frames[0] + (padding?.[0] ?? 0) / 2}px 0`;
+        icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % 30) + (padding?.[0] ?? 0) / 2}px ${-spriteHeight * Math.floor(frames[0] / 30) + (padding?.[1] ?? 0) / 2}px`;
         icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
         icon.style.bottom = "0";
         icon.style.left = "0";
@@ -260,11 +284,12 @@ export class Hud {
       icon.style.height = `${spriteSize[1]}px`;
 
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+      const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
       let animationFrame: number;
       const animateIcon = () => {
         animationFrame = requestAnimationFrame(animateIcon);
         const frame = frames[Math.floor(performance.now() / 100) % frames.length];
-        icon.style.backgroundPosition = `-${spriteWidth * frame}px 0`;
+        icon.style.backgroundPosition = `${-spriteWidth * (frame % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
       };
       animationFrame = requestAnimationFrame(animateIcon);
       this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -307,7 +332,8 @@ export class Hud {
             icon.style.height = `${spriteSize[1]}px`;
             icon.style.transform = "scale(.5)";
             const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
-            icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+            const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
+            icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frames[0] / SPRITESHEET_COLS)}px`;
           }
           // show wheat amount
 
@@ -336,13 +362,14 @@ export class Hud {
             icon.style.height = `${spriteSize[1]}px`;
             icon.style.transform = "scale(.5)";
             const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
-            icon.style.backgroundPosition = `-${spriteWidth * frames[0]}px 0`;
+            const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
+            icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frames[0] / SPRITESHEET_COLS)}px`;
           }
           // show wood amount
           const label = wood.appendChild(document.createElement("div"));
           label.style.fontSize = "10pt";
           label.style.color = "orange";
-          const capacity = obj.resourceCapacity();
+          const capacity = obj.resourceCapacity("wood");
           label.textContent = `${obj.elem.resourcesAccumulated?.wood ?? 0} / ${capacity}`;
         }
       }
@@ -362,16 +389,50 @@ export class Hud {
         if (this.manager.checkCondition(item.hidden, obj)) {
           return;
         }
-        const disabled = this.manager.checkCondition(item.disabled, obj);
+        const disabled = this.manager.checkCondition(item.disabled, obj)
+          || (obj.canAfford(item.resourceCost) ? null : "not enough\nresources");
 
         const menuItemDiv = menuDiv.appendChild(document.createElement("div"));
-        const text = menuItemDiv.appendChild(document.createElement("div"));
-        text.textContent = item.label ?? item.name;
-        text.style.position = "absolute";
-        text.style.top = "0";
-        text.style.fontSize = "10pt";
-        text.style.color = "red";
-        text.style.display = disabled ? "block" : "none";
+
+        if (item.resourceCost) {
+          const resourceDiv = menuItemDiv.appendChild(document.createElement("div"));
+          resourceDiv.style.display = "flex";
+          resourceDiv.style.flexDirection = "row";
+          resourceDiv.style.marginTop = "-55px";
+          resourceDiv.style.marginLeft = "-60px";
+          resourceDiv.style.position = "absolute";
+          const cost = item.resourceCost;
+          Object.entries(cost ?? {}).forEach(([key, amount]) => {
+            const resource = key as keyof Resources;
+            const resourceData = this.scene.resources[resource];
+            if (!resourceData) {
+              return;
+            }
+            const { imageSource, spriteSize, frames, padding } = resourceData.icon;
+            const icon = resourceDiv.appendChild(document.createElement("div"));
+            icon.style.backgroundImage = `url(${imageSource})`;
+            icon.style.width = `${spriteSize[0]}px`;
+            icon.style.height = `${spriteSize[1]}px`;
+            icon.style.transform = "scale(.5)";
+            icon.style.marginTop = "-25px";
+            const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+            const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
+            icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frames[0] / SPRITESHEET_COLS)}px`;
+            const label = resourceDiv.appendChild(document.createElement("div"));
+            label.style.fontSize = "10pt";
+            label.style.marginLeft = "-20px";
+            label.style.color = "gold";
+            label.textContent = `${amount}`;
+          });
+        } else {
+          const text = menuItemDiv.appendChild(document.createElement("div"));
+          text.textContent = item.label ?? item.name;
+          text.style.position = "absolute";
+          text.style.top = "0";
+          text.style.fontSize = "10pt";
+          text.style.color = "red";
+          text.style.display = disabled ? "block" : "none";
+        }
 
         menuItemDiv.style.cursor = "pointer";
         menuItemDiv.style.display = "flex";
@@ -383,12 +444,14 @@ export class Hud {
         icon.style.backgroundImage = `url(${imageSource})`;
         icon.style.width = `${spriteSize[0]}px`;
         icon.style.height = `${spriteSize[1]}px`;
+        const cols = 30;
         const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
+        const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
         let animationFrame: number;
         const animateIcon = () => {
           animationFrame = requestAnimationFrame(animateIcon);
           const frame = frames[Math.floor(performance.now() / 100) % frames.length];
-          icon.style.backgroundPosition = `-${spriteWidth * frame}px 0`;
+          icon.style.backgroundPosition = `${-spriteWidth * (frame % cols)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
         };
         animationFrame = requestAnimationFrame(animateIcon);
         this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -397,6 +460,7 @@ export class Hud {
         label.innerText = disabled ?? item?.label ?? item.name;
         label.style.textAlign = "center";
         label.style.fontSize = "10pt";
+
 
         menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
         if (!disabled) {
@@ -413,7 +477,11 @@ export class Hud {
           });
           menuItemDiv.addEventListener("mouseup", e => {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
+            if (disabled) {
+              return;
+            }
             const actions = item.actions ?? [];
+            obj.spend(item.resourceCost);
             actions.forEach(action => {
               if (action.destroy) {
                 obj.doom(true);
@@ -445,6 +513,7 @@ export class Hud {
               obj.refreshLabel();
             });
             this.updated = false;
+            obj.refreshBars();
 
             e.preventDefault();
             e.stopPropagation();
@@ -461,5 +530,13 @@ export class Hud {
         }
       });
     }
+  }
+
+  showBlocker() {
+    this.blocker.style.display = "block";
+  }
+
+  hideBlocker() {
+    this.blocker.style.display = "none";
   }
 }

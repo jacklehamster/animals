@@ -94,7 +94,9 @@ export interface Elem {
   settler?: boolean;
   resourcesProduced?: Resources;
   resourcesAccumulated?: Resources;
-  cost?: Resources;
+  resourcesCapped?: {
+    [key in keyof Resources]?: number;
+  };
   dynamic?: boolean;
   clearCloud?: boolean;
   water?: boolean;

@@ -350,7 +350,7 @@ export class Manager {
     if (this.inUI) {
       return;
     }
-    if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOption(x, y)) {
+    if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOptionToLandOn(x, y)) {
       this.selected.moveTo(x, y);
       return;
     }
@@ -359,7 +359,8 @@ export class Manager {
       unit = undefined;
     }
     const house = this.grid[`house_${x}_${y}`];
-    this.setSelection(!unit || unit === this.selected ? house : unit);
+    const nextSelection = unit === this.selected ? house : unit;
+    this.setSelection(this.selected === nextSelection ? undefined : nextSelection);
   }
 
   setSelection(gameObject: GameObject | undefined) {
@@ -390,11 +391,14 @@ export class Manager {
   }
 
   hovering(gameObject: GameObject) {
+    if (this.inUI) {
+      return false;
+    }
     return gameObject.px === this.cursor?.px && gameObject.py === this.cursor?.py;
   }
 
   refreshCursor() {
-    if (this.hovered) {
+    if (this.hovered || this.inUI) {
       this.cursor?.hide();
     } else {
       this.cursor?.show();
@@ -526,6 +530,13 @@ export class Manager {
         }
       }
     });
+    // cap resources
+    this.iterateRevealedCells((gameObject) => {
+      const elem = gameObject.elem;
+      if (elem?.owner === player && elem.harvesting) {
+        gameObject.checkResourceCaps();
+      }
+    })
 
     //  Save global resources
     const globalResources = this.calculateResourceRevenue(player);
@@ -539,13 +550,19 @@ export class Manager {
 
   checkForAnyMove() {
     //  check if any unit can move
-    let canMove = false;
+    let anyMove = false;
     this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct() && !gameObject.elem?.harvesting) {
-        canMove = true;
+      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct()) {
+        if (gameObject.elem?.type === "unit"
+          && !gameObject.elem?.harvesting) {
+          anyMove = true;
+        } else if (gameObject?.elem?.type === "house"
+          && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
+          anyMove = true;
+        }
       }
     });
-    if (!canMove) {
+    if (!anyMove) {
       if (this.autoEndTurn) {
         this.hud.flashEndTurn(true);
         setTimeout(() => {
@@ -593,7 +610,7 @@ export class Manager {
           && !gameObject.elem?.harvesting) {
           include = true;
         } else if (gameObject?.elem?.type === "house"
-          && gameObject.canAffordMoreHarvester()) {
+          && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
           include = true;
         }
       }
@@ -605,5 +622,13 @@ export class Manager {
     // rotate cells
     let nextIndex = (currentIndex + 1) % cellsRotation.length;
     this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+  }
+
+  unitAt(x: number, y: number): GameObject | undefined {
+    return this.grid[`unit_${x}_${y}`];
+  }
+
+  houseAt(x: number, y: number): GameObject | undefined {
+    return this.grid[`house_${x}_${y}`];
   }
 }

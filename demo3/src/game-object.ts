@@ -201,7 +201,8 @@ export class GameObject extends EngineObject {
     const [offX, offY] = this.elem?.gameObject?.offset ?? [0, 0];
     let count = 0;
     Object.entries(this.elem.resourcesAccumulated).forEach(([key, value]) => {
-      if (this.manager.scene.resources[key as keyof Resources]?.global) {
+      const res = key as keyof Resources;
+      if (this.manager.scene.resources[res]?.global) {
         return;
       }
       if (!value) {
@@ -221,7 +222,7 @@ export class GameObject extends EngineObject {
         this.resourceBars.push(barIcon);
       }
       if (value > 10) {
-        const color = new Color(1, 1, 1, 1);
+        const color = value >= this.resourceCapacity(res) ? new Color(1, .7, .7, 1) : new Color(1, 1, 1, 1);
         const digits = this.generateEngineObjectsForDigit(value, .4, .16, vec2(.5 - offX, count * .3 - offY - .3,), color);
         this.resourceBars.push(...digits);
       }
@@ -248,7 +249,7 @@ export class GameObject extends EngineObject {
         ? new Color(1, 1, 0, 1)
         : new Color(0, 1, 0, 1))
       : this.canAffordMoreHarvester()
-        ? new Color(1, .7, .7, 1)
+        ? new Color(1, .9, 0, 1)
         : new Color(1, 1, 1, 1);
     if (!this.labels) {
       this.labels = [];
@@ -260,6 +261,16 @@ export class GameObject extends EngineObject {
 
   canAffordMoreHarvester() {
     return this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0);
+  }
+
+  resourceMaxedOut() {
+    return Object.entries(this.elem?.resourcesAccumulated ?? {}).some(([resource, value]) => {
+      const res = resource as keyof Resources;
+      if (this.manager.scene.resources[res]?.global || this.manager.scene.resources[res]?.forGrowth) {
+        return;
+      }
+      return value >= this.resourceCapacity(resource as keyof Resources);
+    });
   }
 
   generateDigits(num: number) {
@@ -419,7 +430,9 @@ export class GameObject extends EngineObject {
     if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
     } else if (this.manager.selected === this) {
-      this.showResourcesNearby();
+      if (this.elem?.settler || this.elem?.worker) {
+        this.showResourcesNearby();
+      }
       this.showMoveOptions();
       this.manager.hud.showSelected(this);
     }
@@ -508,21 +521,32 @@ export class GameObject extends EngineObject {
     this.updated = false;
   }
 
-  hasMoveOption(x: number, y: number) {
-    return this.moveOptions?.[`${x}_${y}`];
+  hasMoveOptionToLandOn(x: number, y: number) {
+    return (this.moveOptions?.[`${x}_${y}`] as any)?.canLand;
+  }
+
+  canLandOn(px: number, py: number) {
+    if (!this.canMoveTo(px, py)) {
+      return false;
+    }
+    return true;
   }
 
   canMoveTo(px: number, py: number) {
+    const elem = this.elem;
+    if (!elem) {
+      return false;
+    }
     if (this.px === px && this.py === py) {
       return false;
     }
     if (!this.manager.revealed.has(`${px}_${py}`)) {
       return false;
     }
-    if (this.elem?.type !== "unit") {
+    if (elem.type !== "unit") {
       return false;
     }
-    if (this.manager.grid[`unit_${px}_${py}`]) {
+    if (this.manager.unitAt(px, py)) {
       return false;
     }
     if (this.manager.grid[`decor_${px}_${py}`]) {
@@ -589,15 +613,16 @@ export class GameObject extends EngineObject {
   selectIndic?: EngineObject;
 
   showResourcesNearby() {
-    const home = this.elem?.settler ? this : this.elem?.worker ? this.home : undefined;
+    const home = this.elem?.settler ? this : this.elem?.worker ? this.home : this;
     if (home) {
       for (let y = -1; y <= 1; y++) {
         for (let x = -1; x <= 1; x++) {
-          if (x === 0 && y === 0 || this.canMoveTo(home.px + x, home.py + y)) {
+          if (this.elem?.building || home.px + x === this.px && home.py + y === this.py || this.canMoveTo(home.px + x, home.py + y)) {
             this.showResources(home.px + x, home.py + y, this.elem?.owner);
           }
         }
       }
+      home?.hideBars();
     }
   }
 
@@ -616,7 +641,15 @@ export class GameObject extends EngineObject {
         //  show move options
         this.showMoveOptions();
         if (!this.moving) {
-          this.showResourcesNearby();
+          const resourcesFloating = Date.now() - (this.floatResources ?? 0) < 2000;
+
+          if ((this.elem?.settler || this.elem?.worker) && !resourcesFloating) {
+            if (!this.elem?.building && this.elem?.harvesting) {
+              this.showResources(this.px, this.py, this.elem?.owner);
+            } else {
+              this.showResourcesNearby();
+            }
+          }
         }
         this.hideBars();
       }
@@ -698,6 +731,10 @@ export class GameObject extends EngineObject {
       (obj as any).canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
       (obj as any).movePoints = movePoints;
       (obj as any).distanceTravelled = newDistanceTravelled;
+      (obj as any).canLand = this.canLandOn(from.x + dx, from.y + dy);
+      if (!(obj as any).canLand) {
+        obj.color = new Color(0, 0, 0, 0);
+      }
       const offset = this.elem?.gameObject?.offset ?? [0, 0];
       // obj.pos.set(this.px, this.py);
       this.addChild(obj, vec2((from.x + dx - this.px) - offset[0], (from.y + dy - this.py) - offset[1]));
@@ -720,6 +757,23 @@ export class GameObject extends EngineObject {
     return animInfo?.tileInfos?.[t];
   }
 
+  checkResourceCaps() {
+    const elem = this.elem;
+    if (!elem?.resourcesAccumulated) {
+      return;
+    }
+    Object.entries(elem.resourcesAccumulated).forEach(([key, value]) => {
+      const k = key as keyof Resources;
+      const maxCapacity = this.resourceCapacity(k);
+      if (value > maxCapacity) {
+        if (!elem.resourcesCapped) {
+          elem.resourcesCapped = {};
+        }
+        elem.resourcesCapped[k] = value;
+      }
+    });
+  }
+
   accumulateResources(resources: Resources) {
     if (this.doomed) {
       return;
@@ -733,20 +787,38 @@ export class GameObject extends EngineObject {
       return;
     }
     Object.entries(resources).forEach(([key, value]) => {
-      const maxCapacity = this.resourceCapacity();
+      const k = key as keyof Resources;
+      if (this.manager.scene.resources[k]?.global) {
+        return;
+      }
       if (!elem.resourcesAccumulated) {
         elem.resourcesAccumulated = {};
       }
-      const k = key as keyof Resources;
-      elem.resourcesAccumulated[k] = Math.min(maxCapacity, (elem.resourcesAccumulated[k] ?? 0) + value);
+      if (!elem.resourcesCapped?.[k]) {
+        elem.resourcesAccumulated[k] = (elem.resourcesAccumulated[k] ?? 0) + value;
+      }
     });
     if (elem.type === "house" && elem.resourcesAccumulated) {
-      if ((elem.resourcesAccumulated.wheat ?? 0) >= this.nextLevelCost()) {
+      if ((elem.resourcesAccumulated.wheat ?? 0) >= this.nextLevelCost() && this.canUpdateLevel()) {
         elem.resourcesAccumulated.wheat = (elem.resourcesAccumulated.wheat ?? 0) - this.nextLevelCost();
         this.updateLevel((elem.level ?? 0) + 1);
         this.updated = false;
       }
     }
+  }
+
+  updateResource(resource: keyof Resources, value: number) {
+    if (!this.elem) {
+      return;
+    }
+    if (!this.elem.resourcesAccumulated) {
+      this.elem.resourcesAccumulated = {};
+    }
+    this.elem.resourcesAccumulated[resource] = value;
+    if (this.elem.resourcesCapped && value < this.resourceCapacity(resource)) {
+      this.elem.resourcesCapped[resource] = 0;
+    }
+    this.updated = false;
   }
 
   fixCows() {
@@ -767,6 +839,10 @@ export class GameObject extends EngineObject {
     }
   }
 
+  canUpdateLevel() {
+    return this.elem?.type === "house" && (this.elem?.level ?? 0) < 6;
+  }
+
   updateLevel(level: number) {
     if (this.elem?.type === "house") {
       this.elem.level = level;
@@ -777,12 +853,10 @@ export class GameObject extends EngineObject {
   }
 
   nextLevelCost() {
-    // calculate wheat cost for next level
-    const nextLevel = (this.elem?.level ?? 0) + 1;
-    return nextLevel * 10;
+    return this.resourceCapacity("wheat");
   }
 
-  resourceCapacity() {
+  resourceCapacity(resource: keyof Resources) {
     const capacity = (this.elem?.level ?? 0) + 1;
     return capacity * 10;
   }
@@ -927,6 +1001,9 @@ export class GameObject extends EngineObject {
       if (Date.now() - this.floatResources > 2000) {
         this.floatResources = undefined;
         this.hideResources();
+        if (this.manager.selected === this) {
+          this.showResourcesNearby();
+        }
       } else {
         this.resources.forEach(res => res.localPos.y += .005);
       }
@@ -1003,5 +1080,27 @@ export class GameObject extends EngineObject {
 
   finalDestination(): Vector2 {
     return this.moveQueue?.[0] ?? vec2(this.px, this.py);
+  }
+
+  canAfford(resources?: Resources): boolean {
+    if (!resources) {
+      return true;
+    }
+    return Object.entries(resources).every(([key, value]) => {
+      return (this.elem?.resourcesAccumulated?.[key as keyof Resources] ?? 0) >= value;
+    });
+  }
+
+  spend(resources?: Resources) {
+    if (!resources) {
+      return;
+    }
+    const resourcesAccumulated = this.elem?.resourcesAccumulated;
+    Object.entries(resources).forEach(([key, value]) => {
+      const k = key as keyof Resources;
+      if (resourcesAccumulated?.[k]) {
+        resourcesAccumulated[k] = Math.max(0, resourcesAccumulated[k] - value);
+      }
+    });
   }
 }
