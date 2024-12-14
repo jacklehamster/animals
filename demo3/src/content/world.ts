@@ -40,10 +40,15 @@ import { DIGITS_ANIMATION } from "./animations/digits";
 import { DOG_ANIMATION, DOG_JUMP_ANIMATION, DOG_WAIT_ANIMATION } from "./animations/dog";
 import { COW_ANIMATION, COW_JUMP_ANIMATION, COW_SLEEP_ANIMATION, COW_WAIT_ANIMATION } from "./animations/cow";
 import { BRAIN_ANIMATION, GOLD_ANIMATION, TRADE_ANIMATION, WHEAT_ANIMATION, WOOD_ANIMATION } from "./animations/resources";
+import { CURSOR } from "./elems/cursor";
+import { CLOUD } from "./elems/cloud";
+import { GRASS } from "./elems/grass";
+import { PLAIN } from "./elems/plain";
+import { LAKE } from "./elems/lake";
+import { TREE } from "./elems/tree";
+import { MOUNTAIN } from "./elems/mountain";
 
-const SIZE = 30;
-
-export const worldData: Scene = {
+export const worldData: Scene = (window as any).worldData = {
   scale: 80,
   players: [
     {
@@ -114,186 +119,15 @@ export const worldData: Scene = {
     TRADE_ANIMATION,
   ],
   elems: [
-    {
-      name: "cursor",
-      type: "cursor",
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "triangle",
-      },
-      mouseFollower: {
-        snap: 1,
-      },
-      dynamic: true,
-    },
-    {
-      name: "cloud",
-      type: "cloud",
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-      },
-      animation: {
-        name: "cloud",
-      },
-      spread: {
-        animation: "cloud",
-        count: [4, 5] as [number, number],
-        color: "#ffffffaa",
-        size: 1.2,
-      },
-    },
-    {
-      definition: "sheep",
-      owner: 1,
-      turn: {
-        moves: 1,
-        attacks: 1,
-      },
-    },
-    {
-      name: "grass",
-      type: "tile",
-      resourcesProduced: {
-        wheat: 2,
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-      },
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "grassland",
-      },
-      spread: {
-        animation: "grass",
-        count: [3, 7] as [number, number],
-      },
-    },
-    {
-      name: "plain",
-      type: "tile_overlay",
-      resourcesProduced: {
-        wood: 1,
-        wheat: -1,
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: .9,
-      },
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "plain",
-      },
-      spread: {
-        animation: "grass",
-        count: [3, 7] as [number, number],
-      },
-    },
-    {
-      name: "lake",
-      type: "tile_overlay",
-      resourcesProduced: {
-        wheat: -1,
-        trade: 2,
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: .1,
-      },
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "lake",
-      },
-      spread: {
-        animation: "wave",
-        count: [3, 7] as [number, number],
-      },
-      branchOut: {
-        count: [1, 5] as [number, number],
-        chance: .2,
-        element: {
-          definition: "river",
-        },
-      },
-      water: true,
-    },
-    {
-      name: "tree",
-      type: "decor",
-      resourcesProduced: {
-        wood: 1,
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.1,
-      },
-      condition: {
-        tile: "plain",
-        noTile: "lake",
-      },
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "tree",
-      },
-      spread: {
-        animation: "tree_leaf",
-        count: [50, 100] as [number, number],
-        radius: .25,
-      },
-    },
-    {
-      name: "mountain",
-      type: "decor",
-      resourcesProduced: {
-        wheat: -2,
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.1,
-      },
-      condition: {
-        tile: "plain",
-      },
-      gameObject: {
-        pos: [0, 0] as [number, number],
-        size: [2, 2] as [number, number],
-      },
-      animation: {
-        name: "mountain",
-      },
-      spread: {
-        animation: "mountain",
-        count: [8, 10] as [number, number],
-        radius: .3,
-        behind: true,
-      },
-    },
-    {
-      name: "cabana",
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.02,
-      },
-      definition: "cabana",
-    },
+    CURSOR,
+    CLOUD,
+    SHEEP,
+    GRASS,
+    PLAIN,
+    LAKE,
+    TREE,
+    MOUNTAIN,
+    CABANA,
   ],
   menu: [
     SHEEP_MENU,
@@ -328,5 +162,3 @@ export const worldData: Scene = {
     RABBIT_RESEARCH,
   ],
 };
-
-(window as any).worldData = worldData;
