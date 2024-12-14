@@ -1,4 +1,5 @@
 import type { Menu } from "../../definition/menu";
+import { HOUSE_MENU_DEBUG } from "./house-menu-debug";
 
 export const HOUSE_MENU: Menu = {
   name: "house",
@@ -87,5 +88,6 @@ export const HOUSE_MENU: Menu = {
         },
       ],
     },
+    ...HOUSE_MENU_DEBUG,
   ],
 };

@@ -1,6 +1,6 @@
 import type { Elem } from "../../definition/elem";
 
-export const RIVER: Elem = {
+export const RIVER_DEFINITION: Elem = {
   name: "river",
   type: "road",
   resourcesProduced: {

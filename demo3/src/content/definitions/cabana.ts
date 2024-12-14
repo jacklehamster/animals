@@ -1,6 +1,6 @@
 import type { Elem } from "../../definition/elem";
 
-export const CABANA: Elem = {
+export const CABANA_DEFINITION: Elem = {
   name: "cabana",
   type: "house",
   gameObject: {

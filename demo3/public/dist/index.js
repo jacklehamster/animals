@@ -3439,7 +3439,8 @@ class GameObject extends EngineObject {
             this.shadow = new EngineObject;
             this.shadow.size.set(this.size.x, this.size.y);
             this.shadow.tileInfo = this.getTileInfoAnimate(this.shadowAnimationInfo);
-            this.addChild(this.shadow);
+            const offset = this.elem?.gameObject?.offset ?? [0, 0];
+            this.addChild(this.shadow, vec2(-offset[0], -offset[1]));
           }
         }
       }
@@ -3726,6 +3727,7 @@ class GameObject extends EngineObject {
       this.showMoveOptions();
       this.manager.hud.showSelected(this);
     }
+    this.manager.unlockRewards(this);
   }
   spendActions() {
     const elem = this.elem;
@@ -4076,8 +4078,16 @@ class GameObject extends EngineObject {
     if (!this.elem.resourcesAccumulated) {
       this.elem.resourcesAccumulated = {};
     }
-    this.elem.resourcesAccumulated[resource] = value;
-    if (this.elem.resourcesCapped && value < this.resourceCapacity(resource)) {
+    const val = typeof value === "function" ? value(this.elem.resourcesAccumulated[resource] ?? 0) : value;
+    const resObj = this.manager.scene.resources[resource];
+    if (resObj?.global) {
+      if (this.elem.owner) {
+        this.manager.updateResource(resource, val, this.elem.owner);
+      }
+      return;
+    }
+    this.elem.resourcesAccumulated[resource] = val;
+    if (this.elem.resourcesCapped && val < this.resourceCapacity(resource)) {
       this.elem.resourcesCapped[resource] = 0;
     }
     this.updated = false;
@@ -4289,6 +4299,18 @@ class GameObject extends EngineObject {
       this.resourceBars.length = 0;
       this.color = new Color(1, 1, 1, 1);
     }
+  }
+  getSurroundingCells(vectorCondition) {
+    const set = new Set;
+    for (let y = -1;y <= 1; y++) {
+      for (let x = -1;x <= 1; x++) {
+        const vec = vec2(this.px + x, this.py + y);
+        if (vectorCondition(vec)) {
+          set.add(vec);
+        }
+      }
+    }
+    return set;
   }
   findNearby(cellCondition) {
     const set = new Set;
@@ -5278,6 +5300,7 @@ class Manager {
   }
   giveUnitsTurns() {
     this.iterateRevealedCells((gameObject) => {
+      console.log("giveTurn", this.scene.turn?.player);
       if (gameObject.elem?.owner === this.scene.turn?.player) {
         gameObject.giveTurn();
       }
@@ -5403,10 +5426,73 @@ class Manager {
   houseAt(x, y) {
     return this.grid[`house_${x}_${y}`];
   }
+  updateResource(resource, value, player) {
+    const val = typeof value === "function" ? value(this.scene.players[player - 1].resources[resource] ?? 0) : value;
+    this.scene.players[player - 1].resources[resource] = val;
+    this.hud.updated = true;
+  }
+  findEmptySpotsAround(x, y) {
+    const emptySpots = [];
+    for (let xx = -1;xx <= 1; xx++) {
+      for (let yy = -1;yy <= 1; yy++) {
+        if (xx || yy) {
+          const tag = GameObject.getTag("unit", x + xx, y + yy);
+          if (!this.grid[tag]) {
+            emptySpots.push(vec2(x + xx, y + yy));
+          }
+        }
+      }
+    }
+    return emptySpots;
+  }
+  unlockRewards(obj, rewards) {
+    if (rewards) {
+      rewards.forEach((reward) => {
+        if (reward.gold) {
+          const [min2, max2] = reward.gold;
+          const gold = Math.floor(Math.random() * (max2 - min2 + 1) + min2);
+          obj.updateResource("gold", (g) => g + gold);
+        }
+        if (reward.invention) {
+          console.log("invention", reward.invention);
+        }
+        if (reward.spawnFoes) {
+          const emptySpots = this.findEmptySpotsAround(obj.px, obj.py);
+          const { count, element } = reward.spawnFoes;
+          const actualCount = Math.min(emptySpots.length, Math.floor(Math.random() * (count[1] - count[0] + 1) + count[0]));
+          emptySpots.sort(() => Math.random() - 0.5);
+          for (let i = 0;i < actualCount; i++) {
+            const spot = emptySpots[i];
+            this.addSceneElemAt(element, spot.x, spot.y);
+          }
+        }
+        if (reward.unit) {
+          const emptySpots = this.findEmptySpotsAround(obj.px, obj.py);
+          if (emptySpots.length) {
+            const spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
+            this.addSceneElemAt(reward.unit, spot.x, spot.y, {
+              owner: obj?.elem?.owner
+            });
+          }
+        }
+      });
+    }
+  }
+  addSceneElemAt(elem, x, y, config = {}) {
+    const tag = GameObject.getTag(elem.type, x, y);
+    if (this.grid[tag]) {
+      return;
+    }
+    const newElem = JSON.parse(JSON.stringify(elem));
+    newElem.gameObject = newElem.gameObject ?? {};
+    newElem.gameObject.pos = [x, y];
+    Object.assign(newElem, config);
+    this.scene.elems.push(newElem);
+  }
 }
 
 // src/content/definitions/cabana.ts
-var CABANA = {
+var CABANA_DEFINITION = {
   name: "cabana",
   type: "house",
   gameObject: {
@@ -5424,13 +5510,22 @@ var CABANA = {
   rewards: [
     { gold: [10, 30] },
     { invention: 1 },
-    { barbarians: [2, 3] },
-    { unit: "dog" }
+    {
+      spawnFoes: {
+        count: [1, 3],
+        element: {}
+      }
+    },
+    {
+      unit: {
+        definition: "dog"
+      }
+    }
   ]
 };
 
 // src/content/definitions/cow.ts
-var COW = {
+var COW_DEFINITION = {
   name: "cow",
   type: "unit",
   hitpoints: 15,
@@ -5483,7 +5578,7 @@ var COW = {
 };
 
 // src/content/definitions/dog.ts
-var DOG = {
+var DOG_DEFINITION = {
   name: "dog",
   type: "unit",
   hitpoints: 10,
@@ -5527,7 +5622,7 @@ var DOG = {
 };
 
 // src/content/definitions/house.ts
-var HOUSE = {
+var HOUSE_DEFINITION = {
   name: "house",
   type: "house",
   level: 1,
@@ -5564,7 +5659,7 @@ var HOUSE = {
 };
 
 // src/content/definitions/river.ts
-var RIVER = {
+var RIVER_DEFINITION = {
   name: "river",
   type: "road",
   resourcesProduced: {
@@ -5583,7 +5678,7 @@ var RIVER = {
 };
 
 // src/content/definitions/sheep.ts
-var SHEEP = {
+var SHEEP_DEFINITION = {
   name: "sheep",
   type: "unit",
   hitpoints: 10,
@@ -5683,6 +5778,29 @@ var COW_MENU = {
   ]
 };
 
+// src/content/menu/house-menu-debug.ts
+var HOUSE_MENU_DEBUG = [
+  {
+    name: "hobo",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [86, 87],
+    label: "spawn\nhobo",
+    disabled: {},
+    actions: [
+      {
+        deselect: true,
+        create: {
+          definition: "hobo",
+          selfSelect: true
+        }
+      }
+    ],
+    debug: true
+  }
+];
+
 // src/content/menu/house-menu.ts
 var HOUSE_MENU = {
   name: "house",
@@ -5769,7 +5887,8 @@ var HOUSE_MENU = {
           }
         }
       ]
-    }
+    },
+    ...HOUSE_MENU_DEBUG
   ]
 };
 
@@ -6130,6 +6249,21 @@ var BLUE_ANIMATION = {
     13
   ]
 };
+var BLUE_SELECTED_ANIMATION = {
+  name: "blue_selected",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    21,
+    22,
+    23,
+    24,
+    23,
+    22,
+    21
+  ],
+  mul: 3
+};
 
 // src/content/animations/sheep.ts
 var SHEEP_ANIMATION = {
@@ -6213,6 +6347,30 @@ var MOUNTAIN_ANIMATION = {
     25
   ]
 };
+var LAKE_ANIMATION = {
+  name: "lake",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    33
+  ]
+};
+var WAVE_ANIMATION = {
+  name: "wave",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    34
+  ]
+};
+var RIVER_ANIMATION = {
+  name: "river",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    32
+  ]
+};
 
 // src/content/animations/cloud.ts
 var CLOUD_ANIMATION = {
@@ -6224,9 +6382,445 @@ var CLOUD_ANIMATION = {
   ]
 };
 
-// src/content/world.ts
+// src/content/animations/shadow.ts
+var SHADOW_ANIMATION = {
+  name: "shadow",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    19
+  ]
+};
+
+// src/content/animations/house.ts
+var HOUSE_ANIMATION = {
+  name: "house",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    27,
+    28,
+    29
+  ],
+  mul: 20
+};
+var CABANA_ANIMATION = {
+  name: "cabana",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    61
+  ]
+};
+
+// src/content/animations/digits.ts
+var DIGITS_ANIMATION = new Array(10).fill(36).map((base, i) => ({
+  name: `num_${i}`,
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    base + i
+  ]
+}));
+
+// src/content/animations/dog.ts
+var DOG_ANIMATION = {
+  name: "dog",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    46
+  ]
+};
+var DOG_WAIT_ANIMATION = {
+  name: "dog_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    46,
+    47
+  ]
+};
+var DOG_JUMP_ANIMATION = {
+  name: "dog_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    47,
+    48,
+    49,
+    49,
+    50
+  ],
+  airFrames: [48, 49]
+};
+
+// src/content/animations/cow.ts
+var COW_ANIMATION = {
+  name: "cow",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    51
+  ]
+};
+var COW_WAIT_ANIMATION = {
+  name: "cow_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    51,
+    52,
+    51
+  ]
+};
+var COW_JUMP_ANIMATION = {
+  name: "cow_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 5,
+  frames: [
+    51,
+    53,
+    54
+  ],
+  airFrames: [54]
+};
+var COW_SLEEP_ANIMATION = {
+  name: "cow_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    55
+  ]
+};
+
+// src/content/animations/resources.ts
+var WHEAT_ANIMATION = {
+  name: "wheat",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    56
+  ]
+};
+var WOOD_ANIMATION = {
+  name: "wood",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    57
+  ]
+};
+var BRAIN_ANIMATION = {
+  name: "brain",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    58
+  ]
+};
+var GOLD_ANIMATION = {
+  name: "gold",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    59
+  ]
+};
+var TRADE_ANIMATION = {
+  name: "trade",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    60
+  ]
+};
+
+// src/content/elems/cursor.ts
+var CURSOR = {
+  name: "cursor",
+  type: "cursor",
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "triangle"
+  },
+  mouseFollower: {
+    snap: 1
+  },
+  dynamic: true
+};
+
+// src/content/constant.ts
 var SIZE = 30;
-var worldData = {
+
+// src/content/elems/cloud.ts
+var CLOUD = {
+  name: "cloud",
+  type: "cloud",
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1]
+  },
+  animation: {
+    name: "cloud"
+  },
+  spread: {
+    animation: "cloud",
+    count: [4, 5],
+    color: "#ffffffaa",
+    size: 1.2
+  }
+};
+
+// src/content/elems/grass.ts
+var GRASS = {
+  name: "grass",
+  type: "tile",
+  resourcesProduced: {
+    wheat: 2
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1]
+  },
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "grassland"
+  },
+  spread: {
+    animation: "grass",
+    count: [3, 7]
+  }
+};
+
+// src/content/elems/plain.ts
+var PLAIN = {
+  name: "plain",
+  type: "tile_overlay",
+  resourcesProduced: {
+    wood: 1,
+    wheat: -1
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.9
+  },
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "plain"
+  },
+  spread: {
+    animation: "grass",
+    count: [3, 7]
+  }
+};
+
+// src/content/elems/lake.ts
+var LAKE = {
+  name: "lake",
+  type: "tile_overlay",
+  resourcesProduced: {
+    wheat: -1,
+    trade: 2
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  },
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "lake"
+  },
+  spread: {
+    animation: "wave",
+    count: [3, 7]
+  },
+  branchOut: {
+    count: [1, 5],
+    chance: 0.2,
+    element: {
+      definition: "river"
+    }
+  },
+  water: true
+};
+
+// src/content/elems/tree.ts
+var TREE = {
+  name: "tree",
+  type: "decor",
+  resourcesProduced: {
+    wood: 1
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  },
+  condition: {
+    tile: "plain",
+    noTile: "lake"
+  },
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "tree"
+  },
+  spread: {
+    animation: "tree_leaf",
+    count: [50, 100],
+    radius: 0.25
+  }
+};
+
+// src/content/elems/mountain.ts
+var MOUNTAIN = {
+  name: "mountain",
+  type: "decor",
+  resourcesProduced: {
+    wheat: -2
+  },
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  },
+  condition: {
+    tile: "plain"
+  },
+  gameObject: {
+    pos: [0, 0],
+    size: [2, 2]
+  },
+  animation: {
+    name: "mountain"
+  },
+  spread: {
+    animation: "mountain",
+    count: [8, 10],
+    radius: 0.3,
+    behind: true
+  }
+};
+
+// src/content/definitions/hobo.ts
+var HOBO_DEFINITION = {
+  name: "hobo",
+  type: "unit",
+  hitpoints: 10,
+  maxHitPoints: 10,
+  gameObject: {
+    offset: [0, 0.3],
+    size: [1.2, 1.2],
+    speed: 0.08
+  },
+  animation: {
+    name: "hobo"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "hobo_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "hobo_jump",
+    distance: 1
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  }
+};
+
+// src/content/elems/sheep.ts
+var SHEEP = {
+  definition: "sheep",
+  owner: 1,
+  turn: {
+    moves: 1,
+    attacks: 1
+  }
+};
+
+// src/content/elems/cabana.ts
+var CABANA = {
+  name: "cabana",
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.02
+  },
+  definition: "cabana"
+};
+
+// src/content/animations/hobo.ts
+var HOBO_ANIMATION = {
+  name: "hobo",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    86
+  ]
+};
+var HOBO_WAIT_ANIMATION = {
+  name: "hobo_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    86,
+    87
+  ]
+};
+var HOBO_JUMP_ANIMATION = {
+  name: "hobo_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    86,
+    88,
+    86,
+    89
+  ]
+};
+
+// src/content/world.ts
+var worldData = window.worldData = {
   scale: 80,
   players: [
     {
@@ -6253,12 +6847,13 @@ var worldData = {
     unit: 3
   },
   definitions: [
-    SHEEP,
-    DOG,
-    COW,
-    RIVER,
-    HOUSE,
-    CABANA
+    HOBO_DEFINITION,
+    SHEEP_DEFINITION,
+    DOG_DEFINITION,
+    COW_DEFINITION,
+    RIVER_DEFINITION,
+    HOUSE_DEFINITION,
+    CABANA_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -6275,374 +6870,40 @@ var worldData = {
     TREE_LEAF_ANIMATION,
     MOUNTAIN_ANIMATION,
     CLOUD_ANIMATION,
-    {
-      name: "shadow",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        19
-      ]
-    },
-    {
-      name: "blue_selected",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        21,
-        22,
-        23,
-        24,
-        23,
-        22,
-        21
-      ],
-      mul: 3
-    },
-    {
-      name: "lake",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        33
-      ]
-    },
-    {
-      name: "wave",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        34
-      ]
-    },
-    {
-      name: "river",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        32
-      ]
-    },
-    {
-      name: "house",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        27,
-        28,
-        29
-      ],
-      mul: 20
-    },
-    {
-      name: "cabana",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        61
-      ]
-    },
-    ...new Array(10).fill(36).map((base, i) => ({
-      name: `num_${i}`,
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        base + i
-      ]
-    })),
-    {
-      name: "dog",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        46
-      ]
-    },
-    {
-      name: "dog_wait",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      mul: 20,
-      frames: [
-        46,
-        47
-      ]
-    },
-    {
-      name: "dog_jump",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      mul: 2,
-      frames: [
-        47,
-        48,
-        49,
-        49,
-        50
-      ],
-      airFrames: [48, 49]
-    },
-    {
-      name: "cow",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        51
-      ]
-    },
-    {
-      name: "cow_wait",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      mul: 20,
-      frames: [
-        51,
-        52,
-        51
-      ]
-    },
-    {
-      name: "cow_jump",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      mul: 5,
-      frames: [
-        51,
-        53,
-        54
-      ],
-      airFrames: [54]
-    },
-    {
-      name: "cow_sleep",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      mul: 10,
-      frames: [
-        55
-      ]
-    },
-    {
-      name: "wheat",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        56
-      ]
-    },
-    {
-      name: "wood",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        57
-      ]
-    },
-    {
-      name: "brain",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        58
-      ]
-    },
-    {
-      name: "gold",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        59
-      ]
-    },
-    {
-      name: "trade",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        60
-      ]
-    }
+    SHADOW_ANIMATION,
+    BLUE_SELECTED_ANIMATION,
+    LAKE_ANIMATION,
+    WAVE_ANIMATION,
+    RIVER_ANIMATION,
+    HOUSE_ANIMATION,
+    CABANA_ANIMATION,
+    ...DIGITS_ANIMATION,
+    DOG_ANIMATION,
+    DOG_WAIT_ANIMATION,
+    DOG_JUMP_ANIMATION,
+    COW_ANIMATION,
+    COW_WAIT_ANIMATION,
+    COW_JUMP_ANIMATION,
+    COW_SLEEP_ANIMATION,
+    WHEAT_ANIMATION,
+    WOOD_ANIMATION,
+    BRAIN_ANIMATION,
+    GOLD_ANIMATION,
+    TRADE_ANIMATION,
+    HOBO_ANIMATION,
+    HOBO_JUMP_ANIMATION,
+    HOBO_WAIT_ANIMATION
   ],
   elems: [
-    {
-      name: "cursor",
-      type: "cursor",
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "triangle"
-      },
-      mouseFollower: {
-        snap: 1
-      },
-      dynamic: true
-    },
-    {
-      name: "cloud",
-      type: "cloud",
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1]
-      },
-      animation: {
-        name: "cloud"
-      },
-      spread: {
-        animation: "cloud",
-        count: [4, 5],
-        color: "#ffffffaa",
-        size: 1.2
-      }
-    },
-    {
-      definition: "sheep",
-      owner: 1,
-      turn: {
-        moves: 1,
-        attacks: 1
-      }
-    },
-    {
-      name: "grass",
-      type: "tile",
-      resourcesProduced: {
-        wheat: 2
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1]
-      },
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "grassland"
-      },
-      spread: {
-        animation: "grass",
-        count: [3, 7]
-      }
-    },
-    {
-      name: "plain",
-      type: "tile_overlay",
-      resourcesProduced: {
-        wood: 1,
-        wheat: -1
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.9
-      },
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "plain"
-      },
-      spread: {
-        animation: "grass",
-        count: [3, 7]
-      }
-    },
-    {
-      name: "lake",
-      type: "tile_overlay",
-      resourcesProduced: {
-        wheat: -1,
-        trade: 2
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.1
-      },
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "lake"
-      },
-      spread: {
-        animation: "wave",
-        count: [3, 7]
-      },
-      branchOut: {
-        count: [1, 5],
-        chance: 0.2,
-        element: {
-          definition: "river"
-        }
-      },
-      water: true
-    },
-    {
-      name: "tree",
-      type: "decor",
-      resourcesProduced: {
-        wood: 1
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.1
-      },
-      condition: {
-        tile: "plain",
-        noTile: "lake"
-      },
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "tree"
-      },
-      spread: {
-        animation: "tree_leaf",
-        count: [50, 100],
-        radius: 0.25
-      }
-    },
-    {
-      name: "mountain",
-      type: "decor",
-      resourcesProduced: {
-        wheat: -2
-      },
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.1
-      },
-      condition: {
-        tile: "plain"
-      },
-      gameObject: {
-        pos: [0, 0],
-        size: [2, 2]
-      },
-      animation: {
-        name: "mountain"
-      },
-      spread: {
-        animation: "mountain",
-        count: [8, 10],
-        radius: 0.3,
-        behind: true
-      }
-    },
-    {
-      name: "cabana",
-      group: {
-        grid: [SIZE + 1, SIZE + 1],
-        chance: 0.02
-      },
-      definition: "cabana"
-    }
+    CURSOR,
+    CLOUD,
+    SHEEP,
+    GRASS,
+    PLAIN,
+    LAKE,
+    TREE,
+    MOUNTAIN,
+    CABANA
   ],
   menu: [
     SHEEP_MENU,
@@ -6677,7 +6938,6 @@ var worldData = {
     RABBIT_RESEARCH
   ]
 };
-window.worldData = worldData;
 
 // src/index.ts
 var gameInit = function() {
@@ -6695,4 +6955,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=A498E17A4A823C1B64756e2164756e21
+//# debugId=EDC90D5B4A8D23C964756e2164756e21

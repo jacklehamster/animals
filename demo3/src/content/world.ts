@@ -1,10 +1,10 @@
 import type { Scene } from "../definition/scene";
-import { CABANA } from "./definitions/cabana";
-import { COW } from "./definitions/cow";
-import { DOG } from "./definitions/dog";
-import { HOUSE } from "./definitions/house";
-import { RIVER } from "./definitions/river";
-import { SHEEP } from "./definitions/sheep";
+import { CABANA_DEFINITION } from "./definitions/cabana";
+import { COW_DEFINITION } from "./definitions/cow";
+import { DOG_DEFINITION } from "./definitions/dog";
+import { HOUSE_DEFINITION } from "./definitions/house";
+import { RIVER_DEFINITION } from "./definitions/river";
+import { SHEEP_DEFINITION } from "./definitions/sheep";
 import { COW_MENU } from "./menu/cow-menu";
 import { HOUSE_MENU } from "./menu/house-menu";
 import { SHEEP_MENU } from "./menu/sheep-menu";
@@ -47,6 +47,10 @@ import { PLAIN } from "./elems/plain";
 import { LAKE } from "./elems/lake";
 import { TREE } from "./elems/tree";
 import { MOUNTAIN } from "./elems/mountain";
+import { HOBO_DEFINITION } from "./definitions/hobo";
+import { SHEEP } from "./elems/sheep";
+import { CABANA } from "./elems/cabana";
+import { HOBO_ANIMATION, HOBO_JUMP_ANIMATION, HOBO_WAIT_ANIMATION } from "./animations/hobo";
 
 export const worldData: Scene = (window as any).worldData = {
   scale: 80,
@@ -75,12 +79,13 @@ export const worldData: Scene = (window as any).worldData = {
     "unit": 3,
   },
   definitions: [
-    SHEEP,
-    DOG,
-    COW,
-    RIVER,
-    HOUSE,
-    CABANA,
+    HOBO_DEFINITION,
+    SHEEP_DEFINITION,
+    DOG_DEFINITION,
+    COW_DEFINITION,
+    RIVER_DEFINITION,
+    HOUSE_DEFINITION,
+    CABANA_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -117,6 +122,9 @@ export const worldData: Scene = (window as any).worldData = {
     BRAIN_ANIMATION,
     GOLD_ANIMATION,
     TRADE_ANIMATION,
+    HOBO_ANIMATION,
+    HOBO_JUMP_ANIMATION,
+    HOBO_WAIT_ANIMATION,
   ],
   elems: [
     CURSOR,

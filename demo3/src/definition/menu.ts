@@ -20,6 +20,7 @@ export interface MenuItem {
   disabled?: Condition;
   hidden?: Condition;
   resourceCost?: Resources;
+  debug?: boolean;
 }
 
 export interface Menu {

@@ -487,6 +487,7 @@ export class Manager {
 
   giveUnitsTurns() {
     this.iterateRevealedCells((gameObject) => {
+      console.log("giveTurn", this.scene.turn?.player);
       if (gameObject.elem?.owner === this.scene.turn?.player) {
         gameObject.giveTurn();
       }

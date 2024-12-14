@@ -1,6 +1,6 @@
 import type { Elem } from "../../definition/elem";
 
-export const DOG: Elem = {
+export const DOG_DEFINITION: Elem = {
   name: "dog",
   type: "unit",
   hitpoints: 10,

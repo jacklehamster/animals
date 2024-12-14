@@ -112,7 +112,8 @@ export class GameObject extends EngineObject {
             this.shadow = new EngineObject();
             this.shadow.size.set(this.size.x, this.size.y);
             this.shadow.tileInfo = this.getTileInfoAnimate(this.shadowAnimationInfo);
-            this.addChild(this.shadow);
+            const offset = this.elem?.gameObject?.offset ?? [0, 0];
+            this.addChild(this.shadow, vec2(-offset[0], -offset[1]));
           }
         }
       }

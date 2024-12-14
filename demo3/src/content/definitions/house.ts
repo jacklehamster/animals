@@ -1,6 +1,6 @@
 import type { Elem } from "../../definition/elem";
 
-export const HOUSE: Elem = {
+export const HOUSE_DEFINITION: Elem = {
   name: "house",
   type: "house",
   level: 1,
