@@ -13,6 +13,7 @@ export class Hud {
   overlay: HTMLDivElement = document.createElement("div");
   resourceOverlay: HTMLDivElement = document.createElement("div");
   blocker: HTMLDivElement = document.createElement("div");
+  dialog: HTMLDivElement = document.createElement("div");
   readonly itemsToDestroy = new Set<() => void>();
   readonly scene: Scene;
   nextButton: HTMLButtonElement = document.createElement("button");
@@ -78,6 +79,21 @@ export class Hud {
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
 
+    this.dialog.style.position = "absolute";
+    this.dialog.style.zIndex = "100";
+    this.dialog.style.top = "50%";
+    this.dialog.style.left = "50%";
+    this.dialog.style.transform = "translate(-50%, -50%)";
+    this.dialog.style.width = "300px";
+    this.dialog.style.height = "200px";
+    this.dialog.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    this.dialog.style.color = "snow";
+    this.dialog.style.flexDirection = "column";
+    this.dialog.style.justifyContent = "center";
+    this.dialog.style.alignItems = "center";
+    this.dialog.style.textAlign = "center";
+    this.dialog.style.textTransform = "uppercase";
+    this.dialog.style.display = "none";
 
     this.setupShortcutKeys();
   }
@@ -538,5 +554,14 @@ export class Hud {
 
   hideBlocker() {
     this.blocker.style.display = "none";
+  }
+
+  showDialog(text: string) {
+    this.dialog.style.display = "flex";
+    this.dialog.textContent = text;
+  }
+
+  closeDialog() {
+    this.dialog.style.display = "none";
   }
 }

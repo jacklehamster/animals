@@ -30,10 +30,16 @@ import { TRADE_RESOURCE } from "./resources/trade";
 import { WHEAT_RESOURCE } from "./resources/wheat";
 import { WOOD_RESOURCE } from "./resources/wood";
 import { RABBIT_RESEARCH } from "./research/rabbit";
-import { BLUE_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION } from "./animations/indicators";
+import { BLUE_ANIMATION, BLUE_SELECTED_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION } from "./animations/indicators";
 import { SHEEP_ANIMATION, SHEEP_JUMP_ANIMATION, SHEEP_WAIT_ANIMATION } from "./animations/sheep";
-import { GRASS_ANIMATION, GRASSLAND_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION } from "./animations/terrain";
+import { GRASS_ANIMATION, GRASSLAND_ANIMATION, LAKE_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION, WAVE_ANIMATION } from "./animations/terrain";
 import { CLOUD_ANIMATION } from "./animations/cloud";
+import { SHADOW_ANIMATION } from "./animations/shadow";
+import { CABANA_ANIMATION, HOUSE_ANIMATION } from "./animations/house";
+import { DIGITS_ANIMATION } from "./animations/digits";
+import { DOG_ANIMATION, DOG_JUMP_ANIMATION, DOG_WAIT_ANIMATION } from "./animations/dog";
+import { COW_ANIMATION, COW_JUMP_ANIMATION, COW_SLEEP_ANIMATION, COW_WAIT_ANIMATION } from "./animations/cow";
+import { BRAIN_ANIMATION, GOLD_ANIMATION, TRADE_ANIMATION, WHEAT_ANIMATION, WOOD_ANIMATION } from "./animations/resources";
 
 const SIZE = 30;
 
@@ -86,175 +92,26 @@ export const worldData: Scene = {
     TREE_LEAF_ANIMATION,
     MOUNTAIN_ANIMATION,
     CLOUD_ANIMATION,
-    {
-      name: "shadow",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        19,
-      ],
-    },
-    {
-      name: "blue_selected",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        21, 22, 23, 24, 23, 22, 21,
-      ],
-      mul: 3,
-    },
-    {
-      name: "lake",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        33,
-      ],
-    },
-    {
-      name: "wave",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        34,
-      ],
-    },
-    {
-      name: "river",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        32,
-      ],
-    },
-    {
-      name: "house",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        27, 28, 29,
-      ],
-      mul: 20,
-    },
-    {
-      name: "cabana",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        61,
-      ],
-    },
-    ...new Array(10).fill(36).map((base, i) => ({
-      name: `num_${i}`,
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        base + i,
-      ],
-    })),
-    {
-      name: "dog",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      frames: [
-        46,
-      ],
-    },
-    {
-      name: "dog_wait",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 20,
-      frames: [
-        46, 47,
-      ],
-    },
-    {
-      name: "dog_jump",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 2,
-      frames: [
-        47, 48, 49, 49, 50,
-      ],
-      airFrames: [48, 49],
-    },
-    {
-      name: "cow",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        51,
-      ],
-    },
-    {
-      name: "cow_wait",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 20,
-      frames: [
-        51, 52, 51,
-      ],
-    },
-    {
-      name: "cow_jump",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 5,
-      frames: [
-        51, 53, 54,
-      ],
-      airFrames: [54],
-    },
-    {
-      name: "cow_sleep",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      mul: 10,
-      frames: [
-        55,
-      ],
-    },
-    {
-      name: "wheat",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        56,
-      ],
-    },
-    {
-      name: "wood",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        57,
-      ],
-    },
-    {
-      name: "brain",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        58,
-      ],
-    },
-    {
-      name: "gold",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        59,
-      ],
-    },
-    {
-      name: "trade",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      frames: [
-        60,
-      ],
-    },
+    SHADOW_ANIMATION,
+    BLUE_SELECTED_ANIMATION,
+    LAKE_ANIMATION,
+    WAVE_ANIMATION,
+    RIVER_ANIMATION,
+    HOUSE_ANIMATION,
+    CABANA_ANIMATION,
+    ...DIGITS_ANIMATION,
+    DOG_ANIMATION,
+    DOG_WAIT_ANIMATION,
+    DOG_JUMP_ANIMATION,
+    COW_ANIMATION,
+    COW_WAIT_ANIMATION,
+    COW_JUMP_ANIMATION,
+    COW_SLEEP_ANIMATION,
+    WHEAT_ANIMATION,
+    WOOD_ANIMATION,
+    BRAIN_ANIMATION,
+    GOLD_ANIMATION,
+    TRADE_ANIMATION,
   ],
   elems: [
     {
@@ -433,12 +290,7 @@ export const worldData: Scene = {
       name: "cabana",
       group: {
         grid: [SIZE + 1, SIZE + 1],
-        chance: 0.01,
-      },
-      condition: {
-        tile: "plain",
-        noTile: "lake",
-        zeroUnit: true,
+        chance: 0.02,
       },
       definition: "cabana",
     },

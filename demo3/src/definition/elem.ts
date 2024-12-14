@@ -1,5 +1,6 @@
 import type { Condition } from "./condition";
 import type { Resources } from "./resources";
+import type { Reward } from "./reward";
 
 interface TileCondition {
   tile?: string | string[];
@@ -97,6 +98,7 @@ export interface Elem {
   resourcesCapped?: {
     [key in keyof Resources]?: number;
   };
+  rewards?: Reward[];
   dynamic?: boolean;
   clearCloud?: boolean;
   water?: boolean;

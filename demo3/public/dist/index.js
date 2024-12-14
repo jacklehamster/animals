@@ -4342,6 +4342,7 @@ class Hud {
   overlay = document.createElement("div");
   resourceOverlay = document.createElement("div");
   blocker = document.createElement("div");
+  dialog = document.createElement("div");
   itemsToDestroy = new Set;
   scene;
   nextButton = document.createElement("button");
@@ -4401,6 +4402,21 @@ class Hud {
     this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
+    this.dialog.style.position = "absolute";
+    this.dialog.style.zIndex = "100";
+    this.dialog.style.top = "50%";
+    this.dialog.style.left = "50%";
+    this.dialog.style.transform = "translate(-50%, -50%)";
+    this.dialog.style.width = "300px";
+    this.dialog.style.height = "200px";
+    this.dialog.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    this.dialog.style.color = "snow";
+    this.dialog.style.flexDirection = "column";
+    this.dialog.style.justifyContent = "center";
+    this.dialog.style.alignItems = "center";
+    this.dialog.style.textAlign = "center";
+    this.dialog.style.textTransform = "uppercase";
+    this.dialog.style.display = "none";
     this.setupShortcutKeys();
   }
   setupShortcutKeys() {
@@ -4815,6 +4831,13 @@ class Hud {
   }
   hideBlocker() {
     this.blocker.style.display = "none";
+  }
+  showDialog(text) {
+    this.dialog.style.display = "flex";
+    this.dialog.textContent = text;
+  }
+  closeDialog() {
+    this.dialog.style.display = "none";
   }
 }
 
@@ -5392,7 +5415,18 @@ var CABANA = {
   },
   animation: {
     name: "cabana"
-  }
+  },
+  condition: {
+    tile: "plain",
+    noTile: ["lake", "mountain", "tree"],
+    zeroUnit: true
+  },
+  rewards: [
+    { gold: [10, 30] },
+    { invention: 1 },
+    { barbarians: [2, 3] },
+    { unit: "dog" }
+  ]
 };
 
 // src/content/definitions/cow.ts
@@ -6605,12 +6639,7 @@ var worldData = {
       name: "cabana",
       group: {
         grid: [SIZE + 1, SIZE + 1],
-        chance: 0.01
-      },
-      condition: {
-        tile: "plain",
-        noTile: "lake",
-        zeroUnit: true
+        chance: 0.02
       },
       definition: "cabana"
     }
@@ -6666,4 +6695,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=E6DFD885BC313C7C64756e2164756e21
+//# debugId=A498E17A4A823C1B64756e2164756e21

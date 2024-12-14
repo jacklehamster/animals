@@ -436,6 +436,7 @@ export class GameObject extends EngineObject {
       this.showMoveOptions();
       this.manager.hud.showSelected(this);
     }
+    this.manager.unlockRewards(this);
   }
 
   spendActions() {
@@ -807,15 +808,23 @@ export class GameObject extends EngineObject {
     }
   }
 
-  updateResource(resource: keyof Resources, value: number) {
+  updateResource(resource: keyof Resources, value: number | ((value: number) => number)) {
     if (!this.elem) {
       return;
     }
     if (!this.elem.resourcesAccumulated) {
       this.elem.resourcesAccumulated = {};
     }
-    this.elem.resourcesAccumulated[resource] = value;
-    if (this.elem.resourcesCapped && value < this.resourceCapacity(resource)) {
+    const val = typeof value === "function" ? value(this.elem.resourcesAccumulated[resource] ?? 0) : value;
+    const resObj = this.manager.scene.resources[resource];
+    if (resObj?.global) {
+      if (this.elem.owner) {
+        this.manager.updateResource(resource, val, this.elem.owner);
+      }
+      return;
+    }
+    this.elem.resourcesAccumulated[resource] = val;
+    if (this.elem.resourcesCapped && val < this.resourceCapacity(resource)) {
       this.elem.resourcesCapped[resource] = 0;
     }
     this.updated = false;
@@ -1059,6 +1068,19 @@ export class GameObject extends EngineObject {
       this.resourceBars.length = 0;
       this.color = new Color(1, 1, 1, 1);
     }
+  }
+
+  getSurroundingCells(vectorCondition: (cell: Vector2) => boolean) {
+    const set: Set<Vector2> = new Set();
+    for (let y = -1; y <= 1; y++) {
+      for (let x = -1; x <= 1; x++) {
+        const vec = vec2(this.px + x, this.py + y);
+        if (vectorCondition(vec)) {
+          set.add(vec);
+        }
+      }
+    }
+    return set;
   }
 
   findNearby(cellCondition: (cell: GameObject) => boolean) {

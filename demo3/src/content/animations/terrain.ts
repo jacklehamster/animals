@@ -53,3 +53,30 @@ export const MOUNTAIN_ANIMATION: Anim = {
     25,
   ],
 };
+
+export const LAKE_ANIMATION: Anim = {
+  name: "lake",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    33,
+  ],
+};
+
+export const WAVE_ANIMATION: Anim = {
+  name: "wave",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    34,
+  ],
+};
+
+export const RIVER_ANIMATION: Anim = {
+  name: "river",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    32,
+  ],
+};

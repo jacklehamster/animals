@@ -7,6 +7,7 @@ import { GameObject } from "./game-object";
 import { Hud } from "./hud";
 import type { Condition } from "./definition/condition";
 import type { Resources } from "./definition/resources";
+import type { Reward } from './definition/reward';
 
 
 interface Entry {
@@ -630,5 +631,74 @@ export class Manager {
 
   houseAt(x: number, y: number): GameObject | undefined {
     return this.grid[`house_${x}_${y}`];
+  }
+
+  updateResource(resource: keyof Resources, value: number | ((value: number) => number), player: number) {
+    const val = typeof value === "function" ? value(this.scene.players[player - 1].resources[resource] ?? 0) : value;
+    this.scene.players[player - 1].resources[resource] = val;
+    this.hud.updated = true;
+  }
+
+  findEmptySpotsAround(x: number, y: number) {
+    const emptySpots: Vector2[] = [];
+    for (let xx = -1; xx <= 1; xx++) {
+      for (let yy = -1; yy <= 1; yy++) {
+        if (xx || yy) {
+          const tag = GameObject.getTag("unit", x + xx, y + yy);
+          if (!this.grid[tag]) {
+            emptySpots.push(vec2(x + xx, y + yy));
+          }
+        }
+      }
+    }
+    return emptySpots;
+
+  }
+
+  unlockRewards(obj: GameObject, rewards?: Reward[]) {
+    if (rewards) {
+      rewards.forEach((reward) => {
+        if (reward.gold) {
+          const [min, max] = reward.gold;
+          const gold = Math.floor(Math.random() * (max - min + 1) + min);
+          obj.updateResource("gold", g => g + gold);
+        }
+        if (reward.invention) {
+          //  invention
+          console.log("invention", reward.invention);
+        }
+        if (reward.spawnFoes) {
+          const emptySpots: Vector2[] = this.findEmptySpotsAround(obj.px, obj.py);
+          const { count, element } = reward.spawnFoes;
+          const actualCount = Math.min(emptySpots.length, Math.floor(Math.random() * (count[1] - count[0] + 1) + count[0]));
+          emptySpots.sort(() => Math.random() - .5);
+          for (let i = 0; i < actualCount; i++) {
+            const spot = emptySpots[i];
+            this.addSceneElemAt(element, spot.x, spot.y);
+          }
+        }
+        if (reward.unit) {
+          const emptySpots: Vector2[] = this.findEmptySpotsAround(obj.px, obj.py);
+          if (emptySpots.length) {
+            const spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
+            this.addSceneElemAt(reward.unit, spot.x, spot.y, {
+              owner: obj?.elem?.owner
+            });
+          }
+        }
+      });
+    }
+  }
+
+  addSceneElemAt(elem: Elem, x: number, y: number, config: Partial<Elem> = {}) {
+    const tag = GameObject.getTag(elem.type, x, y);
+    if (this.grid[tag]) {
+      return;
+    }
+    const newElem = JSON.parse(JSON.stringify(elem));
+    newElem.gameObject = newElem.gameObject ?? {};
+    newElem.gameObject.pos = [x, y];
+    Object.assign(newElem, config);
+    this.scene.elems.push(newElem);
   }
 }

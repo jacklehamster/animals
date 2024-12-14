@@ -1,49 +1,46 @@
 import type { Anim } from "../../definition/animation";
 
-export const TRIANGLE_ANIMATION: Anim = {
-  name: "triangle",
+export const WHEAT_ANIMATION: Anim = {
+  name: "wheat",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
-  mul: 2,
   frames: [
-    0, 1, 2, 3,
+    56,
   ],
 };
 
-export const HOVER_ANIMATION: Anim = {
-  name: "hover",
+export const WOOD_ANIMATION: Anim = {
+  name: "wood",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [
-    20,
+    57,
   ],
 };
 
-export const INDIC_ANIMATION: Anim = {
-  name: "indic",
+export const BRAIN_ANIMATION: Anim = {
+  name: "brain",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
-  mul: 3,
   frames: [
-    9, 9, 10, 11, 12, 11, 10,
+    58,
   ],
 };
 
-export const BLUE_ANIMATION: Anim = {
-  name: "blue",
+export const GOLD_ANIMATION: Anim = {
+  name: "gold",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [
-    13,
+    59,
   ],
 };
 
-export const BLUE_SELECTED_ANIMATION: Anim = {
-  name: "blue_selected",
+export const TRADE_ANIMATION: Anim = {
+  name: "trade",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [
-    21, 22, 23, 24, 23, 22, 21,
+    60,
   ],
-  mul: 3,
 };

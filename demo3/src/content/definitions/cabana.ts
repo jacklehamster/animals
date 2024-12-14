@@ -10,4 +10,26 @@ export const CABANA: Elem = {
   animation: {
     name: "cabana",
   },
+  condition: {
+    tile: "plain",
+    noTile: ["lake", "mountain", "tree"],
+    zeroUnit: true,
+  },
+  rewards: [
+    { gold: [10, 30] },
+    { invention: 1 },
+    {
+      spawnFoes: {
+        count: [1, 3],
+        element: {
+          // definition: "dog",
+        },
+      }
+    },
+    {
+      unit: {
+        definition: "dog",
+      }
+    },
+  ],
 };
