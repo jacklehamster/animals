@@ -5309,6 +5309,11 @@ class Manager {
   }
   gotoNextTurn() {
     if (this.scene.turn) {
+      this.scene.turn.player++;
+      if (this.scene.turn.player > this.scene.players.length) {
+        this.scene.turn.player = 1;
+        this.scene.turn.turn++;
+      }
       if (this.scene.turn.player < this.scene.players.length) {
         this.scene.turn.player++;
       } else {
@@ -7005,4 +7010,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=99747226FCBF4CDF64756e2164756e21
+//# debugId=47457080EADA6CDC64756e2164756e21
