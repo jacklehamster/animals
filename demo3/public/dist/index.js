@@ -3250,6 +3250,7 @@ var averageFPS = 0;
 var pluginUpdateList = [];
 var pluginRenderList = [];
 // src/lib/littlejs.ts
+setShowSplashScreen(true);
 setEnablePhysicsSolver(false);
 setGamepadsEnable(false);
 
@@ -3357,7 +3358,6 @@ class GameObject extends EngineObject {
   updated = false;
   moveOptions;
   clearedCloud;
-  lastDx = 1;
   bornTime = Date.now();
   moveQueue;
   resources = [];
@@ -3399,11 +3399,10 @@ class GameObject extends EngineObject {
         this.setPosition(px, py, true);
         const offset = this.elem?.gameObject?.offset ?? [0, 0];
         this.pos.set(px + offset[0], py + offset[1]);
-        this.updateSize();
-        this.size.set(this.visible ? config.size?.[0] : 0, this.visible ? config.size?.[1] : 0);
-        if (config.rotation) {
-          this.angle = config.rotation;
-        }
+      }
+      this.updateSize(1);
+      if (config.rotation) {
+        this.angle = config.rotation;
       }
       if (config.color) {
         this.color = this.getColor(config.color);
@@ -3611,8 +3610,8 @@ class GameObject extends EngineObject {
     this.resources.forEach((resource) => resource.destroy());
     this.resources.length = 0;
   }
-  showResources(x, y, owner, floatResources = false) {
-    const resources = this.manager.getResources(x, y);
+  showResources(x, y, owner, floatResources = false, res) {
+    const resources = res ?? this.manager.getResources(x, y);
     if (!resources) {
       return;
     }
@@ -3680,11 +3679,11 @@ class GameObject extends EngineObject {
   static getTag(type, px, py) {
     return `${type}_${px}_${py}`;
   }
-  updateSize() {
+  updateSize(s) {
     const age = Date.now() - this.bornTime;
-    const scale = Math.min(1, age / 200);
+    const scale = s ?? Math.min(1, age / 200);
     const config = this.elem?.gameObject;
-    this.size.set(scale * (this.visible ? config?.size?.[0] ?? 0 : 0) * (this.lastDx || 1), scale * (this.visible ? config?.size?.[1] ?? 0 : 0));
+    this.size.set(scale * (this.visible ? config?.size?.[0] ?? 0 : 0) * (this.elem?.gameObject?.lastDx ?? 1), scale * (this.visible ? config?.size?.[1] ?? 0 : 0));
   }
   hasMove() {
     return this.elem?.turn?.moves;
@@ -3718,6 +3717,7 @@ class GameObject extends EngineObject {
   doneMoving() {
     this.refreshAlpha();
     this.manager.checkForAnyMove();
+    this.manager.unlockRewards(this);
     if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
     } else if (this.manager.selected === this) {
@@ -3727,7 +3727,6 @@ class GameObject extends EngineObject {
       this.showMoveOptions();
       this.manager.hud.showSelected(this);
     }
-    this.manager.unlockRewards(this);
   }
   spendActions() {
     const elem = this.elem;
@@ -3785,8 +3784,8 @@ class GameObject extends EngineObject {
     if (this.manager.grid[this.getTag()] === this) {
       delete this.manager.grid[this.getTag()];
     }
-    if (this.px !== px) {
-      this.lastDx = Math.sign(px - this.px);
+    if (this.px !== px && this.elem?.gameObject) {
+      this.elem.gameObject.lastDx = Math.sign(px - this.px);
       this.updateSize();
     }
     this.px = px;
@@ -4353,6 +4352,10 @@ class GameObject extends EngineObject {
   }
 }
 
+// src/content/constant.ts
+var SIZE = 30;
+var DEBUG = false;
+
 // src/hud.ts
 var SPRITESHEET_COLS = 30;
 
@@ -4386,6 +4389,7 @@ class Hud {
       this.manager.inUI = false;
       this.manager.refreshCursor();
     });
+    this.ui.style.display = "none";
     this.bg.style.width = "100%";
     this.bg.style.height = "100px";
     this.bg.style.position = "absolute";
@@ -4429,9 +4433,9 @@ class Hud {
     this.dialog.style.top = "50%";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, -50%)";
-    this.dialog.style.width = "300px";
+    this.dialog.style.width = "400px";
     this.dialog.style.height = "200px";
-    this.dialog.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    this.dialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
     this.dialog.style.color = "snow";
     this.dialog.style.flexDirection = "column";
     this.dialog.style.justifyContent = "center";
@@ -4439,6 +4443,7 @@ class Hud {
     this.dialog.style.textAlign = "center";
     this.dialog.style.textTransform = "uppercase";
     this.dialog.style.display = "none";
+    this.ui.appendChild(this.dialog);
     this.setupShortcutKeys();
   }
   setupShortcutKeys() {
@@ -4458,12 +4463,19 @@ class Hud {
     this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.scene.turn?.turn ?? 1}`;
     this.refreshResources();
     this.refreshTax();
+    this.refreshButtons();
+    this.ui.style.display = "block";
     this.updated = true;
+  }
+  refreshButtons() {
+    const player = this.scene.turn?.player ?? 1;
+    this.nextButton.style.display = this.manager.getUnits(player).length > 1 ? "block" : "none";
   }
   refreshTax() {
     const player = this.scene.turn?.player ?? 1;
     const RESOURCES = Object.keys(this.scene.resources).filter((resource) => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global).sort((a, b) => a.localeCompare(b));
     const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
     RESOURCES.forEach((resource, index) => {
       let taxValue = this.scene.players[player - 1].tax ?? 0;
       if (index === 0) {
@@ -4491,6 +4503,7 @@ class Hud {
         this.refreshTax();
       });
     }
+    taxKnob.style.display = hasRevenue ? "block" : "none";
   }
   refreshResources() {
     const player = this.scene.turn?.player ?? 1;
@@ -4545,6 +4558,10 @@ class Hud {
       taxText.style.textAlign = "center";
       taxText.style.fontSize = "8pt";
     });
+    const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
+    const hasResource = RESOURCES.some((resource) => (this.scene.players[player - 1].resources[resource] ?? 0) > 0);
+    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
   flashEndTurn(temp = false) {
     document.getElementById("endButton")?.classList.add(temp ? "flash-temp" : "flash");
@@ -4565,6 +4582,7 @@ class Hud {
     nextButton.addEventListener("click", (e) => {
       this.manager.selectNext();
     });
+    nextButton.style.display = "none";
     const endButton = this.overlay.appendChild(this.endButton);
     endButton.id = "endButton";
     endButton.addEventListener("click", (e) => {
@@ -4711,6 +4729,9 @@ class Hud {
       menuDiv.style.marginLeft = "-100px";
       menuDiv.style.gap = "10px";
       menu.items.forEach((item) => {
+        if (item.debug && !DEBUG) {
+          return;
+        }
         if (this.manager.checkCondition(item.hidden, obj)) {
           return;
         }
@@ -4855,11 +4876,13 @@ class Hud {
     this.blocker.style.display = "none";
   }
   showDialog(text) {
+    this.showBlocker();
     this.dialog.style.display = "flex";
     this.dialog.textContent = text;
   }
   closeDialog() {
     this.dialog.style.display = "none";
+    this.hideBlocker();
   }
 }
 
@@ -5300,7 +5323,6 @@ class Manager {
   }
   giveUnitsTurns() {
     this.iterateRevealedCells((gameObject) => {
-      console.log("giveTurn", this.scene.turn?.player);
       if (gameObject.elem?.owner === this.scene.turn?.player) {
         gameObject.giveTurn();
       }
@@ -5377,6 +5399,7 @@ class Manager {
         this.hud.flashEndTurn();
       }
     }
+    this.hud.updated = false;
   }
   calculateResourceRevenue(player) {
     const revenue = this.calculateRevenue(player);
@@ -5399,7 +5422,17 @@ class Manager {
     });
     return resources;
   }
-  selectNext() {
+  getUnits(player) {
+    const units = [];
+    let count = 0;
+    this.iterateRevealedCells((gameObject) => {
+      if (gameObject.elem?.owner === player && gameObject.elem?.type === "unit") {
+        units.push(gameObject);
+      }
+    });
+    return units;
+  }
+  getUnitRotation() {
     const cellsRotation = [];
     this.iterateRevealedCells((gameObject) => {
       let include = false;
@@ -5416,6 +5449,10 @@ class Manager {
         cellsRotation.push(gameObject);
       }
     });
+    return cellsRotation;
+  }
+  selectNext() {
+    const cellsRotation = this.getUnitRotation();
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
     let nextIndex = (currentIndex + 1) % cellsRotation.length;
     this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
@@ -5436,8 +5473,10 @@ class Manager {
     for (let xx = -1;xx <= 1; xx++) {
       for (let yy = -1;yy <= 1; yy++) {
         if (xx || yy) {
-          const tag = GameObject.getTag("unit", x + xx, y + yy);
-          if (!this.grid[tag]) {
+          const unitTag = GameObject.getTag("unit", x + xx, y + yy);
+          const houseTag = GameObject.getTag("house", x + xx, y + yy);
+          const tileOverlayTag = GameObject.getTag("tile_overlay", x + xx, y + yy);
+          if (!this.grid[unitTag] && !this.grid[houseTag] && this.grid[tileOverlayTag]?.elem?.name !== "lake") {
             emptySpots.push(vec2(x + xx, y + yy));
           }
         }
@@ -5445,13 +5484,19 @@ class Manager {
     }
     return emptySpots;
   }
-  unlockRewards(obj, rewards) {
-    if (rewards) {
-      rewards.forEach((reward) => {
+  unlockRewards(obj) {
+    this.iterateGridCell(obj.px, obj.py, (gameObject) => {
+      const rewards = gameObject.elem?.rewards;
+      if (rewards) {
+        const reward = rewards[Math.floor(Math.random() * rewards.length)];
         if (reward.gold) {
           const [min2, max2] = reward.gold;
           const gold = Math.floor(Math.random() * (max2 - min2 + 1) + min2);
           obj.updateResource("gold", (g) => g + gold);
+          obj.showResources(obj.px, obj.py, obj.elem?.owner, true, {
+            gold
+          });
+          this.hud.updated = false;
         }
         if (reward.invention) {
           console.log("invention", reward.invention);
@@ -5463,20 +5508,25 @@ class Manager {
           emptySpots.sort(() => Math.random() - 0.5);
           for (let i = 0;i < actualCount; i++) {
             const spot = emptySpots[i];
-            this.addSceneElemAt(element, spot.x, spot.y);
+            const newElem = this.addSceneElemAt(element, spot.x, spot.y, {
+              savage: true
+            });
+            newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
         }
         if (reward.unit) {
           const emptySpots = this.findEmptySpotsAround(obj.px, obj.py);
           if (emptySpots.length) {
             const spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
-            this.addSceneElemAt(reward.unit, spot.x, spot.y, {
+            const newElem = this.addSceneElemAt(reward.unit, spot.x, spot.y, {
               owner: obj?.elem?.owner
             });
+            newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
         }
-      });
-    }
+        gameObject.doom(true);
+      }
+    });
   }
   addSceneElemAt(elem, x, y, config = {}) {
     const tag = GameObject.getTag(elem.type, x, y);
@@ -5484,10 +5534,12 @@ class Manager {
       return;
     }
     const newElem = JSON.parse(JSON.stringify(elem));
+    this.defineElem(newElem);
     newElem.gameObject = newElem.gameObject ?? {};
     newElem.gameObject.pos = [x, y];
     Object.assign(newElem, config);
     this.scene.elems.push(newElem);
+    return newElem;
   }
 }
 
@@ -5508,12 +5560,13 @@ var CABANA_DEFINITION = {
     zeroUnit: true
   },
   rewards: [
-    { gold: [10, 30] },
-    { invention: 1 },
+    { gold: [20, 40] },
     {
       spawnFoes: {
-        count: [1, 3],
-        element: {}
+        count: [1, 2],
+        element: {
+          definition: "hobo"
+        }
       }
     },
     {
@@ -6558,9 +6611,6 @@ var CURSOR = {
   dynamic: true
 };
 
-// src/content/constant.ts
-var SIZE = 30;
-
 // src/content/elems/cloud.ts
 var CLOUD = {
   name: "cloud",
@@ -6729,7 +6779,7 @@ var HOBO_DEFINITION = {
   hitpoints: 10,
   maxHitPoints: 10,
   gameObject: {
-    offset: [0, 0.3],
+    offset: [0, 0.2],
     size: [1.2, 1.2],
     speed: 0.08
   },
@@ -6782,7 +6832,7 @@ var CABANA = {
   name: "cabana",
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.02
+    chance: 0.03
   },
   definition: "cabana"
 };
@@ -6955,4 +7005,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=EDC90D5B4A8D23C964756e2164756e21
+//# debugId=99747226FCBF4CDF64756e2164756e21

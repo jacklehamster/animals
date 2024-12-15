@@ -6,8 +6,9 @@ export {
   engineInit, TileInfo,
 } from '../../dist/littlejs.esm.min';
 // } from 'littlejsengine';
-import { setEnablePhysicsSolver, setGamepadsEnable } from '../../dist/littlejs.esm.min';
+import { setEnablePhysicsSolver, setGamepadsEnable, setShowSplashScreen } from '../../dist/littlejs.esm.min';
 export * as LittleJS from "../../dist/littlejs.esm.min";
 
+setShowSplashScreen(true);
 setEnablePhysicsSolver(false);
 setGamepadsEnable(false);

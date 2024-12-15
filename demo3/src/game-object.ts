@@ -26,7 +26,6 @@ export class GameObject extends EngineObject {
   updated?: boolean = false;
   moveOptions?: Record<string, EngineObject>;
   clearedCloud?: boolean;
-  lastDx: number = 1;
   bornTime: number = Date.now();
   moveQueue?: Vector2[];
   resources: EngineObject[] = [];
@@ -69,14 +68,14 @@ export class GameObject extends EngineObject {
         this.setPosition(px, py, true);
         const offset = this.elem?.gameObject?.offset ?? [0, 0];
         this.pos.set(px + offset[0], py + offset[1]);
-        this.updateSize();
-        this.size.set(
-          this.visible ? config.size?.[0] : 0,
-          this.visible ? config.size?.[1] : 0,
-        );
-        if (config.rotation) {
-          this.angle = config.rotation;
-        }
+      }
+      this.updateSize(1);
+      // this.size.set(
+      //   this.visible ? config.size?.[0] : 0,
+      //   this.visible ? config.size?.[1] : 0,
+      // );
+      if (config.rotation) {
+        this.angle = config.rotation;
       }
       if (config.color) {
         this.color = this.getColor(config.color);
@@ -303,9 +302,10 @@ export class GameObject extends EngineObject {
 
   showResources(x: number, y: number,
     owner?: number,
-    floatResources: boolean = false
+    floatResources: boolean = false,
+    res?: Resources,
   ) {
-    const resources = this.manager.getResources(x, y);
+    const resources = res ?? this.manager.getResources(x, y);
     if (!resources) {
       return;
     }
@@ -379,12 +379,12 @@ export class GameObject extends EngineObject {
     return `${type}_${px}_${py}`;
   }
 
-  updateSize() {
+  updateSize(s?: number) {
     const age = Date.now() - this.bornTime;
-    const scale = Math.min(1, age / 200);
+    const scale = s ?? Math.min(1, age / 200);
     const config = this.elem?.gameObject;
     this.size.set(
-      scale * (this.visible ? (config?.size?.[0] ?? 0) : 0) * (this.lastDx || 1),
+      scale * (this.visible ? (config?.size?.[0] ?? 0) : 0) * (this.elem?.gameObject?.lastDx ?? 1),
       scale * (this.visible ? (config?.size?.[1] ?? 0) : 0),
     );
   }
@@ -427,6 +427,7 @@ export class GameObject extends EngineObject {
   doneMoving() {
     this.refreshAlpha();
     this.manager.checkForAnyMove();
+    this.manager.unlockRewards(this);
 
     if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
@@ -437,7 +438,6 @@ export class GameObject extends EngineObject {
       this.showMoveOptions();
       this.manager.hud.showSelected(this);
     }
-    this.manager.unlockRewards(this);
   }
 
   spendActions() {
@@ -500,8 +500,8 @@ export class GameObject extends EngineObject {
     if (this.manager.grid[this.getTag()] === this) {
       delete this.manager.grid[this.getTag()];
     }
-    if (this.px !== px) {
-      this.lastDx = Math.sign(px - this.px);
+    if (this.px !== px && this.elem?.gameObject) {
+      this.elem.gameObject.lastDx = Math.sign(px - this.px);
       this.updateSize();
     }
 

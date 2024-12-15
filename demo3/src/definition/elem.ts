@@ -37,6 +37,7 @@ export interface Elem {
     speed?: number;
     rotation?: number;
     noRotation?: boolean;
+    lastDx?: number;
   };
   spread?: {
     animation: string;
@@ -107,4 +108,5 @@ export interface Elem {
   closeToHome?: boolean;
   endlessMove?: boolean;
   selfSelect?: boolean;
+  savage?: boolean;
 }

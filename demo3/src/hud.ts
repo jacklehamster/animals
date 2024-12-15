@@ -3,6 +3,7 @@ import type { Scene } from "./definition/scene";
 import type { Manager } from "./manager";
 import type { Resources } from "./definition/resources";
 import type { Elem } from "./definition/elem";
+import { DEBUG } from "./content/constant";
 
 const SPRITESHEET_COLS = 30;
 
@@ -36,6 +37,7 @@ export class Hud {
       this.manager.inUI = false;
       this.manager.refreshCursor();
     });
+    this.ui.style.display = "none";
 
     this.bg.style.width = "100%";
     this.bg.style.height = "100px";
@@ -84,9 +86,9 @@ export class Hud {
     this.dialog.style.top = "50%";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, -50%)";
-    this.dialog.style.width = "300px";
+    this.dialog.style.width = "400px";
     this.dialog.style.height = "200px";
-    this.dialog.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    this.dialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
     this.dialog.style.color = "snow";
     this.dialog.style.flexDirection = "column";
     this.dialog.style.justifyContent = "center";
@@ -94,6 +96,7 @@ export class Hud {
     this.dialog.style.textAlign = "center";
     this.dialog.style.textTransform = "uppercase";
     this.dialog.style.display = "none";
+    this.ui.appendChild(this.dialog);
 
     this.setupShortcutKeys();
   }
@@ -116,7 +119,14 @@ export class Hud {
     this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.scene.turn?.turn ?? 1}`;
     this.refreshResources();
     this.refreshTax();
+    this.refreshButtons();
+    this.ui.style.display = "block";
     this.updated = true;
+  }
+
+  refreshButtons() {
+    const player = this.scene.turn?.player ?? 1;
+    this.nextButton.style.display = this.manager.getUnits(player).length > 1 ? "block" : "none";
   }
 
   refreshTax() {
@@ -126,6 +136,8 @@ export class Hud {
       .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
       .sort((a, b) => a.localeCompare(b));
     const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
+
     RESOURCES.forEach((resource, index) => {
       let taxValue = this.scene.players[player - 1].tax ?? 0;
       if (index === 0) {
@@ -137,6 +149,7 @@ export class Hud {
         taxText.textContent = `${revenueValue >= 0 ? '+' : ''}${revenueValue} (${taxValue}%)`;
       }
     });
+
     //  add knob to adjust tax
     let taxKnob = document.getElementById("tax") as HTMLInputElement;
     if (!taxKnob) {
@@ -154,6 +167,7 @@ export class Hud {
         this.refreshTax();
       });
     }
+    taxKnob.style.display = hasRevenue ? "block" : "none";
   }
 
   refreshResources() {
@@ -213,6 +227,11 @@ export class Hud {
       taxText.style.textAlign = "center";
       taxText.style.fontSize = "8pt";
     });
+
+    const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
+    const hasResource = RESOURCES.some(resource => (this.scene.players[player - 1].resources[resource] ?? 0) > 0);
+    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
 
   flashEndTurn(temp = false) {
@@ -236,6 +255,7 @@ export class Hud {
     nextButton.addEventListener("click", e => {
       this.manager.selectNext();
     });
+    nextButton.style.display = "none";
 
     const endButton = this.overlay.appendChild(this.endButton);
     endButton.id = "endButton";
@@ -402,6 +422,9 @@ export class Hud {
       menuDiv.style.gap = "10px";
 
       menu.items.forEach((item) => {
+        if (item.debug && !DEBUG) {
+          return;
+        }
         if (this.manager.checkCondition(item.hidden, obj)) {
           return;
         }
@@ -557,11 +580,13 @@ export class Hud {
   }
 
   showDialog(text: string) {
+    this.showBlocker();
     this.dialog.style.display = "flex";
     this.dialog.textContent = text;
   }
 
   closeDialog() {
     this.dialog.style.display = "none";
+    this.hideBlocker();
   }
 }

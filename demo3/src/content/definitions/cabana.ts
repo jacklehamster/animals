@@ -16,13 +16,13 @@ export const CABANA_DEFINITION: Elem = {
     zeroUnit: true,
   },
   rewards: [
-    { gold: [10, 30] },
-    { invention: 1 },
+    { gold: [20, 40] },
+    // { invention: 1 },
     {
       spawnFoes: {
-        count: [1, 3],
+        count: [1, 2],
         element: {
-          // definition: "dog",
+          definition: "hobo"
         },
       }
     },

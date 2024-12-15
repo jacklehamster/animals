@@ -7,7 +7,6 @@ import { GameObject } from "./game-object";
 import { Hud } from "./hud";
 import type { Condition } from "./definition/condition";
 import type { Resources } from "./definition/resources";
-import type { Reward } from './definition/reward';
 
 
 interface Entry {
@@ -471,6 +470,13 @@ export class Manager {
   gotoNextTurn() {
     // Increase turn count
     if (this.scene.turn) {
+      //  Change player
+      this.scene.turn.player++;
+      if (this.scene.turn.player > this.scene.players.length) {
+        this.scene.turn.player = 1;
+        this.scene.turn.turn++;
+      }
+
       if (this.scene.turn.player < this.scene.players.length) {
         this.scene.turn.player++;
       } else {
@@ -487,7 +493,6 @@ export class Manager {
 
   giveUnitsTurns() {
     this.iterateRevealedCells((gameObject) => {
-      console.log("giveTurn", this.scene.turn?.player);
       if (gameObject.elem?.owner === this.scene.turn?.player) {
         gameObject.giveTurn();
       }
@@ -574,6 +579,7 @@ export class Manager {
         this.hud.flashEndTurn();
       }
     }
+    this.hud.updated = false;
   }
 
   calculateResourceRevenue(player: number) {
@@ -600,7 +606,18 @@ export class Manager {
     return resources;
   }
 
-  selectNext() {
+  getUnits(player: number) {
+    const units: GameObject[] = [];
+    let count = 0;
+    this.iterateRevealedCells((gameObject) => {
+      if (gameObject.elem?.owner === player && gameObject.elem?.type === "unit") {
+        units.push(gameObject);
+      }
+    });
+    return units;
+  }
+
+  getUnitRotation() {
     const cellsRotation: GameObject[] = [];
     this.iterateRevealedCells((gameObject) => {
       let include = false;
@@ -620,6 +637,11 @@ export class Manager {
         cellsRotation.push(gameObject);
       }
     });
+    return cellsRotation
+  }
+
+  selectNext() {
+    const cellsRotation: GameObject[] = this.getUnitRotation();
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
     // rotate cells
     let nextIndex = (currentIndex + 1) % cellsRotation.length;
@@ -645,8 +667,11 @@ export class Manager {
     for (let xx = -1; xx <= 1; xx++) {
       for (let yy = -1; yy <= 1; yy++) {
         if (xx || yy) {
-          const tag = GameObject.getTag("unit", x + xx, y + yy);
-          if (!this.grid[tag]) {
+          const unitTag = GameObject.getTag("unit", x + xx, y + yy);
+          const houseTag = GameObject.getTag("house", x + xx, y + yy);
+          const tileOverlayTag = GameObject.getTag("tile_overlay", x + xx, y + yy);
+
+          if (!this.grid[unitTag] && !this.grid[houseTag] && this.grid[tileOverlayTag]?.elem?.name !== "lake") {
             emptySpots.push(vec2(x + xx, y + yy));
           }
         }
@@ -656,13 +681,20 @@ export class Manager {
 
   }
 
-  unlockRewards(obj: GameObject, rewards?: Reward[]) {
-    if (rewards) {
-      rewards.forEach((reward) => {
+  unlockRewards(obj: GameObject) {
+    this.iterateGridCell(obj.px, obj.py, (gameObject) => {
+      const rewards = gameObject.elem?.rewards;
+      if (rewards) {
+        const reward = rewards[Math.floor(Math.random() * rewards.length)];
+
         if (reward.gold) {
           const [min, max] = reward.gold;
           const gold = Math.floor(Math.random() * (max - min + 1) + min);
           obj.updateResource("gold", g => g + gold);
+          obj.showResources(obj.px, obj.py, obj.elem?.owner, true, {
+            gold,
+          });
+          this.hud.updated = false;
         }
         if (reward.invention) {
           //  invention
@@ -675,20 +707,25 @@ export class Manager {
           emptySpots.sort(() => Math.random() - .5);
           for (let i = 0; i < actualCount; i++) {
             const spot = emptySpots[i];
-            this.addSceneElemAt(element, spot.x, spot.y);
+            const newElem = this.addSceneElemAt(element, spot.x, spot.y, {
+              savage: true,
+            });
+            newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
         }
         if (reward.unit) {
           const emptySpots: Vector2[] = this.findEmptySpotsAround(obj.px, obj.py);
           if (emptySpots.length) {
             const spot = emptySpots[Math.floor(Math.random() * emptySpots.length)];
-            this.addSceneElemAt(reward.unit, spot.x, spot.y, {
+            const newElem = this.addSceneElemAt(reward.unit, spot.x, spot.y, {
               owner: obj?.elem?.owner
             });
+            newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
         }
-      });
-    }
+        gameObject.doom(true);
+      }
+    });
   }
 
   addSceneElemAt(elem: Elem, x: number, y: number, config: Partial<Elem> = {}) {
@@ -697,9 +734,12 @@ export class Manager {
       return;
     }
     const newElem = JSON.parse(JSON.stringify(elem));
+    this.defineElem(newElem);
     newElem.gameObject = newElem.gameObject ?? {};
     newElem.gameObject.pos = [x, y];
+
     Object.assign(newElem, config);
     this.scene.elems.push(newElem);
+    return newElem;
   }
 }

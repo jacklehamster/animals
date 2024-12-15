@@ -6,7 +6,7 @@ export const HOBO_DEFINITION: Elem = {
   hitpoints: 10,
   maxHitPoints: 10,
   gameObject: {
-    offset: [0, .3] as [number, number],
+    offset: [0, .2] as [number, number],
     size: [1.2, 1.2] as [number, number],
     speed: 0.08,
   },
