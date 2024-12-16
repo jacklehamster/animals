@@ -41,4 +41,11 @@ export const DOG_DEFINITION: Elem = {
     moves: 1,
     attacks: 1,
   },
+  attack: {
+    range: 1,
+    damage: 2,
+    defense: 1,
+    moveAfterAttack: true,
+    attackAfterMove: true,
+  }
 };

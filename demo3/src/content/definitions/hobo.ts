@@ -42,4 +42,9 @@ export const HOBO_DEFINITION: Elem = {
     moves: 1,
     attacks: 1,
   },
+  attack: {
+    range: 1,
+    damage: 2,
+    defense: 2,
+  },
 };

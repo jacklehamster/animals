@@ -40,6 +40,29 @@ export const HOUSE_MENU: Menu = {
       ],
     },
     {
+      name: "cow",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64] as [number, number],
+      padding: [2, 2],
+      frames: [51],
+      label: "spawn\ncow",
+      hidden: {
+        occupied: ["unit", "Tile occupied\nby a unit"],
+        unitLimit: ["cow", "Increase level\nto spawn more"],
+      },
+      disabled: {
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "cow",
+            selfSelect: true,
+          },
+        },
+      ],
+    },
+    {
       name: "dog",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
@@ -66,23 +89,26 @@ export const HOUSE_MENU: Menu = {
       ],
     },
     {
-      name: "cow",
+      name: "squirrel",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
       padding: [2, 2],
-      frames: [51],
-      label: "spawn\ncow",
+      frames: [90],
+      label: "spawn\nsquirrel",
+      resourceCost: {
+        wood: 10,
+      },
       hidden: {
-        occupied: ["unit", "Tile occupied\nby a unit"],
-        unitLimit: ["cow", "Increase level\nto spawn more"],
+        occupied: ["unit", "tile occupied\nby a unit"],
       },
       disabled: {
+        cannotAct: [true, "wait\nnext turn"],
       },
       actions: [
         {
           deselect: true,
           create: {
-            definition: "cow",
+            definition: "squirrel",
             selfSelect: true,
           },
         },

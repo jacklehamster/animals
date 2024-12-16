@@ -49,7 +49,7 @@ export class AnimationManager {
             animInfo.tileInfos.push(new TileInfo(undefined,
               size,
               this.imageSources.indexOf(imgSource),
-              2).frame(frame % cols).offset(vec2(0, Math.floor(frame / cols) * (size.y + 2))));
+              2).frame(frame % cols).offset(vec2(0, Math.floor(frame / cols) * (size.y + 4))));
           }
         });
       }

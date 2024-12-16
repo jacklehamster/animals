@@ -23,6 +23,7 @@ export const COW_MENU: Menu = {
       },
       disabled: {
         nonProximity: ["house", "Must be\nnext to a house"],
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."],
       },
       actions: [
         {

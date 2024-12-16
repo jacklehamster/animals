@@ -29,6 +29,10 @@ export const CABANA_DEFINITION: Elem = {
     {
       unit: {
         definition: "dog",
+        turn: {
+          moves: 0,
+          attacks: 0,
+        }
       }
     },
   ],

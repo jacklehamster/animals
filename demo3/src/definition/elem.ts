@@ -1,3 +1,5 @@
+import type { AI } from "./ai";
+import type { Attack } from "./attack";
 import type { Condition } from "./condition";
 import type { Resources } from "./resources";
 import type { Reward } from "./reward";
@@ -46,6 +48,7 @@ export interface Elem {
     behind?: boolean;
     color?: string;
     size?: number;
+    moving?: boolean;
   };
   branchOut?: {
     count: [number, number];
@@ -109,4 +112,7 @@ export interface Elem {
   endlessMove?: boolean;
   selfSelect?: boolean;
   savage?: boolean;
+  ai?: AI;
+  attack?: Attack;
+  defenseBonus?: number;
 }

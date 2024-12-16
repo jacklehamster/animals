@@ -4,6 +4,7 @@ export interface Condition {
   occupied?: [string, string];
   proximity?: [string, string];
   nonProximity?: [string, string];
+  foes?: [boolean, string];
   harvesting?: boolean;
   notHarvesting?: boolean;
   cannotAct?: [boolean, string];

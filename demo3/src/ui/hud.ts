@@ -1,9 +1,9 @@
-import { GameObject } from "./game-object";
-import type { Scene } from "./definition/scene";
-import type { Manager } from "./manager";
-import type { Resources } from "./definition/resources";
-import type { Elem } from "./definition/elem";
-import { DEBUG } from "./content/constant";
+import { GameObject } from "../core/game-object";
+import type { Scene } from "../definition/scene";
+import type { Manager } from "../core/manager";
+import type { Resources } from "../definition/resources";
+import type { Elem } from "../definition/elem";
+import { DEBUG } from "../content/constant";
 
 const SPRITESHEET_COLS = 30;
 
@@ -16,13 +16,11 @@ export class Hud {
   blocker: HTMLDivElement = document.createElement("div");
   dialog: HTMLDivElement = document.createElement("div");
   readonly itemsToDestroy = new Set<() => void>();
-  readonly scene: Scene;
   nextButton: HTMLButtonElement = document.createElement("button");
   endButton: HTMLButtonElement = document.createElement("button");
   updated = false;
 
   constructor(readonly manager: Manager) {
-    this.scene = manager.scene;
   }
 
   initialize() {
@@ -99,6 +97,7 @@ export class Hud {
     this.ui.appendChild(this.dialog);
 
     this.setupShortcutKeys();
+    this.initializeErrorBanner();
   }
 
   setupShortcutKeys() {
@@ -109,6 +108,9 @@ export class Hud {
       if (e.code === "KeyN") {
         this.nextButton.click();
       }
+      if (e.code === "Escape") {
+        this.manager.setSelection(undefined);
+      }
     });
   }
 
@@ -116,7 +118,7 @@ export class Hud {
     if (this.updated) {
       return;
     }
-    this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.scene.turn?.turn ?? 1}`;
+    this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
     this.refreshResources();
     this.refreshTax();
     this.refreshButtons();
@@ -125,21 +127,19 @@ export class Hud {
   }
 
   refreshButtons() {
-    const player = this.scene.turn?.player ?? 1;
+    const player = this.manager.getPlayer();
     this.nextButton.style.display = this.manager.getUnits(player).length > 1 ? "block" : "none";
   }
 
   refreshTax() {
     //  display resources (wheat, wood, brain)
-    const player = this.scene.turn?.player ?? 1;
-    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
-      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
-      .sort((a, b) => a.localeCompare(b));
+    const player = this.manager.getPlayer();
+    const RESOURCES: (keyof Resources)[] = this.manager.getAllGlobalResources();
     const revenuePerResource = this.manager.calculateResourceRevenue(player);
     const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
 
     RESOURCES.forEach((resource, index) => {
-      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
       if (index === 0) {
         taxValue = 100 - taxValue;
       }
@@ -159,11 +159,11 @@ export class Hud {
       taxKnob.min = "0";
       taxKnob.max = "100";
       taxKnob.step = "5";
-      taxKnob.value = `${this.scene.players[player - 1].tax ?? 0}`;
+      taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
       taxKnob.style.width = "60px";
       taxKnob.style.marginTop = "20px";
       taxKnob.addEventListener("input", e => {
-        this.scene.players[player - 1].tax = parseInt(taxKnob.value);
+        this.manager.updateTaxValue(player, parseInt(taxKnob.value));
         this.refreshTax();
       });
     }
@@ -172,15 +172,13 @@ export class Hud {
 
   refreshResources() {
     //  display resources (wheat, wood, brain)
-    const player = this.scene.turn?.player ?? 1;
-    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
-      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
-      .sort((a, b) => a.localeCompare(b));
+    const RESOURCES: (keyof Resources)[] = this.manager.getAllGlobalResources();
     RESOURCES.forEach((resource, index) => {
-      if (!this.scene.resources[resource]) {
+      const resourceData = this.manager.getResourceType(resource);
+      if (!resourceData) {
         return;
       }
-      const { imageSource, spriteSize, frames, padding } = this.scene.resources[resource].icon;
+      const { imageSource, spriteSize, frames, padding } = resourceData.icon;
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 0) * 2);
       const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 0) * 2);
       let icon = document.getElementById(resource);
@@ -206,12 +204,12 @@ export class Hud {
         icon.textContent = "0";
         this.resourceOverlay.appendChild(icon);
       }
-      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
       if (index === 0) {
         taxValue = 100 - taxValue;
       }
 
-      const newText = `${this.scene.players[player - 1].resources[resource] ?? 0}`;
+      const newText = `${this.manager.getPlayerResource(resource, this.manager.getPlayer())}`;
       if (icon.textContent !== newText) {
         icon.textContent = newText;
         icon.style.backgroundColor = "rgba(255, 50, 255, 0.5)";
@@ -228,9 +226,9 @@ export class Hud {
       taxText.style.fontSize = "8pt";
     });
 
-    const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const revenuePerResource = this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
-    const hasResource = RESOURCES.some(resource => (this.scene.players[player - 1].resources[resource] ?? 0) > 0);
+    const hasResource = RESOURCES.some(resource => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
     this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
 
@@ -295,8 +293,7 @@ export class Hud {
   }
 
   showSelected(obj?: GameObject) {
-    const menu = this.scene.menu?.find((m) => m.name === obj?.elem?.name);
-
+    const menu = this.manager.getMenu(obj?.elem?.name);
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
     this.overlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
@@ -360,8 +357,9 @@ export class Hud {
           wheat.style.justifyContent = "left";
           wheat.style.margin = "3px 10px";
           wheat.style.height = "20px";
-          if (this.scene.resources.wheat) {
-            const { imageSource, spriteSize, frames, padding } = this.scene.resources.wheat.icon;
+          const wheatResourceType = this.manager.getResourceType("wheat");
+          if (wheatResourceType) {
+            const { imageSource, spriteSize, frames, padding } = wheatResourceType.icon;
             const icon = wheat.appendChild(document.createElement("div"));
             icon.style.backgroundImage = `url(${imageSource})`;
             icon.style.width = `${spriteSize[0]}px`;
@@ -390,8 +388,9 @@ export class Hud {
           wood.style.justifyContent = "left";
           wood.style.margin = "3px 10px";
           wood.style.height = "10px";
-          if (this.scene.resources.wood) {
-            const { imageSource, spriteSize, frames, padding } = this.scene.resources.wood.icon;
+          const woodResourceType = this.manager.getResourceType("wood");
+          if (woodResourceType) {
+            const { imageSource, spriteSize, frames, padding } = woodResourceType.icon;
             const icon = wood.appendChild(document.createElement("div"));
             icon.style.backgroundImage = `url(${imageSource})`;
             icon.style.width = `${spriteSize[0]}px`;
@@ -443,7 +442,7 @@ export class Hud {
           const cost = item.resourceCost;
           Object.entries(cost ?? {}).forEach(([key, amount]) => {
             const resource = key as keyof Resources;
-            const resourceData = this.scene.resources[resource];
+            const resourceData = this.manager.getResourceType(resource);
             if (!resourceData) {
               return;
             }
@@ -526,15 +525,11 @@ export class Hud {
                 obj.doom(true);
               }
               if (action.create) {
-                this.manager.defineElem(action.create);
                 const elem: Elem = JSON.parse(JSON.stringify(action.create));
-                if (!elem.gameObject) {
-                  elem.gameObject = {};
-                }
-                elem.gameObject.pos = [obj?.px, obj?.py];
-                elem.owner = obj?.elem?.owner;
-                elem.home = [obj?.px, obj?.py];
-                this.scene.elems.push(elem);
+                this.manager.addSceneElemAt(elem, obj.px, obj.py, {
+                  owner: obj?.elem?.owner,
+                  home: [obj.px, obj.py],
+                });
               }
               if (action.deselect) {
                 this.manager.setSelection(undefined);
@@ -588,5 +583,25 @@ export class Hud {
   closeDialog() {
     this.dialog.style.display = "none";
     this.hideBlocker();
+  }
+
+  initializeErrorBanner() {
+    window.addEventListener("error", (event) => {
+      const errorDiv = document.body.appendChild(document.createElement("div"));
+      errorDiv.style.position = "absolute";
+      errorDiv.style.zIndex = "1000";
+      errorDiv.style.top = "0";
+      errorDiv.style.left = "0";
+      errorDiv.style.width = "100%";
+      errorDiv.style.height = "100px";
+      errorDiv.style.backgroundColor = "rgba(255, 0, 0, 0.5)";
+      errorDiv.style.color = "white";
+      errorDiv.style.textAlign = "center";
+      errorDiv.style.fontSize = "20pt";
+      errorDiv.textContent = event.message;
+      errorDiv.addEventListener("click", () => {
+        errorDiv.remove();
+      });
+    }, { once: true });
   }
 }

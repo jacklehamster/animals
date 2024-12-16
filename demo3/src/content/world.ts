@@ -51,9 +51,16 @@ import { HOBO_DEFINITION } from "./definitions/hobo";
 import { SHEEP } from "./elems/sheep";
 import { CABANA } from "./elems/cabana";
 import { HOBO_ANIMATION, HOBO_JUMP_ANIMATION, HOBO_WAIT_ANIMATION } from "./animations/hobo";
+import { SQUIRREL_ANIMATION, SQUIRREL_ATTACK_ANIMATION, SQUIRREL_JUMP_ANIMATION, SQUIRREL_WAIT_ANIMATION } from "./animations/squirrel";
+import { SQUIRREL_DEFINITION } from "./definitions/squirrel";
 
-export const worldData: Scene = (window as any).worldData = {
+export const worldData: Scene = {
   scale: 80,
+  clearFogOfWar: true,
+  turn: {
+    player: 1,
+    turn: 1,
+  },
   players: [
     {
       tax: 50,
@@ -86,6 +93,7 @@ export const worldData: Scene = (window as any).worldData = {
     RIVER_DEFINITION,
     HOUSE_DEFINITION,
     CABANA_DEFINITION,
+    SQUIRREL_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -95,6 +103,7 @@ export const worldData: Scene = (window as any).worldData = {
     HOVER_ANIMATION,
     INDIC_ANIMATION,
     BLUE_ANIMATION,
+    BLUE_SELECTED_ANIMATION,
     GRASSLAND_ANIMATION,
     PLAIN_ANIMATION,
     GRASS_ANIMATION,
@@ -103,7 +112,6 @@ export const worldData: Scene = (window as any).worldData = {
     MOUNTAIN_ANIMATION,
     CLOUD_ANIMATION,
     SHADOW_ANIMATION,
-    BLUE_SELECTED_ANIMATION,
     LAKE_ANIMATION,
     WAVE_ANIMATION,
     RIVER_ANIMATION,
@@ -125,6 +133,10 @@ export const worldData: Scene = (window as any).worldData = {
     HOBO_ANIMATION,
     HOBO_JUMP_ANIMATION,
     HOBO_WAIT_ANIMATION,
+    SQUIRREL_ANIMATION,
+    SQUIRREL_WAIT_ANIMATION,
+    SQUIRREL_JUMP_ANIMATION,
+    SQUIRREL_ATTACK_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -136,6 +148,7 @@ export const worldData: Scene = (window as any).worldData = {
     TREE,
     MOUNTAIN,
     CABANA,
+    // HOBO,
   ],
   menu: [
     SHEEP_MENU,
@@ -170,3 +183,4 @@ export const worldData: Scene = (window as any).worldData = {
     RABBIT_RESEARCH,
   ],
 };
+(window as any).worldData = worldData;

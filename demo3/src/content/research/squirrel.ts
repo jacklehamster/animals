@@ -2,7 +2,7 @@ import type { Research } from "../../definition/research";
 
 export const SQUIRREL_RESEARCH: Research = {
   name: "squirrel",
-  description: "Squirrels can climb trees.",
+  description: "Squirrels can climb trees and throw nuts.",
   icon: {
     imageSource: "./assets/tiles.png",
     spriteSize: [64, 64] as [number, number],

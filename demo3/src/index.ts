@@ -3,7 +3,7 @@
 
 'use strict';
 
-import { Manager } from "./manager";
+import { Manager } from "./core/manager";
 import { worldData } from "./content/world";
 import { engineInit } from "./lib/littlejs";
 

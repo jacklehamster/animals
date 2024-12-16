@@ -13,7 +13,7 @@ export const HOBO_WAIT_ANIMATION: Anim = {
   name: "hobo_wait",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
-  mul: 20,
+  mul: 10,
   frames: [
     86, 87,
   ],

@@ -1,7 +1,7 @@
 import type { Elem } from "../../definition/elem";
 
-export const SHEEP_DEFINITION: Elem = {
-  name: "sheep",
+export const SQUIRREL_DEFINITION: Elem = {
+  name: "squirrel",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -10,7 +10,7 @@ export const SHEEP_DEFINITION: Elem = {
     speed: 0.08,
   },
   animation: {
-    name: "sheep",
+    name: "squirrel",
   },
   onHover: {
     hideCursor: true,
@@ -19,7 +19,7 @@ export const SHEEP_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "sheep_wait",
+    animation: "squirrel_wait",
     indic: {
       animation: "indic",
     },
@@ -29,21 +29,22 @@ export const SHEEP_DEFINITION: Elem = {
     },
   },
   move: {
-    animation: "sheep_jump",
+    animation: "squirrel_jump",
   },
   shadow: {
     animation: "shadow",
   },
   clearCloud: true,
   dynamic: true,
-  settler: true,
   turn: {
     moves: 1,
     attacks: 1,
   },
   attack: {
-    range: 1,
+    animation: "squirrel_attack",
+    range: 2,
     damage: 2,
     defense: 1,
-  },
+    attackAfterMove: true,
+  }
 };

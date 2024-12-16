@@ -6,4 +6,5 @@ export interface Anim {
   frames?: number[];
   children?: string[];
   airFrames?: number[];
+  once?: boolean;
 }

@@ -1,21 +1,22 @@
-import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "./lib/littlejs";
-import type { Elem } from "./definition/elem";
+import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "../lib/littlejs";
+import type { Elem } from "../definition/elem";
 import type { Manager } from "./manager";
-import type { AnimationInfo } from "./animation/animation-manager";
-import type { Resources } from "./definition/resources";
+import type { AnimationInfo } from "../animation/animation-manager";
+import type { Resources } from "../definition/resources";
 
 export class GameObject extends EngineObject {
   animationInfo?: AnimationInfo;
   hoveredAnimationInfo?: AnimationInfo;
   selectedAnimationInfo?: AnimationInfo;
   moveAnimationInfo?: AnimationInfo;
+  attackAnimationInfo?: AnimationInfo;
   harvestAnimationInfo?: AnimationInfo;
   shadowAnimationInfo?: AnimationInfo;
   frameRate: number = 60;
   mouseFollower?: { offset: Vector2; snap?: number };
   px: number = 0; py: number = 0;
   positionDetached?: boolean;
-  type?: string;
+  // type?: string;
   onHoverHideCursor?: boolean;
   visible: boolean = true;
   elem?: Elem;
@@ -26,12 +27,19 @@ export class GameObject extends EngineObject {
   updated?: boolean = false;
   moveOptions?: Record<string, EngineObject>;
   clearedCloud?: boolean;
-  bornTime: number = Date.now();
+  bornTime: number = Date.now() - Math.random() * 10000;
   moveQueue?: Vector2[];
   resources: EngineObject[] = [];
   floatResources?: number;
   resourceBars: EngineObject[] = [];
   moving?: boolean;
+  talkingTime?: number;
+  attackTarget?: GameObject;
+  attackOrigin?: Vector2;
+  aggressor?: boolean;
+  retaliationDamage?: number;
+  onDone?: (self: GameObject) => void;
+  hasPendingActions?: boolean;
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -57,9 +65,11 @@ export class GameObject extends EngineObject {
     elem = this.elem!;
     const config = elem.gameObject;
     if (config) {
-      this.type = elem.type;
       this.visible = !config.hidden;
-      if (this.type === "cursor") {
+      if (elem.owner === undefined) {
+        elem.owner = 0;
+      }
+      if (elem.type === "cursor") {
         this.manager.cursor = this;
       }
       if (!this.positionDetached) {
@@ -70,10 +80,6 @@ export class GameObject extends EngineObject {
         this.pos.set(px + offset[0], py + offset[1]);
       }
       this.updateSize(1);
-      // this.size.set(
-      //   this.visible ? config.size?.[0] : 0,
-      //   this.visible ? config.size?.[1] : 0,
-      // );
       if (config.rotation) {
         this.angle = config.rotation;
       }
@@ -89,20 +95,17 @@ export class GameObject extends EngineObject {
         }
         this.onHoverHideCursor = elem.onHover.hideCursor;
       }
-      if (elem.selected) {
-        if (elem.selected.animation) {
-          this.selectedAnimationInfo = this.manager.animation.getInfo(elem.selected.animation);
-        }
+      if (elem.selected?.animation) {
+        this.selectedAnimationInfo = this.manager.animation.getInfo(elem.selected.animation);
       }
-      if (elem.move) {
-        if (elem.move.animation) {
-          this.moveAnimationInfo = this.manager.animation.getInfo(elem.move.animation);
-        }
+      if (elem.move?.animation) {
+        this.moveAnimationInfo = this.manager.animation.getInfo(elem.move.animation);
       }
-      if (elem.harvest) {
-        if (elem.harvest.animation) {
-          this.harvestAnimationInfo = this.manager.animation.getInfo(elem.harvest.animation);
-        }
+      if (elem?.attack?.animation) {
+        this.attackAnimationInfo = this.manager.animation.getInfo(elem.attack.animation);
+      }
+      if (elem.harvest?.animation) {
+        this.harvestAnimationInfo = this.manager.animation.getInfo(elem.harvest.animation);
       }
       if (elem.shadow) {
         if (elem.shadow.animation) {
@@ -135,6 +138,8 @@ export class GameObject extends EngineObject {
           const decor = new EngineObject();
           decor.tileInfo = this.getTileInfoAnimate(animInfo);
           this.addChild(decor, vec2(x, y));
+          (decor as any).initialPos = vec2(x, y);
+          (decor as any).bornTime = Date.now() - Math.random() * 100000;
           if (color) {
             decor.color = this.getColor(color);
           }
@@ -244,13 +249,18 @@ export class GameObject extends EngineObject {
     const size = this.elem?.level ? .5 : .3;
     const offset = this.elem?.level ? vec2(0, .25) : vec2(-.5, .2);
     const charSize = this.elem?.level ? .2 : .15;
-    const color = this.elem?.hitpoints
-      ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0)
-        ? new Color(1, 1, 0, 1)
-        : new Color(0, 1, 0, 1))
-      : this.canAffordMoreHarvester()
-        ? new Color(1, .9, 0, 1)
-        : new Color(1, 1, 1, 1);
+    const labelAlpha = this.canAct() ? 1 : .5;
+    const isOwnedByPlayer = this.elem?.owner === this.manager.getPlayer();
+    const color = !this.elem?.owner ?
+      new Color(1, .5, .5, labelAlpha) :
+      !isOwnedByPlayer ? new Color(.5, .5, .5, labelAlpha) :
+        this.elem?.hitpoints
+          ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0)
+            ? new Color(1, 1, 0, labelAlpha)
+            : new Color(0, 1, 0, labelAlpha))
+          : this.canAffordMoreHarvester()
+            ? new Color(1, .9, 0, labelAlpha)
+            : new Color(1, 1, 1, labelAlpha);
     if (!this.labels) {
       this.labels = [];
     }
@@ -372,7 +382,7 @@ export class GameObject extends EngineObject {
   }
 
   private getTag() {
-    return GameObject.getTag(this.type, this.px, this.py);
+    return GameObject.getTag(this.elem?.type, this.px, this.py);
   }
 
   static getTag(type: string | undefined, px: number, py: number) {
@@ -389,6 +399,14 @@ export class GameObject extends EngineObject {
     );
   }
 
+  clearMoves() {
+    if (this.elem?.turn) {
+      this.elem.turn.moves = 0;
+      this.elem.turn.attacks = 0;
+      this.elem.turn.actions = 0;
+    }
+  }
+
   hasMove() {
     return this.elem?.turn?.moves;
   }
@@ -402,13 +420,26 @@ export class GameObject extends EngineObject {
   }
 
   canAttack() {
-    return false;
+    if (!this.elem?.attack) {
+      return false;
+    }
+    if (!this.findNearbyFoe(this.elem.attack.range).size) {
+      return false;
+    }
+    if (!this.elem.turn?.attacks) {
+      return false;
+    }
+    if (!this.elem?.turn.moves && !this.elem.attack.attackAfterMove) {
+      return false;
+    }
+    return true;
   }
 
   spendAttack() {
     const elem = this.elem;
     if (elem && elem.turn?.attacks) {
       elem.turn.attacks--;
+      elem.turn.moves = this.elem?.attack?.moveAfterAttack ? 1 : 0;
     }
   }
 
@@ -426,10 +457,13 @@ export class GameObject extends EngineObject {
 
   doneMoving() {
     this.refreshAlpha();
-    this.manager.checkForAnyMove();
+    this.refreshLabel();
     this.manager.unlockRewards(this);
+    this.manager.checkForAnyMove();
 
-    if (!this.canAct() || this.elem?.harvesting) {
+    if (this.manager.isAiPlayer(this.elem?.owner)) {
+      this.manager.selectNext();
+    } else if (!this.canAct() || this.elem?.harvesting) {
       this.manager.selectNext();
     } else if (this.manager.selected === this) {
       if (this.elem?.settler || this.elem?.worker) {
@@ -469,8 +503,29 @@ export class GameObject extends EngineObject {
       if (elem.worker) {
         elem.turn.actions = 1;
       }
+      if (this.elem?.harvesting) {
+        //  check nearby foes
+        const foes = this.findNearbyFoe();
+        if (foes.size) {
+          this.elem.harvesting = false;
+          this.updated = false;
+        }
+      }
+
       this.refreshAlpha();
+      this.refreshLabel();
     }
+  }
+
+  attackWithRange(px: number, py: number) {
+    console.log("Attack with range", px, py);
+  }
+
+  simpleMoveTo(px: number, py: number) {
+    this.moveQueue = [vec2(px, py)];
+    this.hideResources();
+    this.hideMoveOptions();
+    this.manager.hud.showSelected(undefined);
   }
 
   moveTo(px: number, py: number) {
@@ -495,8 +550,41 @@ export class GameObject extends EngineObject {
     this.manager.hud.showSelected(undefined);
   }
 
+  talkTo(gameObject: GameObject) {
+    if (!this.elem?.gameObject) {
+      return;
+    }
+    const dx = gameObject.px - this.px;
+    if (this.elem.gameObject.lastDx !== Math.sign(dx)) {
+      this.elem.gameObject.lastDx = Math.sign(dx);
+      this.updateSize();
+    }
+    this.talkingTime = Date.now() + Math.random() * 3000;
+  }
+
+  moveUnitTo(px: number, py: number) {
+    this.talkingTime = undefined;
+    // check if there's a unit at the target position
+    const target = this.manager.unitAt(px, py);
+    if (target) {
+      if (this.elem?.owner === target.elem?.owner) {
+        this.talkTo(target);
+        target.talkTo(this);
+        return;
+      }
+      if (this.elem?.owner !== target.elem?.owner && this.canAttack()) {
+        this.attack(target, true);
+        console.log("Attack!");
+        return;
+      }
+    } else {
+      this.setPosition(px, py);
+    }
+  }
+
   setPosition(px: number, py: number, force?: boolean) {
     if (this.px === px && this.py === py && !force) return;
+
     if (this.manager.grid[this.getTag()] === this) {
       delete this.manager.grid[this.getTag()];
     }
@@ -513,10 +601,10 @@ export class GameObject extends EngineObject {
       this.manager.grid[this.getTag()] = this;
     }
 
-    if (this.type === "cursor") {
+    if (this.elem?.type === "cursor") {
       this.manager.onCursorMove(px, py);
     }
-    if (this.type === "cloud") {
+    if (this.elem?.type === "cloud") {
       this.manager.revealed.delete(`${px}_${py}`);
     }
     this.clearedCloud = false;
@@ -548,9 +636,6 @@ export class GameObject extends EngineObject {
     if (elem.type !== "unit") {
       return false;
     }
-    if (this.manager.unitAt(px, py)) {
-      return false;
-    }
     if (this.manager.grid[`decor_${px}_${py}`]) {
       return false;
     }
@@ -565,6 +650,17 @@ export class GameObject extends EngineObject {
         return false;
       }
     }
+    const targetUnit = this.manager.unitAt(px, py);
+    if (!targetUnit) {
+      return this.hasMove();
+    }
+
+    if (targetUnit?.elem?.owner === elem.owner) {
+      return false;
+    } else if (!this.canAttack()) {
+      return false;
+    }
+
     return true;
   }
 
@@ -639,6 +735,14 @@ export class GameObject extends EngineObject {
         const offset = this.elem?.gameObject?.offset ?? [0, 0];
         this.addChild(this.selectIndic, vec2(-offset[0], -offset[1]));
         this.selectIndic.pos.set(this.px, this.py);
+        if (!this.elem?.owner) {
+          this.selectIndic.color = new Color(1, 0, 0, 1);
+        }
+
+        if (this.manager.isAiPlayer(this.elem?.owner)) {
+          this.manager.thinker?.think(this);
+          return;
+        }
 
         //  show move options
         this.showMoveOptions();
@@ -671,6 +775,8 @@ export class GameObject extends EngineObject {
   showMoveOptions() {
     if (this.hasMove() && !this.manager.checkCondition(this.elem?.move?.disabled, this)) {
       this.addMoveOptions(this.elem?.move?.distance ?? 1, vec2(this.px, this.py));
+    } else if (this.hasAttack() && this.canAttack()) {
+      this.addMoveOptions(this.elem?.attack?.range ?? 1, vec2(this.px, this.py));
     }
   }
 
@@ -734,8 +840,14 @@ export class GameObject extends EngineObject {
       (obj as any).movePoints = movePoints;
       (obj as any).distanceTravelled = newDistanceTravelled;
       (obj as any).canLand = this.canLandOn(from.x + dx, from.y + dy);
+      (obj as any).px = from.x + dx;
+      (obj as any).py = from.y + dy;
       if (!(obj as any).canLand) {
         obj.color = new Color(0, 0, 0, 0);
+      }
+      const unit = this.manager.unitAt(from.x + dx, from.y + dy);
+      if (unit) {
+        obj.color = new Color(1, 0, 0, .5);
       }
       const offset = this.elem?.gameObject?.offset ?? [0, 0];
       // obj.pos.set(this.px, this.py);
@@ -751,7 +863,12 @@ export class GameObject extends EngineObject {
   }
 
   getFrame(animInfo?: AnimationInfo) {
-    return !animInfo ? 0 : Math.floor(Date.now() / (1000 / this.frameRate)) % animInfo.tileInfos.length;
+    if (!animInfo) {
+      return 0;
+    }
+    const timeOffset = this.talkingTime ?? this.bornTime;
+    const globalFrame = Math.floor((Date.now() + timeOffset) / (1000 / this.frameRate));
+    return animInfo?.animation?.once ? Math.min(globalFrame, animInfo.tileInfos.length - 1) : globalFrame % (animInfo.tileInfos.length);
   }
 
   getTileInfoAnimate(animInfo: AnimationInfo) {
@@ -883,7 +1000,7 @@ export class GameObject extends EngineObject {
 
   update() {
     super.update();
-    if (this.updated && !this.elem?.dynamic && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
+    if (this.updated && !this.elem?.dynamic && !this.elem?.spread?.moving && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
     // if (this.manager.inUI) {
@@ -900,6 +1017,11 @@ export class GameObject extends EngineObject {
     if (this.selectIndic && this.elem?.selected?.indic) {
       this.selectIndic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.indic.animation));
     }
+    Object.values(this.moveOptions ?? {}).forEach(moveOption => {
+      if ((moveOption as any).animation) {
+        moveOption.tileInfo = this.getTileInfoAnimate((moveOption as any).animation);
+      }
+    });
     if (this.mouseFollower) {
       let px = mousePos.x + this.mouseFollower.offset.x;
       let py = mousePos.y + this.mouseFollower.offset.y;
@@ -912,46 +1034,63 @@ export class GameObject extends EngineObject {
     const offset = this.elem?.gameObject?.offset ?? [0, 0];
     const dx = (this.px + offset[0]) - this.pos.x;
     const dy = (this.py + offset[1]) - this.pos.y;
-    const animInfo = this.harvestAnimationInfo && this.elem?.harvesting
-      ? this.harvestAnimationInfo
-      : this.moveAnimationInfo && (dx || dy)
-        ? this.moveAnimationInfo
-        : this.selectedAnimationInfo && (this.manager.selected === this)
-          ? this.selectedAnimationInfo
-          : this.hoveredAnimationInfo && this.manager.hovering(this)
-            ? this.hoveredAnimationInfo : this.animationInfo;
+    const talking = this.talkingTime && Date.now() < this.talkingTime;
+    const animInfo = this.attackAnimationInfo && this.attackTarget
+      ? this.attackAnimationInfo
+      : this.harvestAnimationInfo && this.elem?.harvesting
+        ? this.harvestAnimationInfo
+        : this.moveAnimationInfo && (dx || dy)
+          ? this.moveAnimationInfo
+          : this.selectedAnimationInfo && (this.manager.selected === this || talking)
+            ? this.selectedAnimationInfo
+            : this.hoveredAnimationInfo && this.manager.hovering(this)
+              ? this.hoveredAnimationInfo : this.animationInfo;
+
+    if (animInfo === this.animationInfo) {
+      if (Math.random() < .005) {
+        this.talkingTime = Date.now() + Math.random() * 3000;
+      }
+    }
+
     if (animInfo) {
       this.tileInfo = this.getTileInfoAnimate(animInfo);
     }
 
     if (dx || dy) {
-      const doMove = !animInfo?.airFramesSet || animInfo.airFramesSet?.has(this.getFrame(animInfo));
+      const doMove = this.attackTarget || !animInfo?.airFramesSet || animInfo.airFramesSet?.has(this.getFrame(animInfo));
       if (doMove) {
+        const immediate = !this.manager.isRevealed(this.px, this.py) && !this.manager.isRevealed(this.px + dx, this.py + dy);
         this.moving = true;
         if (dx * dx + dy * dy > .01) {
           const dist = this.elem?.gameObject?.speed ? Math.sqrt(dx * dx + dy * dy) : 1;
-          const speed = Math.min(dist, this.elem?.gameObject?.speed ?? .5);
+          const speed = immediate ? dist : Math.min(dist, this.attackTarget ? .2 : this.elem?.gameObject?.speed ?? .5);
           this.pos.set(this.pos.x + dx / dist * speed, this.pos.y + dy / dist * speed);
         } else {
           this.pos.set(this.px + offset[0], this.py + offset[1]);
         }
       }
     } else {
-      if (this.moveQueue?.length) {
+      if (this.attackTarget) {
+        this.finishAttack(this.attackTarget);
+      } else if (this.moveQueue?.length) {
         const dest = this.moveQueue.pop()!;
-        this.setPosition(dest.x, dest.y);
+        this.moveUnitTo(dest.x, dest.y);
         if (!this.moveQueue.length) {
           delete this.moveQueue;
         }
       } else if (this.moving) {
         this.moving = false;
-        this.spendMove();
+        if (this.onDone) {
+          const onDone = this.onDone;
+          this.onDone = undefined;
+          onDone(this);
+        } else if (!this.hasPendingActions) {
+          this.spendMove();
+        }
       }
     }
 
-    if (this.type === "cursor") {
-      if (mouseWasPressed(0)) {
-      }
+    if (this.elem?.type === "cursor") {
       if (mouseWasReleased(0)) {
         this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
         this.manager.mousePosDown = undefined;
@@ -960,7 +1099,7 @@ export class GameObject extends EngineObject {
 
 
     const coLayers = this.manager.scene?.colayers;
-    const renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.type ?? ""] ?? 0) * .001;
+    const renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * .001;
     if (this.renderOrder !== renderOrder || !this.updated) {
       this.renderOrder = renderOrder;
       this.decors.forEach((decor) => {
@@ -980,6 +1119,16 @@ export class GameObject extends EngineObject {
       this.resources.forEach((resource) => resource.renderOrder = 100000 + (resource.tileInfo ? .1 : -.1));
       this.resourceBars.forEach((resource) => resource.renderOrder = 100000 + (resource.tileInfo ? .1 : -.1));
     }
+
+    if (this.elem?.spread?.moving) {
+      this.decors.forEach((decor: any) => {
+        const time = Date.now() - decor.bornTime;
+        const dx = Math.sin(time / 10000) * .5;
+        const dy = Math.cos(time / 10000) * .5;
+        decor.localPos.set(decor.initialPos.x + dx, decor.initialPos.y + dy);
+      });
+    }
+
     if (this.elem?.clearCloud && !this.clearedCloud) {
       const SIZE = 1, LIMIT = 2;
       for (let y = -SIZE; y <= SIZE; y++) {
@@ -1084,10 +1233,16 @@ export class GameObject extends EngineObject {
     return set;
   }
 
-  findNearby(cellCondition: (cell: GameObject) => boolean) {
+  findNearbyFoe(distance: number = 1) {
+    return this.findNearby((cell) => {
+      return cell.elem?.type === "unit" && cell.elem?.owner !== this.elem?.owner;
+    }, distance);
+  }
+
+  findNearby(cellCondition: (cell: GameObject) => boolean, distance: number = 1) {
     const set: Set<GameObject> = new Set();
-    for (let y = -1; y <= 1; y++) {
-      for (let x = -1; x <= 1; x++) {
+    for (let y = -distance; y <= distance; y++) {
+      for (let x = -distance; x <= distance; x++) {
         if (x === 0 && y === 0) {
           continue;
         }
@@ -1114,6 +1269,14 @@ export class GameObject extends EngineObject {
     });
   }
 
+  turnAround() {
+    if (!this.elem?.gameObject) {
+      return;
+    }
+    this.elem.gameObject.lastDx = -(this.elem.gameObject.lastDx ?? 1);
+    this.updateSize();
+  }
+
   spend(resources?: Resources) {
     if (!resources) {
       return;
@@ -1125,5 +1288,104 @@ export class GameObject extends EngineObject {
         resourcesAccumulated[k] = Math.max(0, resourcesAccumulated[k] - value);
       }
     });
+  }
+
+  attack(target: GameObject, aggressor: boolean, retaliationDamage?: number) {
+    if (!target || target.elem?.owner === this.elem?.owner) {
+      return;
+    }
+    this.attackTarget = target;
+    this.attackOrigin = vec2(this.px, this.py);
+    this.px = target.px;
+    this.py = target.py;
+    this.aggressor = aggressor;
+    this.retaliationDamage = retaliationDamage;
+  }
+
+  finishAttack(target: GameObject) {
+    const targetX = target.px, targetY = target.py;
+    const { retaliation, death } = this.aggressor
+      ? target.takeDamageAndCheckDeath(this.elem?.attack?.damage ?? 1, this)
+      : target.takeDirectDamageAndCheckDeath(this.retaliationDamage);
+    this.px = this.attackOrigin?.x ?? this.px;
+    this.py = this.attackOrigin?.y ?? this.py;
+    this.attackTarget = undefined;
+    this.attackOrigin = undefined;
+    if (this.aggressor) {
+      this.spendAttack();
+      if (death) {
+        this.setPosition(targetX, targetY);
+        this.doneMoving();
+      } else {
+        this.hasPendingActions = true;
+        this.onDone = (self: GameObject) => {
+          target.attack(self, false, retaliation);
+        };
+      }
+      this.aggressor = false;
+    } else if (!death) {
+      target.hasPendingActions = false;
+      target.doneMoving();
+    }
+  }
+
+  getDefenseBonus() {
+    let bonus = 1;
+    this.manager.iterateGridCell(this.px, this.py, (cell) => {
+      if (cell.elem?.defenseBonus) {
+        bonus *= cell.elem.defenseBonus;
+      }
+    });
+    return bonus;
+  }
+
+  healthPercent() {
+    return this.elem?.hitpoints ? this.elem.hitpoints / (this.elem.maxHitPoints ?? 1) : 1;
+  }
+
+  getDefense() {
+    return this.elem?.attack?.defense ?? 1;
+  }
+
+  takeDirectDamageAndCheckDeath(damage: number = 0) {
+    if (this.elem) {
+      this.elem.hitpoints = (this.elem.hitpoints ?? 1) - damage;
+      if (this.elem.hitpoints > 0) {
+        this.refreshLabel();
+      } else {
+        this.doom(true);
+        return { retaliation: 0, death: true };
+      }
+    }
+    return { retaliation: 0, death: false };
+  }
+
+  takeDamageAndCheckDeath(attack: number, attacker: GameObject) {
+    // attackForce = attacker.attack * (attacker.health / attacker.maxHealth)
+    // defenseForce = defender.defense * (defender.health / defender.maxHealth) * defenseBonus 
+    // totalDamage = attackForce + defenseForce 
+    // attackResult = roundUp((attackForce / totalDamage) * attacker.attack * 4.5) 
+    // defenseResult = roundDown((defenseForce / totalDamage) * defender.defense * 4.5)    
+
+    if (this.elem) {
+      const attackForce = attack * attacker.healthPercent();
+      const defenseForce = this.getDefense() * this.healthPercent() * this.getDefenseBonus();
+      const totalDamage = attackForce + defenseForce;
+      const attackResult = Math.ceil((attackForce / totalDamage) * attack * 4.5);
+      const defenseResult = Math.ceil((defenseForce / totalDamage) * this.getDefense() * 4.5);
+
+      console.log(attackForce, defenseForce, totalDamage);
+
+      console.log(attackResult, defenseResult);
+      this.elem.hitpoints = (this.elem.hitpoints ?? 1) - attackResult;
+      if (this.elem.hitpoints > 0) {
+        this.refreshLabel();
+        return { retaliation: defenseResult, death: false };
+      } else {
+        this.doom(true);
+        return { retaliation: 0, death: true };
+      }
+    }
+    return { retaliation: 0, death: false };
   }
 }

@@ -1,12 +1,14 @@
-import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2, LittleJS } from './lib/littlejs';
+import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2, LittleJS } from '../lib/littlejs';
 
-import { AnimationManager } from "./animation/animation-manager";
-import type { Elem } from "./definition/elem";
-import type { Scene } from "./definition/scene";
+import { AnimationManager } from "../animation/animation-manager";
+import type { Elem } from "../definition/elem";
+import type { Scene } from "../definition/scene";
 import { GameObject } from "./game-object";
-import { Hud } from "./hud";
-import type { Condition } from "./definition/condition";
-import type { Resources } from "./definition/resources";
+import { Hud } from "../ui/hud";
+import type { Condition } from "../definition/condition";
+import type { Resources } from "../definition/resources";
+import type { ResourceType } from '../definition/resource-type';
+import { Thinker } from '../ai/thinker';
 
 
 interface Entry {
@@ -22,6 +24,7 @@ export class Manager {
   cursor?: GameObject;
   selected?: GameObject;
   private hovered?: GameObject;
+  private onMoveOption = false;
   mousePosDown?: Vector2;
   readonly camShift = vec2(0, 0);
   shifting = 0;
@@ -32,6 +35,8 @@ export class Manager {
   resourceIcons: EngineObject[] = [];
   autoEndTurn = true;
   showLabels = true;
+  thinker = new Thinker(this);
+  lastUnit: GameObject | undefined;
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -71,7 +76,6 @@ export class Manager {
   }
 
   refresh() {
-    this.initializeTurn();
     this.scene.elems.forEach((elem) => {
       this.sanitizeElem(elem);
       this.refreshElem(elem);
@@ -84,13 +88,13 @@ export class Manager {
     this.hud.refresh();
   }
 
-  initializeTurn() {
-    if (!this.scene.turn) {
-      this.scene.turn = {
-        player: 1,
-        turn: 1,
-      };
-    }
+  clearFogOfWar() {
+    Object.keys(this.grid).forEach((tag) => {
+      const gameObject = this.grid[tag];
+      if (gameObject.elem?.type === "cloud") {
+        this.clearCloud(gameObject.px, gameObject.py);
+      }
+    });
   }
 
   iterateGridCell(x: number, y: number, callback: (gameObject: GameObject) => void) {
@@ -126,6 +130,10 @@ export class Manager {
   }
 
   fixWorld() {
+    if (this.scene.clearFogOfWar) {
+      this.clearFogOfWar();
+    }
+
     Object.entries(this.grid).forEach(([tag, gameObject]) => {
       if (gameObject.elem?.condition) {
         let conditionMet = false;
@@ -259,7 +267,7 @@ export class Manager {
                 continue;
               }
 
-              if (elem.type === "cloud" && this.revealed.has(`${xx}_${yy}`)) {
+              if (elem.type === "cloud" && this.isRevealed(xx, yy)) {
                 continue;
               }
               const gameObject = new GameObject(this, vec2(xx, yy));
@@ -291,7 +299,7 @@ export class Manager {
     let count = 0;
     for (let xx = -1; xx <= 1; xx++) {
       for (let yy = -1; yy <= 1; yy++) {
-        if (this.grid[`tile_${x + xx}_${y + yy}`] && !this.revealed.has(`${x + xx}_${y + yy}`)) {
+        if (this.grid[`tile_${x + xx}_${y + yy}`] && !this.isRevealed(x + xx, y + yy)) {
           count++;
         }
       }
@@ -320,11 +328,15 @@ export class Manager {
       ? resources : undefined;
   }
 
+  isRevealed(x: number, y: number) {
+    return this.revealed.has(`${x}_${y}`);
+  }
+
   clearCloud(x: number, y: number) {
-    const tag = `${x}_${y}`;
-    if (this.revealed.has(tag)) {
+    if (this.isRevealed(x, y)) {
       return;
     }
+    const tag = `${x}_${y}`;
     this.revealed.add(tag);
     const gameObject = this.grid[`cloud_${x}_${y}`];
     if (gameObject) {
@@ -341,13 +353,43 @@ export class Manager {
   }
 
   onCursorMove(x: number, y: number) {
+    this.onMoveOption = false;
+    if (!this.selected?.moveOptions) {
+      return;
+    }
+    const selectedAnimation = this.selected.elem?.selected?.moveIndic?.selectedAnimation
+    const moveOptionAnimation = this.selected.elem?.selected?.moveIndic?.animation;
+    if (!selectedAnimation || !moveOptionAnimation) {
+      return;
+    }
+
+    const moveOptions = Object.values(this.selected.moveOptions);
+    if (moveOptions.length) {
+      let hoveringMoveOption = false;
+      moveOptions.forEach((option: any) => {
+        if (option.px === x && option.py === y) {
+          hoveringMoveOption = true;
+        }
+        option.animation = this.animation.getInfo(
+          option.px === x && option.py === y ? selectedAnimation : moveOptionAnimation);
+      });
+      if (hoveringMoveOption) {
+        this.onMoveOption = true;
+      }
+    }
+    this.refreshCursor();
   }
 
   onTap(x: number, y: number, mouseX: number, mouseY: number) {
+    this.onMoveOption = false;
+    this.refreshCursor();
     if (Date.now() - this.doneShifting < 100) {
       return;
     }
     if (this.inUI) {
+      return;
+    }
+    if (this.getPlayer() === 0) {
       return;
     }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOptionToLandOn(x, y)) {
@@ -375,6 +417,9 @@ export class Manager {
     if (!this.shifting && this.selected) {
       this.makeWithinView(this.selected);
     }
+    if (this.selected) {
+      this.lastUnit = this.selected;
+    }
   }
 
   makeWithinView(gameObject: GameObject) {
@@ -398,7 +443,7 @@ export class Manager {
   }
 
   refreshCursor() {
-    if (this.hovered || this.inUI) {
+    if (this.hovered || this.inUI || this.onMoveOption) {
       this.cursor?.hide();
     } else {
       this.cursor?.show();
@@ -439,11 +484,19 @@ export class Manager {
         if (check && !proxyCheck) {
           const [item, message] = check;
           if (item) {
-            const nearby = obj.findNearby(obj => obj.elem?.name === item);
-            if (condition.proximity && nearby.size) {
+            const nearby = obj.findNearby(obj => {
+              if (obj.elem?.name === item) {
+                return true;
+              }
+              if (item === "foe" && obj.elem?.type === "unit" && obj.elem?.owner !== obj.elem?.owner) {
+                return true;
+              }
+              return false;
+            });
+            if (condition.proximity === check && nearby.size) {
               proxyCheck = message ?? "true";
             }
-            if (condition.nonProximity && !nearby.size) {
+            if (condition.nonProximity === check && !nearby.size) {
               proxyCheck = message ?? "true";
             }
           }
@@ -471,29 +524,38 @@ export class Manager {
     // Increase turn count
     if (this.scene.turn) {
       //  Change player
-      this.scene.turn.player++;
-      if (this.scene.turn.player > this.scene.players.length) {
-        this.scene.turn.player = 1;
-        this.scene.turn.turn++;
-      }
-
       if (this.scene.turn.player < this.scene.players.length) {
         this.scene.turn.player++;
       } else {
-        this.scene.turn.player = 1;
+        this.scene.turn.player = 0;
         this.scene.turn.turn++;
       }
-      this.collectResources(this.scene.turn.player);
-      this.giveUnitsTurns();
-      this.selectNext();
+      if (this.scene.turn && this.getPlayer()) {
+        this.collectResources(this.getPlayer());
+      }
+      this.refreshUnitsLabels();
+      if (this.getUnits(this.getPlayer()).length) {
+        this.giveUnitsTurns();
+        this.selectNext();
+      } else if (this.isAiPlayer(this.getPlayer())) {
+        this.gotoNextTurn();
+      }
     }
 
     this.hud.updated = false;
   }
 
+  refreshUnitsLabels() {
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.type === "unit") {
+        gameObject.refreshLabel();
+      }
+    });
+  }
+
   giveUnitsTurns() {
     this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player) {
+      if ((gameObject.elem?.owner ?? 0) === this.getPlayer()) {
         gameObject.giveTurn();
       }
     });
@@ -551,8 +613,6 @@ export class Manager {
       const r = resource as keyof Resources;
       playerResources[r] = (playerResources[r] ?? 0) + value;
     });
-
-    this.hud.updated = true;
   }
 
   checkForAnyMove() {
@@ -582,11 +642,15 @@ export class Manager {
     this.hud.updated = false;
   }
 
+  getAllGlobalResources() {
+    return this.getAllResources()
+      .filter(resource => !this.getResourceType(resource)?.hidden && this.getResourceType(resource)?.global)
+      .sort((a, b) => a.localeCompare(b))
+  }
+
   calculateResourceRevenue(player: number) {
     const revenue = this.calculateRevenue(player);
-    const RESOURCES: (keyof Resources)[] = (Object.keys(this.scene.resources) as (keyof Resources)[])
-      .filter(resource => !this.scene.resources[resource]?.hidden && this.scene.resources[resource]?.global)
-      .sort((a, b) => a.localeCompare(b));
+    const RESOURCES = this.getAllGlobalResources();
     const resources: Record<keyof Resources, number> = {
       wheat: 0,
       wood: 0,
@@ -595,7 +659,7 @@ export class Manager {
       trade: 0
     };
     RESOURCES.forEach((resource, index) => {
-      let taxValue = this.scene.players[player - 1].tax ?? 0;
+      let taxValue = this.getTaxValue(player);
       let revenueValue = Math.round(revenue * taxValue / 100);
       if (index === 0) {
         taxValue = 100 - taxValue;
@@ -606,15 +670,45 @@ export class Manager {
     return resources;
   }
 
-  getUnits(player: number) {
+  getUnits(player?: number) {
     const units: GameObject[] = [];
-    let count = 0;
     this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === player && gameObject.elem?.type === "unit") {
+      const elem = gameObject.elem;
+      if (elem?.owner === player && elem?.type === "unit") {
         units.push(gameObject);
       }
     });
     return units;
+  }
+
+  private getAllResources() {
+    return Object.keys(this.scene.resources) as (keyof Resources)[];
+  }
+
+  getTaxValue(player: number | undefined) {
+    return this.scene.players[(player ?? 0) - 1]?.tax ?? 0;
+  }
+
+  updateTaxValue(player: number, value: number) {
+    if (this.scene.players[player - 1]) {
+      this.scene.players[player - 1].tax = value;
+    }
+  }
+
+  getPlayerResource(resource: keyof Resources, player: number) {
+    return this.scene.players[player - 1]?.resources[resource] ?? 0;
+  }
+
+  getPlayer() {
+    return this.scene.turn?.player ?? 0;
+  }
+
+  getTurn() {
+    return this.scene.turn?.turn ?? 0;
+  }
+
+  getResourceType(resource: keyof Resources): ResourceType | undefined {
+    return this.scene.resources[resource];
   }
 
   getUnitRotation() {
@@ -623,7 +717,7 @@ export class Manager {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (gameObject.elem?.owner === this.scene.turn?.player
+      } else if (gameObject.elem?.owner === this.getPlayer()
         && gameObject.canAct()) {
         if (gameObject.elem?.type === "unit"
           && !gameObject.elem?.harvesting) {
@@ -637,7 +731,19 @@ export class Manager {
         cellsRotation.push(gameObject);
       }
     });
-    return cellsRotation
+
+    if (this.getPlayer() === 0) {
+      cellsRotation.sort((a, b) => this.compareAI(a, b));
+    }
+
+    return cellsRotation;
+  }
+
+  compareAI(a: GameObject, b: GameObject) {
+    const px = cameraPos.x, py = cameraPos.y;
+    const distA = Math.abs(a.px - px) + Math.abs(a.py - py);
+    const distB = Math.abs(b.px - px) + Math.abs(b.py - py);
+    return distA - distB;
   }
 
   selectNext() {
@@ -659,7 +765,17 @@ export class Manager {
   updateResource(resource: keyof Resources, value: number | ((value: number) => number), player: number) {
     const val = typeof value === "function" ? value(this.scene.players[player - 1].resources[resource] ?? 0) : value;
     this.scene.players[player - 1].resources[resource] = val;
-    this.hud.updated = true;
+  }
+
+  isEmptySpot(x: number, y: number) {
+    const unitTag = GameObject.getTag("unit", x, y);
+    const houseTag = GameObject.getTag("house", x, y);
+    const tileOverlayTag = GameObject.getTag("tile_overlay", x, y);
+
+    if (!this.grid[unitTag] && !this.grid[houseTag] && this.grid[tileOverlayTag]?.elem?.name !== "lake") {
+      return true;
+    }
+    return false;
   }
 
   findEmptySpotsAround(x: number, y: number) {
@@ -667,11 +783,7 @@ export class Manager {
     for (let xx = -1; xx <= 1; xx++) {
       for (let yy = -1; yy <= 1; yy++) {
         if (xx || yy) {
-          const unitTag = GameObject.getTag("unit", x + xx, y + yy);
-          const houseTag = GameObject.getTag("house", x + xx, y + yy);
-          const tileOverlayTag = GameObject.getTag("tile_overlay", x + xx, y + yy);
-
-          if (!this.grid[unitTag] && !this.grid[houseTag] && this.grid[tileOverlayTag]?.elem?.name !== "lake") {
+          if (this.isEmptySpot(x + xx, y + yy)) {
             emptySpots.push(vec2(x + xx, y + yy));
           }
         }
@@ -739,7 +851,17 @@ export class Manager {
     newElem.gameObject.pos = [x, y];
 
     Object.assign(newElem, config);
+
+    this.ensureElem(newElem);
     this.scene.elems.push(newElem);
     return newElem;
+  }
+
+  getMenu(name: string | undefined) {
+    return this.scene.menu?.find((m) => m.name === name);
+  }
+
+  isAiPlayer(player: number | undefined) {
+    return !player || this.scene.players[player - 1]?.ai;
   }
 }
