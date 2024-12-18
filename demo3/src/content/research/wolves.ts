@@ -10,4 +10,5 @@ export const WOLVES_RESEARCH: Research = {
     frames: [46],
   },
   dependency: ["canine"],
+  cost: 30,
 };

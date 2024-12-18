@@ -9,5 +9,6 @@ export const OWL_RESEARCH: Research = {
     padding: [2, 2],
     frames: [51],
   },
-  dependency: ["tortoise", "squirrel"],
+  dependency: ["squirrel"],
+  cost: 40,
 };

@@ -3,6 +3,7 @@ import type { Attack } from "./attack";
 import type { Condition } from "./condition";
 import type { Resources } from "./resources";
 import type { Reward } from "./reward";
+import type { Advise } from "./tooltip";
 
 interface TileCondition {
   tile?: string | string[];
@@ -28,6 +29,7 @@ export interface Elem {
   group?: {
     grid?: [number, number];
     chance?: number;
+    farFromCenter?: number;
   };
   condition?: TileCondition;
   gameObject?: {
@@ -48,7 +50,7 @@ export interface Elem {
     behind?: boolean;
     color?: string;
     size?: number;
-    moving?: boolean;
+    moving?: number;
   };
   branchOut?: {
     count: [number, number];
@@ -99,9 +101,8 @@ export interface Elem {
   settler?: boolean;
   resourcesProduced?: Resources;
   resourcesAccumulated?: Resources;
-  resourcesCapped?: {
-    [key in keyof Resources]?: number;
-  };
+  resourcesCapped?: Resources;
+  canCrossTerrains?: string[];
   rewards?: Reward[];
   dynamic?: boolean;
   clearCloud?: boolean;
@@ -115,4 +116,7 @@ export interface Elem {
   ai?: AI;
   attack?: Attack;
   defenseBonus?: number;
+  debug?: boolean;
+  copy?: boolean;
+  advise?: Advise;
 }

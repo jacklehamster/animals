@@ -5,7 +5,7 @@ export const SQUIRREL_ANIMATION: Anim = {
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [
-    90,
+    98,
   ],
 };
 
@@ -15,7 +15,7 @@ export const SQUIRREL_WAIT_ANIMATION: Anim = {
   spriteSize: [64, 64] as [number, number],
   mul: 20,
   frames: [
-    90, 91,
+    98, 99,
   ],
 };
 
@@ -25,9 +25,9 @@ export const SQUIRREL_JUMP_ANIMATION: Anim = {
   spriteSize: [64, 64] as [number, number],
   mul: 2,
   frames: [
-    90, 92, 93, 94,
+    98, 100, 101, 102,
   ],
-  airFrames: [92, 93, 94],
+  airFrames: [100, 101, 102],
 };
 
 export const SQUIRREL_ATTACK_ANIMATION: Anim = {
@@ -36,7 +36,7 @@ export const SQUIRREL_ATTACK_ANIMATION: Anim = {
   spriteSize: [64, 64] as [number, number],
   mul: 5,
   frames: [
-    95, 96,
+    103, 104,
   ],
   once: true,
 };

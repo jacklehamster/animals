@@ -30,8 +30,15 @@ export const HOUSE_DEFINITION: Elem = {
   turn: {
     moves: 0,
     attacks: 0,
+    actions: 1,
   },
   resourcesProduced: {
+    wood: 1,
     trade: 1,
-  }
+  },
+  rewards: [],
+  advise: {
+    name: "house",
+    message: "Nice house! In this house, you collect resources.\nYou can also spawn new animals once they are researched.",
+  },
 };

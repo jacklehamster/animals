@@ -53,10 +53,19 @@ import { CABANA } from "./elems/cabana";
 import { HOBO_ANIMATION, HOBO_JUMP_ANIMATION, HOBO_WAIT_ANIMATION } from "./animations/hobo";
 import { SQUIRREL_ANIMATION, SQUIRREL_ATTACK_ANIMATION, SQUIRREL_JUMP_ANIMATION, SQUIRREL_WAIT_ANIMATION } from "./animations/squirrel";
 import { SQUIRREL_DEFINITION } from "./definitions/squirrel";
+import { TEST_UNITS } from "./elems/test-units";
+import { SOLDIER_ANIMATION } from "./animations/soldier";
+import { SOLDIER_DEFINITION } from "./definitions/soldier";
+import { NUT_ANIMATION } from "./animations/nut";
+import { CROCODILE_RESEARCH } from "./research/crocodile";
+import { OVICULTURE_RESEARCH } from "./research/oviculture";
+import { BEAVER_ANIMATION, BEAVER_JUMP_ANIMATION, BEAVER_WAIT_ANIMATION } from "./animations/beaver";
+import { BEAVER_DEFINITION } from "./definitions/beaver";
+import { SQUIRREL_MENU } from "./menu/squirrel-menu";
 
 export const worldData: Scene = {
   scale: 80,
-  clearFogOfWar: true,
+  // clearFogOfWar: true,
   turn: {
     player: 1,
     turn: 1,
@@ -94,6 +103,8 @@ export const worldData: Scene = {
     HOUSE_DEFINITION,
     CABANA_DEFINITION,
     SQUIRREL_DEFINITION,
+    SOLDIER_DEFINITION,
+    BEAVER_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -137,6 +148,11 @@ export const worldData: Scene = {
     SQUIRREL_WAIT_ANIMATION,
     SQUIRREL_JUMP_ANIMATION,
     SQUIRREL_ATTACK_ANIMATION,
+    ...Object.values(SOLDIER_ANIMATION),
+    NUT_ANIMATION,
+    BEAVER_ANIMATION,
+    BEAVER_WAIT_ANIMATION,
+    BEAVER_JUMP_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -148,12 +164,13 @@ export const worldData: Scene = {
     TREE,
     MOUNTAIN,
     CABANA,
-    // HOBO,
+    ...TEST_UNITS,
   ],
   menu: [
     SHEEP_MENU,
     HOUSE_MENU,
     COW_MENU,
+    SQUIRREL_MENU,
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -164,7 +181,6 @@ export const worldData: Scene = {
   },
   research: [
     CANINE_RESEARCH,
-    BOVINE_RESEARCH,
     WOLVES_RESEARCH,
     BOVINE_RESEARCH,
     TORTOISE_RESEARCH,
@@ -181,6 +197,8 @@ export const worldData: Scene = {
     LAMA_RESEARCH,
     EAGLE_RESEARCH,
     RABBIT_RESEARCH,
+    CROCODILE_RESEARCH,
+    OVICULTURE_RESEARCH
   ],
 };
 (window as any).worldData = worldData;

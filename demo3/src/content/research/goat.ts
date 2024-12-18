@@ -9,5 +9,6 @@ export const GOAT_RESEARCH: Research = {
     padding: [2, 2],
     frames: [51],
   },
-  dependency: [],
+  dependency: ["oviculture"],
+  cost: 20,
 };

@@ -5,7 +5,8 @@ export const CABANA: Elem = {
   name: "cabana",
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.03,
+    chance: 0.1,
+    farFromCenter: 4,
   },
   definition: "cabana",
 };

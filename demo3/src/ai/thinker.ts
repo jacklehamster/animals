@@ -1,4 +1,4 @@
-import type { GameObject } from "../core/game-object";
+import type { GameObject } from "../core/objects/game-object";
 import type { Manager } from "../core/manager";
 
 interface Action {
@@ -24,7 +24,7 @@ export class Thinker {
     const actions: Action[] = [];
 
     // Search for prey
-    const preys = gameObject.findNearby((obj) => {
+    const preys = await gameObject.findNearby((obj) => {
       if (obj.elem?.owner !== gameObject.elem?.owner) {
         return true;
       }
@@ -32,7 +32,7 @@ export class Thinker {
     }, 2);
 
     // Search for friends
-    const friends = gameObject.findNearby((obj) => {
+    const friends = await gameObject.findNearby((obj) => {
       if (obj !== gameObject && obj.elem?.type === "unit" && obj.elem?.owner === gameObject.elem?.owner) {
         return true;
       }
@@ -86,7 +86,7 @@ export class Thinker {
         if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 || this.manager.isEmptySpot(gameObject.px + dx, gameObject.py + dy)) {
           actions.push({
             time: nextActionTime,
-            moveTo: [gameObject.px + dx, gameObject.py + dy],
+            attack: [gameObject.px + dx, gameObject.py + dy],
           });
           didMove = true;
         }
@@ -154,7 +154,7 @@ export class Thinker {
           } else if (action?.moveTo) {
             gameObject.simpleMoveTo(action.moveTo[0], action.moveTo[1]);
           } else if (action?.attack) {
-            gameObject.attackWithRange(action.attack[0], action.attack[1]);
+            gameObject.attackTowards(action.attack[0], action.attack[1]);
           }
           requestAnimationFrame(loop);
         }

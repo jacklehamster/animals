@@ -13,7 +13,8 @@ export const RIVER_DEFINITION: Elem = {
   animation: {
     name: "river",
   },
-  condition: {
-    noTile: "lake",
-  },
+  // condition: {
+  //   noTile: "lake",
+  // },
+  // copy: true,
 };

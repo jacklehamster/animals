@@ -5,4 +5,6 @@ export interface Attack {
   defense?: number;
   attackAfterMove?: boolean;
   moveAfterAttack?: boolean;
+  disabled?: boolean;
+  projectile?: string;
 }

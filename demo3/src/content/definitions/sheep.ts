@@ -42,8 +42,12 @@ export const SHEEP_DEFINITION: Elem = {
     attacks: 1,
   },
   attack: {
-    range: 1,
     damage: 2,
     defense: 1,
+  },
+  advise: {
+    name: "sheep",
+    message: "Your sheep is the foundation of your animal kingdom.\nUse it to build settlements.\nFind a good spot with plenty of resources.",
+    music: true,
   },
 };

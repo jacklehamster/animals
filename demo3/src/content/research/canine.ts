@@ -1,13 +1,11 @@
 import type { Research } from "../../definition/research";
+import { DOG_ANIMATION, DOG_WAIT_ANIMATION } from "../animations/dog";
 
 export const CANINE_RESEARCH: Research = {
   name: "canine",
   description: "Dogs are your scouts.\nUse them to explore the world.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [46],
-  },
+  icon: DOG_ANIMATION,
+  waitIcon: DOG_WAIT_ANIMATION,
   dependency: [],
+  cost: 10,
 };

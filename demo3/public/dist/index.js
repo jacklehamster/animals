@@ -3332,7 +3332,84 @@ class AnimationManager {
   }
 }
 
-// src/core/game-object.ts
+// src/core/objects/decor.ts
+class DecorObject extends EngineObject {
+  initialPos;
+  bornTime;
+  doomTime;
+  motionX = Math.random();
+  motionY = Math.random();
+  constructor(parent, x, y) {
+    super();
+    parent.addChild(this, vec2(x, y));
+    this.initialPos = vec2(x, y);
+    this.bornTime = Date.now() - Math.random() * 1e5;
+  }
+}
+
+// src/core/objects/move-option.ts
+class MoveOption extends EngineObject {
+  px;
+  py;
+  from;
+  canReveal;
+  movePoints;
+  distanceTravelled;
+  canLand;
+  animation;
+  constructor(px, py, from, canReveal, movePoints, distanceTravelled, canLand) {
+    super();
+    this.px = px;
+    this.py = py;
+    this.from = from;
+    this.canReveal = canReveal;
+    this.movePoints = movePoints;
+    this.distanceTravelled = distanceTravelled;
+    this.canLand = canLand;
+  }
+}
+
+// src/core/objects/attack-option.ts
+class AttackOption extends EngineObject {
+  px;
+  py;
+  animation;
+  constructor(px, py) {
+    super();
+    this.px = px;
+    this.py = py;
+  }
+}
+
+// src/core/projectile.ts
+class Projectile extends EngineObject {
+  target;
+  speed;
+  constructor(start, target, speed) {
+    super();
+    this.target = target;
+    this.speed = speed;
+    this.pos.set(start.x, start.y);
+    this.size.set(0.5, 0.5);
+    this.renderOrder = 1e7;
+  }
+  move() {
+    const dx = this.target.x - this.pos.x;
+    const dy = this.target.y - this.pos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < this.speed) {
+      this.pos.set(this.target.x, this.target.y);
+      return true;
+    }
+    this.pos.set(this.pos.x + dx / dist * this.speed, this.pos.y + dy / dist * this.speed);
+    this.angle += 0.2;
+  }
+  landed() {
+    return this.pos.x === this.target.x && this.pos.y === this.target.y;
+  }
+}
+
+// src/core/objects/game-object.ts
 class GameObject extends EngineObject {
   manager;
   gridShift;
@@ -3357,9 +3434,10 @@ class GameObject extends EngineObject {
   labels = [];
   updated = false;
   moveOptions;
+  attackOptions;
   clearedCloud;
   bornTime = Date.now() - Math.random() * 1e4;
-  moveQueue;
+  moveQueue = [];
   resources = [];
   floatResources;
   resourceBars = [];
@@ -3367,10 +3445,13 @@ class GameObject extends EngineObject {
   talkingTime;
   attackTarget;
   attackOrigin;
-  aggressor;
   retaliationDamage;
   onDone;
   hasPendingActions;
+  damageTime;
+  retaliating;
+  projectile;
+  unitsSupported = new Set;
   constructor(manager, gridShift = vec2(0, 0)) {
     super();
     this.manager = manager;
@@ -3383,19 +3464,23 @@ class GameObject extends EngineObject {
       return new Color().setHex(color);
     }
   }
-  refresh(elem) {
+  async refresh(elem) {
     if (!this.elem) {
       const definition = this.manager.scene.definitions.find((def) => def.name === elem.definition);
       if (definition) {
         this.elem = JSON.parse(JSON.stringify(definition));
       } else {
-        this.elem = elem;
+        this.elem = elem.copy ? JSON.parse(JSON.stringify(elem)) : elem;
       }
+      this.manager.defineElem(this.elem);
     }
     elem = this.elem;
     const config = elem.gameObject;
     if (config) {
       this.visible = !config.hidden;
+      if (this.home) {
+        this.home.unitsSupported.add(this);
+      }
       if (elem.owner === undefined) {
         elem.owner = 0;
       }
@@ -3465,39 +3550,37 @@ class GameObject extends EngineObject {
           if (radius && x * x + y * y > radius * radius) {
             continue;
           }
-          const decor = new EngineObject;
-          decor.tileInfo = this.getTileInfoAnimate(animInfo);
-          this.addChild(decor, vec2(x, y));
-          decor.initialPos = vec2(x, y);
-          decor.bornTime = Date.now() - Math.random() * 1e5;
+          const decor2 = new DecorObject(this, x, y);
+          decor2.tileInfo = this.getTileInfoAnimate(animInfo);
           if (color) {
-            decor.color = this.getColor(color);
+            decor2.color = this.getColor(color);
           }
-          this.decors.push(decor);
+          this.decors.push(decor2);
         }
-        if (elem.branchOut) {
-          const shouldBrachOut = Math.random() <= (elem.branchOut.chance ?? 1);
+        if (elem.branchOut && Math.random() <= (elem.branchOut.chance ?? 1)) {
           const { count: count2, element } = elem.branchOut;
-          const actualCount2 = !shouldBrachOut ? 1 : count2[0] + Math.floor(Math.random() * (count2[1] - count2[0]));
-          let pos = vec2(this.pos.x, this.pos.y);
+          const actualCount2 = count2[0] + Math.floor(Math.random() * (count2[1] - count2[0]));
+          const pos = vec2(this.pos.x, this.pos.y);
           const directions = [[-1, 0], [0, -1], [1, 0], [0, 1]];
           let lastDir;
-          let prePos = pos.copy();
           for (let i = 0;i < actualCount2; i++) {
+            const el = this.manager.defineElem(JSON.parse(JSON.stringify(element)));
             const oppositeDirIndex = lastDir ? (directions.indexOf(lastDir) + 2) % 4 : undefined;
             const filteredDirections = directions.filter((_dir, index) => index !== oppositeDirIndex);
             const dir = filteredDirections[Math.floor(Math.random() * filteredDirections.length)];
             pos.set(pos.x + dir[0], pos.y + dir[1]);
-            const rot = Math.atan2(pos.y - prePos.y, -(pos.x - prePos.x));
-            this.manager.scene.elems.push(element);
-            if (!element.gameObject) {
-              element.gameObject = {};
+            if (this.manager.grid[`road_${pos.x}_${pos.y}`]) {
+              break;
             }
-            if (!element.gameObject.noRotation) {
-              element.gameObject.rotation = rot;
+            const rot = Math.atan2(-dir[1], dir[0]);
+            if (!el.gameObject) {
+              el.gameObject = {};
             }
-            element.gameObject.pos = [pos.x, pos.y];
-            prePos.set(pos.x, pos.y);
+            if (!el.gameObject.noRotation) {
+              el.gameObject.rotation = rot;
+            }
+            el.gameObject.pos = [pos.x, pos.y];
+            this.manager.scene.elems.push(el);
             lastDir = dir;
           }
         }
@@ -3508,7 +3591,7 @@ class GameObject extends EngineObject {
           this.manager.setSelection(this);
         }, 300);
       }
-      this.refreshLabel();
+      await this.refreshLabel();
       this.refreshBars();
       this.refreshAlpha();
     } else {
@@ -3561,10 +3644,16 @@ class GameObject extends EngineObject {
     });
     this.updated = false;
   }
-  refreshLabel() {
+  isRevealed() {
+    return this.manager.isRevealed(this.px, this.py);
+  }
+  async refreshLabel() {
     this.labels.forEach((label) => label.destroy());
     this.labels.length = 0;
     if (this.elem?.harvesting && !this.elem?.level) {
+      return;
+    }
+    if (!this.isRevealed()) {
       return;
     }
     let numToShow = this.elem?.level ?? this.elem?.hitpoints;
@@ -3574,9 +3663,9 @@ class GameObject extends EngineObject {
     const size = this.elem?.level ? 0.5 : 0.3;
     const offset = this.elem?.level ? vec2(0, 0.25) : vec2(-0.5, 0.2);
     const charSize = this.elem?.level ? 0.2 : 0.15;
-    const labelAlpha = this.canAct() ? 1 : 0.5;
+    const labelAlpha = await this.canAct() ? 1 : 0.5;
     const isOwnedByPlayer = this.elem?.owner === this.manager.getPlayer();
-    const color = !this.elem?.owner ? new Color(1, 0.5, 0.5, labelAlpha) : !isOwnedByPlayer ? new Color(0.5, 0.5, 0.5, labelAlpha) : this.elem?.hitpoints ? this.elem.hitpoints < (this.elem.maxHitPoints ?? 0) ? new Color(1, 1, 0, labelAlpha) : new Color(0, 1, 0, labelAlpha) : this.canAffordMoreHarvester() ? new Color(1, 0.9, 0, labelAlpha) : new Color(1, 1, 1, labelAlpha);
+    const color = !this.elem?.owner ? new Color(1, 0.5, 0.5, labelAlpha) : !isOwnedByPlayer ? new Color(0.5, 0.5, 0.5, labelAlpha) : this.elem?.hitpoints ? this.elem.hitpoints < (this.elem.maxHitPoints ?? 0) ? new Color(1, 1, 0, labelAlpha) : new Color(0, 1, 0, labelAlpha) : await this.canAffordMoreHarvester() ? new Color(1, 0.9, 0, labelAlpha) : new Color(1, 1, 1, labelAlpha);
     if (!this.labels) {
       this.labels = [];
     }
@@ -3584,8 +3673,8 @@ class GameObject extends EngineObject {
     this.labels.push(...digits);
     this.labels.forEach((label) => label.renderOrder = this.renderOrder + 0.2);
   }
-  canAffordMoreHarvester() {
-    return this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0);
+  async canAffordMoreHarvester() {
+    return (await this.findNearby((obj) => !!obj?.elem?.harvesting)).size < (this.elem?.level ?? 0);
   }
   resourceMaxedOut() {
     return Object.entries(this.elem?.resourcesAccumulated ?? {}).some(([resource, value]) => {
@@ -3629,7 +3718,7 @@ class GameObject extends EngineObject {
     const resourceSpacing = 0.15;
     const offset = this.elem?.gameObject?.offset ?? [0, 0];
     const offX = x - this.px - offset[0] + rand2, offY = y - this.py - offset[1];
-    const RESOURCES = ["wheat", "wood", "trade"];
+    const RESOURCES = ["wheat", "wood", "trade", "gold", "brain"];
     let total = 0;
     RESOURCES.forEach((resource) => {
       for (let i = 0;i < (resources[resource] ?? 0); i++) {
@@ -3642,18 +3731,21 @@ class GameObject extends EngineObject {
       if (!value) {
         return;
       }
+      const MAX_ROW = 8;
       for (let i = 0;i < value; i++) {
         const indic = new EngineObject(vec2(0, 0), vec2(0.5, 0.5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
         indic.color = new Color(1, 1, 1, 1);
-        this.addChild(indic, vec2(offX + (count - (total - 1) / 2) * resourceSpacing + rand2, offY));
+        const col = count % MAX_ROW;
+        const row = Math.floor(count / MAX_ROW);
+        this.addChild(indic, vec2(offX + (col - (Math.min(total, MAX_ROW) - 1) / 2) * resourceSpacing + rand2, offY + (row - Math.floor(total / MAX_ROW) / 2) * resourceSpacing + rand2));
         this.resources.push(indic);
         count++;
       }
     });
     let harvesting = floatResources;
     if (!floatResources) {
-      this.manager.iterateGridCell(x, y, (elem) => {
+      this.manager.iterateGridCell(x, y, async (elem) => {
         if (elem.elem?.owner === owner && elem.elem?.harvesting) {
           harvesting = true;
         }
@@ -3711,11 +3803,8 @@ class GameObject extends EngineObject {
   hasAction() {
     return this.elem?.turn?.actions;
   }
-  canAttack() {
-    if (!this.elem?.attack) {
-      return false;
-    }
-    if (!this.findNearbyFoe(this.elem.attack.range).size) {
+  async canAttack() {
+    if (!this.elem?.attack || this.elem.attack.disabled) {
       return false;
     }
     if (!this.elem.turn?.attacks) {
@@ -3724,12 +3813,25 @@ class GameObject extends EngineObject {
     if (!this.elem?.turn.moves && !this.elem.attack.attackAfterMove) {
       return false;
     }
+    const foes = await this.findNearbyFoe(this.elem.attack.range);
+    if (!foes.size) {
+      return false;
+    }
+    let hasFoeToAttack = false;
+    foes.forEach((foe) => {
+      if (this.canAttackAt(foe.px, foe.py)) {
+        hasFoeToAttack = true;
+      }
+    });
+    if (!hasFoeToAttack) {
+      return false;
+    }
     return true;
   }
   spendAttack() {
     const elem = this.elem;
     if (elem && elem.turn?.attacks) {
-      elem.turn.attacks--;
+      elem.turn.attacks = 0;
       elem.turn.moves = this.elem?.attack?.moveAfterAttack ? 1 : 0;
     }
   }
@@ -3745,19 +3847,25 @@ class GameObject extends EngineObject {
     }
   }
   doneMoving() {
+    if (this.hasPendingActions) {
+      return;
+    }
+    this.afterDoneMoving();
+  }
+  async afterDoneMoving() {
     this.refreshAlpha();
     this.refreshLabel();
-    this.manager.unlockRewards(this);
+    await this.manager.unlockRewards(this);
     this.manager.checkForAnyMove();
     if (this.manager.isAiPlayer(this.elem?.owner)) {
-      this.manager.selectNext();
+      await this.manager.selectNext();
     } else if (!this.canAct() || this.elem?.harvesting) {
-      this.manager.selectNext();
+      await this.manager.selectNext();
     } else if (this.manager.selected === this) {
       if (this.elem?.settler || this.elem?.worker) {
         this.showResourcesNearby();
       }
-      this.showMoveOptions();
+      await this.showActionOptions();
       this.manager.hud.showSelected(this);
     }
   }
@@ -3768,8 +3876,8 @@ class GameObject extends EngineObject {
       this.doneMoving();
     }
   }
-  canAct() {
-    return this.hasMove() || this.hasAttack() && this.canAttack() || this.hasAction();
+  async canAct() {
+    return this.hasMove() || this.hasAttack() && await this.canAttack() || this.hasAction();
   }
   refreshAlpha() {
     if (this.elem?.turn && this.elem?.type === "unit") {
@@ -3780,7 +3888,7 @@ class GameObject extends EngineObject {
       }
     }
   }
-  giveTurn() {
+  async giveTurn() {
     const elem = this.elem;
     if (elem?.turn) {
       elem.turn.moves = elem.turn.attacks = 1;
@@ -3788,7 +3896,7 @@ class GameObject extends EngineObject {
         elem.turn.actions = 1;
       }
       if (this.elem?.harvesting) {
-        const foes = this.findNearbyFoe();
+        const foes = await this.findNearbyFoe();
         if (foes.size) {
           this.elem.harvesting = false;
           this.updated = false;
@@ -3798,14 +3906,42 @@ class GameObject extends EngineObject {
       this.refreshLabel();
     }
   }
-  attackWithRange(px, py) {
-    console.log("Attack with range", px, py);
+  attackTowards(px, py) {
+    console.log(this.elem?.name, "Attack towards", px, py);
+    const dx = px - this.px;
+    const dy = py - this.py;
+    const dist = Math.max(Math.abs(dx), Math.abs(dy));
+    if (dist === 0) {
+      return;
+    }
+    if (dist > 1) {
+      const x = Math.sign(dx);
+      const y = Math.sign(dy);
+      this.simpleMoveTo(this.px + x, this.py + y);
+      console.log("move by", x, y);
+    }
+    this.moveQueue.push(vec2(px, py));
   }
   simpleMoveTo(px, py) {
     this.moveQueue = [vec2(px, py)];
     this.hideResources();
     this.hideMoveOptions();
     this.manager.hud.showSelected(undefined);
+  }
+  attackAt(px, py) {
+    const dx = px - this.px;
+    const dy = py - this.py;
+    if (!this.elem?.attack?.range) {
+      this.moveQueue.push(vec2(px, py));
+      this.hideResources();
+      this.hideMoveOptions();
+      this.manager.hud.showSelected(undefined);
+    } else {
+      const unit = this.manager.unitAt(px, py);
+      if (unit) {
+        this.attackRange(unit);
+      }
+    }
   }
   moveTo(px, py) {
     this.positionDetached = true;
@@ -3839,7 +3975,7 @@ class GameObject extends EngineObject {
     }
     this.talkingTime = Date.now() + Math.random() * 3000;
   }
-  moveUnitTo(px, py) {
+  async moveUnitTo(px, py) {
     this.talkingTime = undefined;
     const target = this.manager.unitAt(px, py);
     if (target) {
@@ -3848,9 +3984,8 @@ class GameObject extends EngineObject {
         target.talkTo(this);
         return;
       }
-      if (this.elem?.owner !== target.elem?.owner && this.canAttack()) {
-        this.attack(target, true);
-        console.log("Attack!");
+      if (this.elem?.owner !== target.elem?.owner && await this.canAttack()) {
+        this.attack(target);
         return;
       }
     } else {
@@ -3885,11 +4020,34 @@ class GameObject extends EngineObject {
   hasMoveOptionToLandOn(x, y) {
     return this.moveOptions?.[`${x}_${y}`]?.canLand;
   }
+  hasAttackOptionOn(x, y) {
+    return this.attackOptions?.[`${x}_${y}`];
+  }
   canLandOn(px, py) {
     if (!this.canMoveTo(px, py)) {
       return false;
     }
     return true;
+  }
+  canAttackAt(px, py) {
+    const elem = this.elem;
+    if (!elem) {
+      return false;
+    }
+    if (this.elem?.owner && !this.manager.isRevealed(px, py)) {
+      return false;
+    }
+    const dx = px - this.px;
+    const dy = py - this.py;
+    const distance = Math.max(Math.abs(dx), Math.abs(dy));
+    if (distance > (elem.attack?.range ?? 1)) {
+      return false;
+    }
+    const targetUnit = this.manager.unitAt(px, py);
+    if (targetUnit) {
+      return targetUnit.elem?.owner !== elem.owner;
+    }
+    return false;
   }
   canMoveTo(px, py) {
     const elem = this.elem;
@@ -3899,14 +4057,20 @@ class GameObject extends EngineObject {
     if (this.px === px && this.py === py) {
       return false;
     }
-    if (!this.manager.revealed.has(`${px}_${py}`)) {
+    if (!this.elem?.turn?.moves) {
       return false;
     }
     if (elem.type !== "unit") {
       return false;
     }
-    if (this.manager.grid[`decor_${px}_${py}`]) {
+    if (!this.manager.isAiPlayer(this.elem.owner) && !this.manager.isRevealed(px, py)) {
       return false;
+    }
+    const decor2 = this.manager.grid[`decor_${px}_${py}`];
+    if (decor2) {
+      if (!elem?.canCrossTerrains?.includes(decor2.elem?.name ?? "")) {
+        return false;
+      }
     }
     if (this.manager.grid[`tile_overlay_${px}_${py}`]?.elem?.water) {
       return false;
@@ -3920,12 +4084,7 @@ class GameObject extends EngineObject {
       }
     }
     const targetUnit = this.manager.unitAt(px, py);
-    if (!targetUnit) {
-      return this.hasMove();
-    }
-    if (targetUnit?.elem?.owner === elem.owner) {
-      return false;
-    } else if (!this.canAttack()) {
+    if (targetUnit) {
       return false;
     }
     return true;
@@ -4002,7 +4161,7 @@ class GameObject extends EngineObject {
           this.manager.thinker?.think(this);
           return;
         }
-        this.showMoveOptions();
+        this.showActionOptions();
         if (!this.moving) {
           const resourcesFloating = Date.now() - (this.floatResources ?? 0) < 2000;
           if ((this.elem?.settler || this.elem?.worker) && !resourcesFloating) {
@@ -4027,17 +4186,22 @@ class GameObject extends EngineObject {
       this.refreshBars();
     }
   }
-  showMoveOptions() {
-    if (this.hasMove() && !this.manager.checkCondition(this.elem?.move?.disabled, this)) {
+  async showActionOptions() {
+    if (this.hasMove() && !await this.manager.checkCondition(this.elem?.move?.disabled, this)) {
       this.addMoveOptions(this.elem?.move?.distance ?? 1, vec2(this.px, this.py));
-    } else if (this.hasAttack() && this.canAttack()) {
-      this.addMoveOptions(this.elem?.attack?.range ?? 1, vec2(this.px, this.py));
+    }
+    if (this.hasAttack() && await this.canAttack()) {
+      this.addAttackOptions(this.elem?.attack?.range ?? 1);
     }
   }
   hideMoveOptions() {
     if (this.moveOptions) {
       Object.values(this.moveOptions).forEach((moveOption) => moveOption.destroy());
       delete this.moveOptions;
+    }
+    if (this.attackOptions) {
+      Object.values(this.attackOptions).forEach((attackOption) => attackOption.destroy());
+      delete this.attackOptions;
     }
   }
   addMoveOptions(movePoints, from, revealPotential = 0, distanceTravelled = 0) {
@@ -4082,7 +4246,7 @@ class GameObject extends EngineObject {
         }
         return;
       }
-      const obj = new EngineObject;
+      const obj = new MoveOption(from.x + dx, from.y + dy, from, revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy), movePoints, newDistanceTravelled, this.canLandOn(from.x + dx, from.y + dy));
       obj.size.set(this.size.x, this.size.y);
       if (this.elem?.selected?.moveIndic) {
         obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
@@ -4090,13 +4254,6 @@ class GameObject extends EngineObject {
         obj.color = new Color(0, 0, 0, 0.3);
         obj.tileInfo = this.tileInfo;
       }
-      obj.from = from;
-      obj.canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
-      obj.movePoints = movePoints;
-      obj.distanceTravelled = newDistanceTravelled;
-      obj.canLand = this.canLandOn(from.x + dx, from.y + dy);
-      obj.px = from.x + dx;
-      obj.py = from.y + dy;
       if (!obj.canLand) {
         obj.color = new Color(0, 0, 0, 0);
       }
@@ -4114,6 +4271,35 @@ class GameObject extends EngineObject {
       this.updated = false;
     });
     froms.forEach(([from2, revealing, newDistanceTravelled]) => this.addMoveOptions(movePoints - 1, from2, revealing, newDistanceTravelled));
+  }
+  addAttackOptions(range) {
+    if (!range) {
+      return;
+    }
+    for (let y = -range;y <= range; y++) {
+      for (let x = -range;x <= range; x++) {
+        if (this.canAttackAt(this.px + x, this.py + y)) {
+          const obj = new AttackOption(this.px + x, this.py + y);
+          obj.size.set(this.size.x, this.size.y);
+          if (this.elem?.selected?.moveIndic) {
+            obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
+          } else {
+            obj.color = new Color(0, 0, 0, 0.3);
+            obj.tileInfo = this.tileInfo;
+          }
+          const unit = this.manager.unitAt(this.px + x, this.py + y);
+          if (unit) {
+            obj.color = new Color(1, 0, 0, 0.5);
+          }
+          this.addChild(obj, vec2(x, y));
+          if (!this.attackOptions) {
+            this.attackOptions = {};
+          }
+          this.attackOptions[`${this.px + x}_${this.py + y}`] = obj;
+          this.updated = false;
+        }
+      }
+    }
   }
   getFrame(animInfo) {
     if (!animInfo) {
@@ -4142,6 +4328,29 @@ class GameObject extends EngineObject {
         elem.resourcesCapped[k] = value;
       }
     });
+  }
+  calculateUnitResourcesRevenue() {
+    const resources = {
+      wheat: 0,
+      wood: 0,
+      trade: 0,
+      gold: 0,
+      brain: 0
+    };
+    this.unitsSupported.forEach((unit) => {
+      const res = unit.calculateUnitResourcesRevenue();
+      Object.entries(res).forEach(([key, value]) => {
+        resources[key] += value;
+      });
+    });
+    Object.entries(resources).forEach(([key, value]) => {
+      const k = key;
+      if (this.manager.scene.resources[k]?.global) {
+        return;
+      }
+      resources[k] += value;
+    });
+    return resources;
   }
   accumulateResources(resources) {
     if (this.doomed) {
@@ -4182,8 +4391,9 @@ class GameObject extends EngineObject {
     if (!this.elem.resourcesAccumulated) {
       this.elem.resourcesAccumulated = {};
     }
-    const val = typeof value === "function" ? value(this.elem.resourcesAccumulated[resource] ?? 0) : value;
-    const resObj = this.manager.scene.resources[resource];
+    const resObj = this.manager.getResourceType(resource);
+    const previousVal = resObj?.global ? this.manager.getPlayerResource(resource, this.elem.owner ?? 0) : this.elem.resourcesAccumulated[resource] ?? 0;
+    const val = typeof value === "function" ? value(previousVal) : value;
     if (resObj?.global) {
       if (this.elem.owner) {
         this.manager.updateResource(resource, val, this.elem.owner);
@@ -4196,12 +4406,12 @@ class GameObject extends EngineObject {
     }
     this.updated = false;
   }
-  fixCows() {
-    const cows = this.countUnitSupport("cow");
+  async fixCows() {
+    const cows = await this.countUnitSupport("cow");
     const maxCows = this.elem?.level ?? 0;
     if (cows > maxCows) {
       let toRemove = cows - maxCows;
-      this.manager.iterateRevealedCells((obj) => {
+      await this.manager.iterateRevealedCells(async (obj) => {
         if (toRemove <= 0) {
           return;
         }
@@ -4215,11 +4425,11 @@ class GameObject extends EngineObject {
   canUpdateLevel() {
     return this.elem?.type === "house" && (this.elem?.level ?? 0) < 6;
   }
-  updateLevel(level) {
+  async updateLevel(level) {
     if (this.elem?.type === "house") {
       this.elem.level = level;
-      this.fixCows();
-      this.refreshLabel();
+      await this.fixCows();
+      await this.refreshLabel();
       this.updated = false;
     }
   }
@@ -4230,9 +4440,9 @@ class GameObject extends EngineObject {
     const capacity = (this.elem?.level ?? 0) + 1;
     return capacity * 10;
   }
-  countUnitSupport(unit) {
+  async countUnitSupport(unit) {
     let count = 0;
-    this.manager.iterateRevealedCells((obj) => {
+    await this.manager.iterateRevealedCells(async (obj) => {
       if (obj.elem?.name === unit && obj.home === this) {
         count++;
       }
@@ -4260,6 +4470,11 @@ class GameObject extends EngineObject {
         moveOption.tileInfo = this.getTileInfoAnimate(moveOption.animation);
       }
     });
+    Object.values(this.attackOptions ?? {}).forEach((option) => {
+      if (option.animation) {
+        option.tileInfo = this.getTileInfoAnimate(option.animation);
+      }
+    });
     if (this.mouseFollower) {
       let px = mousePos.x + this.mouseFollower.offset.x;
       let py = mousePos.y + this.mouseFollower.offset.y;
@@ -4273,7 +4488,7 @@ class GameObject extends EngineObject {
     const dx = this.px + offset[0] - this.pos.x;
     const dy = this.py + offset[1] - this.pos.y;
     const talking = this.talkingTime && Date.now() < this.talkingTime;
-    const animInfo = this.attackAnimationInfo && this.attackTarget ? this.attackAnimationInfo : this.harvestAnimationInfo && this.elem?.harvesting ? this.harvestAnimationInfo : this.moveAnimationInfo && (dx || dy) ? this.moveAnimationInfo : this.selectedAnimationInfo && (this.manager.selected === this || talking) ? this.selectedAnimationInfo : this.hoveredAnimationInfo && this.manager.hovering(this) ? this.hoveredAnimationInfo : this.animationInfo;
+    const animInfo = this.attackAnimationInfo && this.attackTarget ? this.attackAnimationInfo : this.harvestAnimationInfo && this.elem?.harvesting ? this.harvestAnimationInfo : this.moveAnimationInfo && (dx || dy) ? this.moveAnimationInfo : this.selectedAnimationInfo && this.isRevealed() && (this.manager.selected === this || talking) ? this.selectedAnimationInfo : this.hoveredAnimationInfo && this.manager.hovering(this) ? this.hoveredAnimationInfo : this.animationInfo;
     if (animInfo === this.animationInfo) {
       if (Math.random() < 0.005) {
         this.talkingTime = Date.now() + Math.random() * 3000;
@@ -4297,13 +4512,20 @@ class GameObject extends EngineObject {
       }
     } else {
       if (this.attackTarget) {
-        this.finishAttack(this.attackTarget);
+        if (this.projectile) {
+          this.projectile.move();
+          if (this.projectile.landed()) {
+            const projectile2 = this.projectile;
+            this.projectile = undefined;
+            projectile2.destroy();
+            this.finishAttack(this.attackTarget, true);
+          }
+        } else {
+          this.finishAttack(this.attackTarget);
+        }
       } else if (this.moveQueue?.length) {
         const dest = this.moveQueue.pop();
         this.moveUnitTo(dest.x, dest.y);
-        if (!this.moveQueue.length) {
-          delete this.moveQueue;
-        }
       } else if (this.moving) {
         this.moving = false;
         if (this.onDone) {
@@ -4311,25 +4533,35 @@ class GameObject extends EngineObject {
           this.onDone = undefined;
           onDone(this);
         } else if (!this.hasPendingActions) {
-          this.spendMove();
+          if (!this.retaliating) {
+            this.spendMove();
+          } else {
+            this.retaliating = false;
+          }
         }
       }
     }
     if (this.elem?.type === "cursor") {
       if (mouseWasReleased(0)) {
-        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
         this.manager.mousePosDown = undefined;
+        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
       }
     }
     const coLayers = this.manager.scene?.colayers;
-    const renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 1e4 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * 0.001;
+    let renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 1e4 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * 0.001;
     if (this.renderOrder !== renderOrder || !this.updated) {
       this.renderOrder = renderOrder;
-      this.decors.forEach((decor) => {
-        decor.renderOrder = this.renderOrder + (this.elem?.spread?.behind ? -0.1 : 0.1);
+      this.decors.forEach((decor2) => {
+        decor2.renderOrder = this.renderOrder + (this.elem?.spread?.behind ? -0.1 : 0.1);
       });
       if (this.moveOptions) {
         Object.values(this.moveOptions).forEach((moveOption) => moveOption.renderOrder = this.renderOrder - 0.1);
+      }
+      if (this.attackOptions) {
+        Object.values(this.attackOptions).forEach((option) => option.renderOrder = this.renderOrder - 0.1);
+      }
+      if (this.projectile) {
+        this.projectile.renderOrder = this.renderOrder + 0.1;
       }
       if (this.shadow) {
         this.shadow.renderOrder = this.renderOrder - 0.1;
@@ -4341,12 +4573,12 @@ class GameObject extends EngineObject {
       this.resources.forEach((resource) => resource.renderOrder = 1e5 + (resource.tileInfo ? 0.1 : -0.1));
       this.resourceBars.forEach((resource) => resource.renderOrder = 1e5 + (resource.tileInfo ? 0.1 : -0.1));
     }
-    if (this.elem?.spread?.moving) {
-      this.decors.forEach((decor) => {
-        const time2 = Date.now() - decor.bornTime;
-        const dx2 = Math.sin(time2 / 1e4) * 0.5;
-        const dy2 = Math.cos(time2 / 1e4) * 0.5;
-        decor.localPos.set(decor.initialPos.x + dx2, decor.initialPos.y + dy2);
+    if (this.elem?.spread?.moving && Math.random() < this.elem.spread.moving) {
+      this.decors.forEach((decor2) => {
+        const time2 = Date.now() - decor2.bornTime;
+        const dx2 = Math.sin(time2 / 5000 * decor2.motionX) * 0.2;
+        const dy2 = Math.cos(time2 / 5000 * decor2.motionY) * 0.2;
+        decor2.localPos.set(decor2.initialPos.x + dx2, decor2.initialPos.y + dy2);
       });
     }
     if (this.elem?.clearCloud && !this.clearedCloud) {
@@ -4365,10 +4597,10 @@ class GameObject extends EngineObject {
       this.updateSize();
     }
     if (this.doomed) {
-      this.decors.forEach((decor) => {
-        const time2 = Date.now() - decor.doomTime;
+      this.decors.forEach((decor2) => {
+        const time2 = Date.now() - decor2.doomTime;
         if (time2 > 0) {
-          decor.size.set(decor.size.x * 0.9, decor.size.y * 0.9);
+          decor2.size.set(decor2.size.x * 0.9, decor2.size.y * 0.9);
         }
       });
     }
@@ -4383,23 +4615,40 @@ class GameObject extends EngineObject {
         this.resources.forEach((res) => res.localPos.y += 0.005);
       }
     }
+    if (this.damageTime) {
+      const timeLeft = this.damageTime - Date.now();
+      if (timeLeft >= 0) {
+        this.angle = Math.sin(Date.now() / 10) * timeLeft / 5000;
+        this.color = new Color(2, 0, 0, timeLeft / 1000);
+      } else {
+        this.damageTime = undefined;
+        this.angle = 0;
+        this.color = new Color(1, 1, 1, 1);
+      }
+    }
   }
   get home() {
     if (this.elem?.home && !this.elem?.building) {
-      return this.manager.grid[GameObject.getTag("house", this.elem.home[0], this.elem?.home[1])] ?? undefined;
+      return this.manager.grid[GameObject.getTag("house", this.elem.home[0], this.elem.home[1])] ?? undefined;
     }
     return;
   }
   doomed = false;
   doom(immediate) {
+    if (this.doomed) {
+      return;
+    }
     this.doomed = true;
+    if (this.home) {
+      this.home.unitsSupported.delete(this);
+    }
     this.size.set(0, 0);
     const destroy = () => {
       if (this.manager.grid[this.getTag()] === this) {
         delete this.manager.grid[this.getTag()];
       }
-      this.decors.forEach((decor) => {
-        decor.destroy();
+      this.decors.forEach((decor2) => {
+        decor2.destroy();
       });
       this.labels?.forEach((label) => label.destroy());
       this.resources.forEach((resource) => resource.destroy());
@@ -4412,8 +4661,8 @@ class GameObject extends EngineObject {
     const DURATION = immediate ? 10 : 300;
     setTimeout(destroy, DURATION * 2);
     if (!immediate) {
-      this.decors.forEach((decor) => {
-        decor.doomTime = Date.now() + DURATION * Math.random();
+      this.decors.forEach((decor2) => {
+        decor2.doomTime = Date.now() + DURATION * Math.random();
       });
     }
   }
@@ -4447,14 +4696,14 @@ class GameObject extends EngineObject {
       return cell.elem?.type === "unit" && cell.elem?.owner !== this.elem?.owner;
     }, distance);
   }
-  findNearby(cellCondition, distance = 1) {
+  async findNearby(cellCondition, distance = 1) {
     const set = new Set;
     for (let y = -distance;y <= distance; y++) {
       for (let x = -distance;x <= distance; x++) {
         if (x === 0 && y === 0) {
           continue;
         }
-        this.manager.iterateGridCell(this.px + x, this.py + y, (cell) => {
+        await this.manager.iterateGridCell(this.px + x, this.py + y, async (cell) => {
           if (cellCondition(cell)) {
             set.add(cell);
           }
@@ -4493,7 +4742,7 @@ class GameObject extends EngineObject {
       }
     });
   }
-  attack(target, aggressor, retaliationDamage) {
+  attack(target, retaliationDamage) {
     if (!target || target.elem?.owner === this.elem?.owner) {
       return;
     }
@@ -4501,36 +4750,75 @@ class GameObject extends EngineObject {
     this.attackOrigin = vec2(this.px, this.py);
     this.px = target.px;
     this.py = target.py;
-    this.aggressor = aggressor;
     this.retaliationDamage = retaliationDamage;
   }
-  finishAttack(target) {
+  attackRange(target, retaliationDamage) {
+    if (!target || target.elem?.owner === this.elem?.owner) {
+      return;
+    }
+    this.attackTarget = target;
+    this.attackOrigin = vec2(this.px, this.py);
+    this.retaliationDamage = this.retaliationDamage;
+    if (this.projectile) {
+      this.projectile.destroy();
+    }
+    this.projectile = new Projectile(this.pos, target.pos, 0.05);
+    if (this.elem?.attack?.projectile) {
+      this.projectile.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.attack.projectile));
+    }
+  }
+  finishAttack(target, done = false) {
     const { px: targetX, py: targetY } = target;
-    const { retaliation, death } = this.aggressor ? target.takeDamageAndCheckDeath(this.elem?.attack?.damage ?? 1, this) : target.takeDirectDamageAndCheckDeath(this.retaliationDamage);
+    const { retaliation, death } = !this.retaliating ? target.takeDamageAndCheckDeath(this.elem?.attack?.damage ?? 1, this) : target.takeDirectDamageAndCheckDeath(this.retaliationDamage);
     this.px = this.attackOrigin?.x ?? this.px;
     this.py = this.attackOrigin?.y ?? this.py;
     this.attackTarget = undefined;
     this.attackOrigin = undefined;
-    if (this.aggressor) {
+    if (!this.retaliating) {
       this.spendAttack();
       if (death) {
-        this.setPosition(targetX, targetY);
+        if (!this.elem?.attack?.range) {
+          this.setPosition(targetX, targetY);
+        }
         this.doneMoving();
       } else {
-        this.hasPendingActions = true;
-        this.onDone = (self) => {
-          target.attack(self, false, retaliation);
-        };
+        const dx = this.px - targetX;
+        const dy = this.py - targetY;
+        const distance = Math.max(Math.abs(dx), Math.abs(dy));
+        if (distance <= (target?.elem?.attack?.range ?? 1)) {
+          this.hasPendingActions = true;
+          this.onDone = (self) => {
+            setTimeout(() => {
+              target.retaliating = true;
+              target.onDone = (target2) => {
+                target2.retaliating = false;
+                self.hasPendingActions = false;
+                self.doneMoving();
+              };
+              const rangedAttack = target?.elem?.attack?.range;
+              if (rangedAttack) {
+                target.attackRange(self, retaliation);
+              } else {
+                target.attack(self, retaliation);
+              }
+            }, 1000);
+          };
+          if (done) {
+            const onDone = this.onDone;
+            this.onDone = undefined;
+            onDone(this);
+          }
+        } else {
+          this.doneMoving();
+        }
       }
-      this.aggressor = false;
-    } else if (!death) {
-      target.hasPendingActions = false;
+    } else {
       target.doneMoving();
     }
   }
   getDefenseBonus() {
     let bonus = 1;
-    this.manager.iterateGridCell(this.px, this.py, (cell) => {
+    this.manager.iterateGridCell(this.px, this.py, async (cell) => {
       if (cell.elem?.defenseBonus) {
         bonus *= cell.elem.defenseBonus;
       }
@@ -4545,6 +4833,7 @@ class GameObject extends EngineObject {
   }
   takeDirectDamageAndCheckDeath(damage = 0) {
     if (this.elem) {
+      this.damageTime = Date.now() + damage * 100;
       this.elem.hitpoints = (this.elem.hitpoints ?? 1) - damage;
       if (this.elem.hitpoints > 0) {
         this.refreshLabel();
@@ -4562,8 +4851,7 @@ class GameObject extends EngineObject {
       const totalDamage = attackForce + defenseForce;
       const attackResult = Math.ceil(attackForce / totalDamage * attack * 4.5);
       const defenseResult = Math.ceil(defenseForce / totalDamage * this.getDefense() * 4.5);
-      console.log(attackForce, defenseForce, totalDamage);
-      console.log(attackResult, defenseResult);
+      this.damageTime = Date.now() + attackResult * 100;
       this.elem.hitpoints = (this.elem.hitpoints ?? 1) - attackResult;
       if (this.elem.hitpoints > 0) {
         this.refreshLabel();
@@ -4579,23 +4867,29 @@ class GameObject extends EngineObject {
 
 // src/content/constant.ts
 var SIZE = 30;
-var DEBUG = false;
+var DEBUG = window.location.search.includes("debug");
 
 // src/ui/hud.ts
 var SPRITESHEET_COLS = 30;
+speechSynthesis.getVoices();
 
 class Hud {
   manager;
   ui = document.createElement("div");
   bg = document.createElement("div");
   topBg = document.createElement("div");
-  overlay = document.createElement("div");
+  buttonsOverlay = document.createElement("div");
   resourceOverlay = document.createElement("div");
   blocker = document.createElement("div");
   dialog = document.createElement("div");
+  cat = document.createElement("img");
   itemsToDestroy = new Set;
   nextButton = document.createElement("button");
   endButton = document.createElement("button");
+  researchList = document.createElement("div");
+  researchInfoDiv = document.createElement("div");
+  researchPopup = document.createElement("div");
+  music = document.createElement("audio");
   updated = false;
   constructor(manager) {
     this.manager = manager;
@@ -4625,17 +4919,18 @@ class Hud {
     this.bg.style.color = "snow";
     this.bg.style.flexDirection = "row";
     this.ui.appendChild(this.bg);
-    this.overlay.style.bottom = "0";
-    this.overlay.style.right = "0";
-    this.overlay.style.zIndex = "100";
-    this.overlay.style.position = "absolute";
-    this.overlay.style.display = "flex";
-    this.overlay.style.flexDirection = "column";
-    this.overlay.style.justifyContent = "right";
-    this.overlay.style.gap = "10px";
-    this.overlay.style.padding = "10px";
-    this.overlay.style.transition = "right 0.2s";
-    this.ui.appendChild(this.overlay);
+    this.buttonsOverlay.style.bottom = "0";
+    this.buttonsOverlay.style.right = "0";
+    this.buttonsOverlay.style.zIndex = "100";
+    this.buttonsOverlay.style.position = "absolute";
+    this.buttonsOverlay.style.display = "flex";
+    this.buttonsOverlay.style.flexDirection = "column";
+    this.buttonsOverlay.style.justifyContent = "right";
+    this.buttonsOverlay.style.gap = "10px";
+    this.buttonsOverlay.style.padding = "10px";
+    this.buttonsOverlay.style.transition = "right 0.2s";
+    this.buttonsOverlay.style.display = "none";
+    this.ui.appendChild(this.buttonsOverlay);
     this.setHudButtons();
     this.resourceOverlay.style.position = "absolute";
     this.resourceOverlay.style.top = "0";
@@ -4649,14 +4944,15 @@ class Hud {
     this.blocker.style.top = "0";
     this.blocker.style.left = "0";
     this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    this.blocker.style.cursor = "pointer";
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
     this.dialog.style.position = "absolute";
     this.dialog.style.zIndex = "100";
-    this.dialog.style.top = "50%";
+    this.dialog.style.bottom = "10px";
     this.dialog.style.left = "50%";
-    this.dialog.style.transform = "translate(-50%, -50%)";
-    this.dialog.style.width = "400px";
+    this.dialog.style.transform = "translate(-50%, 0)";
+    this.dialog.style.width = "80%";
     this.dialog.style.height = "200px";
     this.dialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
     this.dialog.style.color = "snow";
@@ -4665,10 +4961,91 @@ class Hud {
     this.dialog.style.alignItems = "center";
     this.dialog.style.textAlign = "center";
     this.dialog.style.textTransform = "uppercase";
+    this.dialog.style.whiteSpace = "pre-wrap";
     this.dialog.style.display = "none";
+    this.dialog.style.pointerEvents = "none";
     this.ui.appendChild(this.dialog);
+    this.cat.style.position = "absolute";
+    this.cat.style.bottom = "0";
+    this.cat.style.left = "0";
+    this.cat.src = "./assets/cat.png";
+    this.cat.style.display = "none";
+    this.cat.style.zIndex = "100";
+    this.ui.appendChild(this.cat);
+    this.researchList.style.position = "absolute";
+    this.researchList.style.zIndex = "100";
+    this.researchList.style.top = "50%";
+    this.researchList.style.left = "50%";
+    this.researchList.style.transform = "translate(-50%, -50%)";
+    this.researchList.style.width = "400px";
+    this.researchList.style.height = "200px";
+    this.researchList.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    this.researchList.style.color = "snow";
+    this.researchList.style.flexDirection = "column";
+    this.researchList.style.justifyContent = "center";
+    this.researchList.style.alignItems = "center";
+    this.researchList.style.textAlign = "center";
+    this.researchList.style.textTransform = "uppercase";
+    this.researchList.style.display = "none";
+    this.ui.appendChild(this.researchList);
+    this.researchInfoDiv.style.position = "absolute";
+    this.researchInfoDiv.style.zIndex = "100";
+    this.researchInfoDiv.style.top = "10px";
+    this.researchInfoDiv.style.right = "10px";
+    this.researchInfoDiv.style.width = "200px";
+    this.researchInfoDiv.style.height = "60px";
+    this.researchInfoDiv.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    this.researchInfoDiv.style.color = "snow";
+    this.researchInfoDiv.style.flexDirection = "column";
+    this.researchInfoDiv.style.justifyContent = "center";
+    this.researchInfoDiv.style.alignItems = "center";
+    this.researchInfoDiv.style.textAlign = "center";
+    this.researchInfoDiv.style.textTransform = "uppercase";
+    this.researchInfoDiv.style.display = "none";
+    this.ui.appendChild(this.researchInfoDiv);
+    this.researchPopup.style.position = "absolute";
+    this.researchPopup.style.zIndex = "100";
+    this.researchPopup.style.top = "50%";
+    this.researchPopup.style.left = "50%";
+    this.researchPopup.style.transform = "translate(-50%, -50%)";
+    this.researchPopup.style.width = "800px";
+    this.researchPopup.style.height = "600px";
+    this.researchPopup.style.backgroundImage = "url(./assets/researched.png)";
+    this.researchPopup.style.backgroundSize = "cover";
+    this.researchPopup.style.display = "none";
+    this.researchPopup.style.pointerEvents = "none";
+    const researchImage = this.researchPopup.appendChild(document.createElement("div"));
+    researchImage.id = "researchImage";
+    researchImage.style.position = "absolute";
+    researchImage.style.top = "30%";
+    researchImage.style.left = "50%";
+    researchImage.style.transform = "translate(-50%, -50%) scale(3)";
+    this.ui.appendChild(this.researchPopup);
+    const researchText = this.researchPopup.appendChild(document.createElement("div"));
+    researchText.id = "researchText";
+    researchText.style.position = "absolute";
+    researchText.style.bottom = "10px";
+    researchText.style.left = "50%";
+    researchText.style.transform = "translate(-50%, 0)";
+    researchText.style.width = "80%";
+    researchText.style.height = "100px";
+    researchText.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    researchText.style.color = "snow";
+    researchText.style.flexDirection = "column";
+    researchText.style.justifyContent = "center";
+    researchText.style.alignItems = "center";
+    researchText.style.textAlign = "center";
+    researchText.style.textTransform = "uppercase";
+    researchText.style.display = "flex";
+    researchText.style.pointerEvents = "none";
     this.setupShortcutKeys();
     this.initializeErrorBanner();
+    this.setupMusic();
+  }
+  setupMusic() {
+    this.music.src = "./assets/animal-anthem.mp3";
+    this.music.loop = true;
+    this.music.preload = "auto";
   }
   setupShortcutKeys() {
     document.addEventListener("keyup", (e) => {
@@ -4683,7 +5060,7 @@ class Hud {
       }
     });
   }
-  refresh() {
+  async refresh() {
     if (this.updated) {
       return;
     }
@@ -4691,17 +5068,18 @@ class Hud {
     this.refreshResources();
     this.refreshTax();
     this.refreshButtons();
+    this.refreshResearchInfo();
     this.ui.style.display = "block";
     this.updated = true;
   }
   refreshButtons() {
     const player = this.manager.getPlayer();
-    this.nextButton.style.display = this.manager.getUnits(player).length > 1 ? "block" : "none";
+    this.nextButton.style.display = this.manager.getUnits(player).size > 1 ? "block" : "none";
   }
-  refreshTax() {
+  async refreshTax() {
     const player = this.manager.getPlayer();
     const RESOURCES = this.manager.getAllGlobalResources();
-    const revenuePerResource = this.manager.calculateResourceRevenue(player);
+    const revenuePerResource = await this.manager.calculateResourceRevenue(player);
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
     RESOURCES.forEach((resource, index) => {
       let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
@@ -4728,11 +5106,12 @@ class Hud {
       taxKnob.addEventListener("input", (e) => {
         this.manager.updateTaxValue(player, parseInt(taxKnob.value));
         this.refreshTax();
+        this.refreshResearchInfo();
       });
     }
     taxKnob.style.display = hasRevenue ? "block" : "none";
   }
-  refreshResources() {
+  async refreshResources() {
     const RESOURCES = this.manager.getAllGlobalResources();
     RESOURCES.forEach((resource, index) => {
       const resourceData = this.manager.getResourceType(resource);
@@ -4740,28 +5119,17 @@ class Hud {
         return;
       }
       const { imageSource, spriteSize, frames, padding } = resourceData.icon;
-      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 0) * 2;
-      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 0) * 2;
+      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
       let icon = document.getElementById(resource);
       if (!icon) {
         icon = this.resourceOverlay.appendChild(document.createElement("div"));
         icon.id = resource;
         icon.style.backgroundImage = `url(${imageSource})`;
-        icon.style.width = `${spriteSize[0]}px`;
-        icon.style.height = `${spriteSize[1]}px`;
-        icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % 30) + (padding?.[0] ?? 0) / 2}px ${-spriteHeight * Math.floor(frames[0] / 30) + (padding?.[1] ?? 0) / 2}px`;
-        icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        icon.style.bottom = "0";
-        icon.style.left = "0";
-        icon.style.color = "white";
-        icon.style.borderRadius = "50%";
-        icon.style.display = "flex";
-        icon.style.alignSelf = "flex-end";
-        icon.style.justifyContent = "center";
-        icon.style.fontSize = "12pt";
-        icon.style.fontWeight = "bold";
-        icon.style.marginTop = "15px";
-        icon.style.transition = "background-color 0.2s";
+        icon.style.width = `${spriteWidth}px`;
+        icon.style.height = `${spriteHeight}px`;
+        icon.classList.add("resource-icon");
+        icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % 30) + (padding?.[0] ?? 2) / 2}px ${-spriteHeight * Math.floor(frames[0] / 30) + (padding?.[1] ?? 2) / 2}px`;
         icon.textContent = "0";
         this.resourceOverlay.appendChild(icon);
       }
@@ -4785,12 +5153,13 @@ class Hud {
       taxText.style.textAlign = "center";
       taxText.style.fontSize = "8pt";
     });
-    const revenuePerResource = this.manager.calculateResourceRevenue(this.manager.getPlayer());
+    const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
     const hasResource = RESOURCES.some((resource) => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
     this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
   flashEndTurn(temp = false) {
+    this.buttonsOverlay.style.display = "block";
     document.getElementById("endButton")?.classList.add(temp ? "flash-temp" : "flash");
     if (temp) {
       this.stopFlashEndTurn();
@@ -4803,14 +5172,16 @@ class Hud {
     document.getElementById("endButton")?.classList.remove("flash");
   }
   setHudButtons() {
-    const nextButton = this.overlay.appendChild(this.nextButton);
+    const nextButton = this.buttonsOverlay.appendChild(this.nextButton);
     nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
     nextButton.id = "nextButton";
+    nextButton.style.width = "150px";
     nextButton.addEventListener("click", (e) => {
       this.manager.selectNext();
     });
     nextButton.style.display = "none";
-    const endButton = this.overlay.appendChild(this.endButton);
+    const endButton = this.buttonsOverlay.appendChild(this.endButton);
+    endButton.style.width = "150px";
     endButton.id = "endButton";
     endButton.addEventListener("click", (e) => {
       this.stopFlashEndTurn();
@@ -4824,10 +5195,11 @@ class Hud {
       e.preventDefault();
       e.stopPropagation();
     });
-    const autoEndGroup = this.overlay.appendChild(document.createElement("div"));
+    const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
     const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
     autoEndLabel.textContent = "auto-end turn";
     autoEndLabel.htmlFor = "autoEndCheckbox";
+    autoEndLabel.title = "Automatically end turn when no more moves are available";
     const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
     autoEndCheckbox.id = "autoEndCheckbox";
     autoEndCheckbox.type = "checkbox";
@@ -4844,10 +5216,10 @@ class Hud {
     this.itemsToDestroy.forEach((item) => item());
     this.itemsToDestroy.clear();
   }
-  showSelected(obj) {
+  async showSelected(obj) {
     const menu = this.manager.getMenu(obj?.elem?.name);
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
-    this.overlay.style.right = menu?.items.length ? "-200px" : "0";
+    this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
     this.topBg.style.top = obj ? "0" : "-400px";
     this.clear();
@@ -4864,15 +5236,15 @@ class Hud {
       icon.style.backgroundImage = `url(${imageSource})`;
       icon.style.width = `${spriteSize[0]}px`;
       icon.style.height = `${spriteSize[1]}px`;
-      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 0) * 2;
-      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 0) * 2;
+      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
       let animationFrame;
       const animateIcon = () => {
         animationFrame = requestAnimationFrame(animateIcon);
         const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
         icon.style.backgroundPosition = `${-spriteWidth * (frame2 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
       };
-      animationFrame = requestAnimationFrame(animateIcon);
+      animateIcon();
       this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
       const label = iconDiv.appendChild(document.createElement("div"));
       label.innerText = menu.name;
@@ -4893,6 +5265,7 @@ class Hud {
       healthDiv.style.right = "0";
       healthDiv.style.top = "0";
       if (obj.elem?.type === "house") {
+        const resourcesRevenue = obj.calculateUnitResourcesRevenue();
         {
           const wheat = healthDiv.appendChild(document.createElement("div"));
           wheat.style.display = "flex";
@@ -4900,7 +5273,7 @@ class Hud {
           wheat.style.alignItems = "center";
           wheat.style.justifyContent = "left";
           wheat.style.margin = "3px 10px";
-          wheat.style.height = "20px";
+          wheat.style.height = "16px";
           const wheatResourceType = this.manager.getResourceType("wheat");
           if (wheatResourceType) {
             const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = wheatResourceType.icon;
@@ -4909,15 +5282,15 @@ class Hud {
             icon2.style.width = `${spriteSize2[0]}px`;
             icon2.style.height = `${spriteSize2[1]}px`;
             icon2.style.transform = "scale(.5)";
-            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
-            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 0) * 2;
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 2) * 2;
+            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 2) * 2;
             icon2.style.backgroundPosition = `${-spriteWidth2 * (frames2[0] % SPRITESHEET_COLS)}px ${-spriteHeight2 * Math.floor(frames2[0] / SPRITESHEET_COLS)}px`;
           }
           const cost = obj.nextLevelCost();
           const label2 = wheat.appendChild(document.createElement("div"));
           label2.style.fontSize = "10pt";
           label2.style.color = "gold";
-          label2.textContent = `${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
+          label2.textContent = `(+${resourcesRevenue["wheat"]}) ${obj.elem.resourcesAccumulated?.wheat ?? 0} / ${cost}`;
         }
         {
           const wood = healthDiv.appendChild(document.createElement("div"));
@@ -4926,7 +5299,7 @@ class Hud {
           wood.style.alignItems = "center";
           wood.style.justifyContent = "left";
           wood.style.margin = "3px 10px";
-          wood.style.height = "10px";
+          wood.style.height = "16px";
           const woodResourceType = this.manager.getResourceType("wood");
           if (woodResourceType) {
             const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = woodResourceType.icon;
@@ -4935,15 +5308,40 @@ class Hud {
             icon2.style.width = `${spriteSize2[0]}px`;
             icon2.style.height = `${spriteSize2[1]}px`;
             icon2.style.transform = "scale(.5)";
-            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
-            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 0) * 2;
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 2) * 2;
+            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 2) * 2;
             icon2.style.backgroundPosition = `${-spriteWidth2 * (frames2[0] % SPRITESHEET_COLS)}px ${-spriteHeight2 * Math.floor(frames2[0] / SPRITESHEET_COLS)}px`;
           }
           const label2 = wood.appendChild(document.createElement("div"));
           label2.style.fontSize = "10pt";
           label2.style.color = "orange";
           const capacity = obj.resourceCapacity("wood");
-          label2.textContent = `${obj.elem.resourcesAccumulated?.wood ?? 0} / ${capacity}`;
+          label2.textContent = `(+${resourcesRevenue["wood"]}) ${obj.elem.resourcesAccumulated?.wood ?? 0} / ${capacity}`;
+        }
+        {
+          const trade = healthDiv.appendChild(document.createElement("div"));
+          trade.style.display = "flex";
+          trade.style.flexDirection = "row";
+          trade.style.alignItems = "center";
+          trade.style.justifyContent = "left";
+          trade.style.margin = "3px 10px";
+          trade.style.height = "16px";
+          const tradeResourceType = this.manager.getResourceType("trade");
+          if (tradeResourceType) {
+            const { imageSource: imageSource2, spriteSize: spriteSize2, frames: frames2, padding: padding2 } = tradeResourceType.icon;
+            const icon2 = trade.appendChild(document.createElement("div"));
+            icon2.style.backgroundImage = `url(${imageSource2})`;
+            icon2.style.width = `${spriteSize2[0]}px`;
+            icon2.style.height = `${spriteSize2[1]}px`;
+            icon2.style.transform = "scale(.5)";
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 2) * 2;
+            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 2) * 2;
+            icon2.style.backgroundPosition = `${-spriteWidth2 * (frames2[0] % SPRITESHEET_COLS)}px ${-spriteHeight2 * Math.floor(frames2[0] / SPRITESHEET_COLS)}px`;
+          }
+          const label2 = trade.appendChild(document.createElement("div"));
+          label2.style.fontSize = "10pt";
+          label2.style.color = "teal";
+          label2.textContent = `(+${resourcesRevenue["trade"]})`;
         }
       }
     }
@@ -4957,16 +5355,21 @@ class Hud {
       menuDiv.style.margin = "0 10px";
       menuDiv.style.marginLeft = "-100px";
       menuDiv.style.gap = "10px";
-      menu.items.forEach((item) => {
+      for (const item of menu.items) {
+        console.log(item, DEBUG);
         if (item.debug && !DEBUG) {
-          return;
+          continue;
         }
-        if (this.manager.checkCondition(item.hidden, obj)) {
-          return;
+        if (await this.manager.checkCondition(item.hidden, obj)) {
+          continue;
         }
-        const disabled = this.manager.checkCondition(item.disabled, obj) || (obj.canAfford(item.resourceCost) ? null : "not enough\nresources");
+        const researched = !item.researchNeeded?.length || item.researchNeeded?.every((research) => this.manager.isResearched(research, this.manager.getPlayer()));
+        if (!researched) {
+          continue;
+        }
+        const disabled = (!researched ? `Research\n${item.researchNeeded?.join(", ")}` : undefined) || await this.manager.checkCondition(item.disabled, obj) || (obj.canAfford(item.resourceCost) ? null : "not enough\nresources");
         const menuItemDiv = menuDiv.appendChild(document.createElement("div"));
-        if (item.resourceCost) {
+        if (item.resourceCost && researched) {
           const resourceDiv = menuItemDiv.appendChild(document.createElement("div"));
           resourceDiv.style.display = "flex";
           resourceDiv.style.flexDirection = "row";
@@ -4987,8 +5390,8 @@ class Hud {
             icon2.style.height = `${spriteSize2[1]}px`;
             icon2.style.transform = "scale(.5)";
             icon2.style.marginTop = "-25px";
-            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 0) * 2;
-            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 0) * 2;
+            const spriteWidth2 = spriteSize2[0] + (padding2?.[0] ?? 2) * 2;
+            const spriteHeight2 = spriteSize2[1] + (padding2?.[1] ?? 2) * 2;
             icon2.style.backgroundPosition = `${-spriteWidth2 * (frames2[0] % SPRITESHEET_COLS)}px ${-spriteHeight2 * Math.floor(frames2[0] / SPRITESHEET_COLS)}px`;
             const label2 = resourceDiv.appendChild(document.createElement("div"));
             label2.style.fontSize = "10pt";
@@ -5016,15 +5419,15 @@ class Hud {
         icon.style.width = `${spriteSize[0]}px`;
         icon.style.height = `${spriteSize[1]}px`;
         const cols = 30;
-        const spriteWidth = spriteSize[0] + (padding?.[0] ?? 0) * 2;
-        const spriteHeight = spriteSize[1] + (padding?.[1] ?? 0) * 2;
+        const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+        const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
         let animationFrame;
         const animateIcon = () => {
           animationFrame = requestAnimationFrame(animateIcon);
           const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
           icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
         };
-        animationFrame = requestAnimationFrame(animateIcon);
+        animateIcon();
         this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
         const label = menuItemDiv.appendChild(document.createElement("div"));
         label.innerText = disabled ?? item?.label ?? item.name;
@@ -5091,7 +5494,7 @@ class Hud {
           icon.style.opacity = "";
           menuItemDiv.style.cursor = "pointer";
         }
-      });
+      }
     }
   }
   showBlocker() {
@@ -5100,10 +5503,96 @@ class Hud {
   hideBlocker() {
     this.blocker.style.display = "none";
   }
-  showDialog(text) {
+  async showResearchDialog(research) {
+    return new Promise((resolve) => {
+      this.showBlocker();
+      this.researchPopup.style.display = "flex";
+      const { imageSource, spriteSize, frames, padding } = research.waitIcon ?? research.icon;
+      const researchImage = this.researchPopup.querySelector("#researchImage");
+      researchImage.style.backgroundImage = `url(${imageSource})`;
+      researchImage.style.width = `${spriteSize[0]}px`;
+      researchImage.style.height = `${spriteSize[1]}px`;
+      const cols = 30;
+      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
+      let animationFrame;
+      const animateIcon = () => {
+        animationFrame = requestAnimationFrame(animateIcon);
+        const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
+        researchImage.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+      };
+      animateIcon();
+      this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
+      const researchText = this.researchPopup.querySelector("#researchText");
+      researchText.textContent = `Good news, great leader!\n\nWe have discovered ${research.name}!\n${research.description ?? ""}`;
+      this.playMusic();
+      const utterance = new SpeechSynthesisUtterance(researchText.textContent);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find((voice2) => voice2.name.indexOf("Daniel") >= 0);
+      if (voice) {
+        utterance.voice = voice;
+      }
+      speechSynthesis.speak(utterance);
+      this.blocker.addEventListener("click", () => {
+        speechSynthesis.cancel();
+        this.fadeMusicOut();
+        this.clear();
+        this.researchPopup.style.display = "none";
+        this.hideBlocker();
+        resolve();
+      }, { once: true });
+    });
+  }
+  musicFader = 0;
+  fadeMusicOut() {
+    let volume = this.music.volume;
+    const fade = () => {
+      volume -= 0.005;
+      if (volume > 0) {
+        this.music.volume = volume;
+        this.musicFader = requestAnimationFrame(fade);
+      } else {
+        this.music.pause();
+      }
+    };
+    fade();
+  }
+  playMusic() {
+    cancelAnimationFrame(this.musicFader);
+    this.music.play();
+    this.music.volume = 1;
+    this.music.currentTime = 0;
+  }
+  async showDialog(text, music = false, voiceName) {
     this.showBlocker();
     this.dialog.style.display = "flex";
+    this.cat.style.display = "block";
     this.dialog.textContent = text;
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const voice = voiceName ? voices.find((voice2) => voice2.name.indexOf(voiceName) >= 0) : undefined;
+    if (voice) {
+      utterance.voice = voice;
+    }
+    speechSynthesis.speak(utterance);
+    if (music) {
+      this.playMusic();
+    }
+    return new Promise((resolve) => {
+      this.blocker.addEventListener("click", () => {
+        if (music) {
+          this.fadeMusicOut();
+        }
+        this.dialog.style.display = "none";
+        this.cat.style.display = "none";
+        this.hideBlocker();
+        speechSynthesis.cancel();
+        this.clear();
+        setTimeout(() => {
+          resolve();
+        }, 10);
+      }, { once: true });
+    });
   }
   closeDialog() {
     this.dialog.style.display = "none";
@@ -5128,6 +5617,134 @@ class Hud {
       });
     }, { once: true });
   }
+  async promptForResearch(inventions, brainsPerTurn, currentBrains) {
+    return new Promise((resolve) => {
+      this.showBlocker();
+      const inv = [...inventions];
+      inv.sort((a, b) => {
+        return Math.random() - 0.5;
+      });
+      while (inv.length > 3) {
+        inv.pop();
+      }
+      this.researchList.style.display = "flex";
+      this.researchList.style.height = `${inv.length * 100}px`;
+      this.researchList.innerHTML = "";
+      inv.forEach((invention) => {
+        const researchDiv = this.researchList.appendChild(document.createElement("div"));
+        researchDiv.style.display = "flex";
+        researchDiv.style.flexDirection = "row";
+        researchDiv.style.justifyContent = "flex-start";
+        researchDiv.style.alignItems = "center";
+        researchDiv.style.flexGrow = "1";
+        researchDiv.style.margin = "0 10px";
+        researchDiv.style.gap = "10px";
+        const { imageSource, spriteSize, frames, padding } = invention.icon;
+        const icon = researchDiv.appendChild(document.createElement("div"));
+        icon.style.backgroundImage = `url(${imageSource})`;
+        icon.style.width = `${spriteSize[0]}px`;
+        icon.style.height = `${spriteSize[1]}px`;
+        const cols = 30;
+        const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+        const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
+        let animationFrame;
+        const animateIcon = () => {
+          animationFrame = requestAnimationFrame(animateIcon);
+          const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        };
+        animateIcon();
+        this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
+        const midGroup = researchDiv.appendChild(document.createElement("div"));
+        midGroup.style.display = "flex";
+        midGroup.style.flexDirection = "column";
+        midGroup.style.justifyContent = "flex-start";
+        midGroup.style.alignItems = "flex-start";
+        midGroup.style.flexGrow = "1";
+        midGroup.style.margin = "0 10px";
+        midGroup.style.gap = "5px";
+        const label = midGroup.appendChild(document.createElement("div"));
+        label.innerText = invention.name;
+        label.style.textAlign = "left";
+        label.style.fontSize = "10pt";
+        const desc = midGroup.appendChild(document.createElement("div"));
+        desc.innerText = invention.description ?? "";
+        desc.style.textAlign = "left";
+        desc.style.fontSize = "8pt";
+        desc.style.color = "silver";
+        const costDiv = researchDiv.appendChild(document.createElement("div"));
+        costDiv.style.display = "flex";
+        costDiv.style.flexDirection = "row";
+        costDiv.style.alignItems = "flex-end";
+        costDiv.style.justifyContent = "center";
+        costDiv.style.position = "absolute";
+        costDiv.style.right = "10px";
+        costDiv.style.marginTop = "-40px";
+        costDiv.style.color = "silver";
+        const numTurns = Math.ceil((invention.cost - currentBrains) / brainsPerTurn);
+        costDiv.textContent = `${numTurns} turns`;
+        researchDiv.style.cursor = "pointer";
+        researchDiv.style.width = "100%";
+        researchDiv.addEventListener("mouseover", () => {
+          researchDiv.style.backgroundColor = "rgba(100, 100, 100, 1)";
+        });
+        researchDiv.addEventListener("mouseout", () => {
+          researchDiv.style.backgroundColor = "";
+        });
+        researchDiv.addEventListener("click", () => {
+          this.manager.research(invention.name, this.manager.getPlayer());
+          this.researchList.style.display = "none";
+          this.hideBlocker();
+          this.updated = false;
+          resolve();
+        });
+      });
+    });
+  }
+  async refreshResearchInfo() {
+    const player = this.manager.getPlayer();
+    const research = this.manager.getResearchInfo(player);
+    this.researchInfoDiv.innerHTML = "";
+    if (!research) {
+      this.researchInfoDiv.style.display = "none";
+      return;
+    }
+    const researched = this.manager.isResearched(research.name, player);
+    this.researchInfoDiv.style.display = "block";
+    const { imageSource, spriteSize, frames, padding } = research.icon;
+    const icon = this.researchInfoDiv.appendChild(document.createElement("div"));
+    icon.style.backgroundImage = `url(${imageSource})`;
+    icon.style.width = `${spriteSize[0]}px`;
+    icon.style.height = `${spriteSize[1]}px`;
+    const cols = 30;
+    const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+    const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
+    let animationFrame;
+    const animateIcon = () => {
+      animationFrame = requestAnimationFrame(animateIcon);
+      const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
+      icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+    };
+    animateIcon();
+    this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
+    const label = this.researchInfoDiv.appendChild(document.createElement("div"));
+    label.innerText = research.name;
+    label.style.marginTop = "-30px";
+    label.style.textAlign = "center";
+    label.style.fontSize = "10pt";
+    label.style.color = "white";
+    const turnDiv = this.researchInfoDiv.appendChild(document.createElement("div"));
+    const globalResources = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
+    const brainsPerTurn = globalResources.brain;
+    turnDiv.style.position = "absolute";
+    turnDiv.style.top = "10px";
+    turnDiv.style.right = "10px";
+    turnDiv.style.color = researched ? "#00ffff" : !brainsPerTurn ? "#ff0000" : "silver";
+    turnDiv.style.fontSize = "8pt";
+    const currentBrains = this.manager.getPlayerResource("brain", this.manager.getPlayer());
+    const numTurns = Math.ceil((research.cost - currentBrains) / brainsPerTurn);
+    turnDiv.textContent = researched ? `researched` : !brainsPerTurn ? "research halted" : `${numTurns} turns`;
+  }
 }
 
 // src/ai/thinker.ts
@@ -5144,13 +5761,13 @@ class Thinker {
   }
   async prepareScript(gameObject) {
     const actions = [];
-    const preys = gameObject.findNearby((obj) => {
+    const preys = await gameObject.findNearby((obj) => {
       if (obj.elem?.owner !== gameObject.elem?.owner) {
         return true;
       }
       return false;
     }, 2);
-    const friends = gameObject.findNearby((obj) => {
+    const friends = await gameObject.findNearby((obj) => {
       if (obj !== gameObject && obj.elem?.type === "unit" && obj.elem?.owner === gameObject.elem?.owner) {
         return true;
       }
@@ -5198,7 +5815,7 @@ class Thinker {
         if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 || this.manager.isEmptySpot(gameObject.px + dx, gameObject.py + dy)) {
           actions.push({
             time: nextActionTime,
-            moveTo: [gameObject.px + dx, gameObject.py + dy]
+            attack: [gameObject.px + dx, gameObject.py + dy]
           });
           didMove = true;
         }
@@ -5261,7 +5878,7 @@ class Thinker {
           } else if (action?.moveTo) {
             gameObject.simpleMoveTo(action.moveTo[0], action.moveTo[1]);
           } else if (action?.attack) {
-            gameObject.attackWithRange(action.attack[0], action.attack[1]);
+            gameObject.attackTowards(action.attack[0], action.attack[1]);
           }
           requestAnimationFrame(loop);
         }
@@ -5294,6 +5911,8 @@ class Manager {
   showLabels = true;
   thinker = new Thinker(this);
   lastUnit;
+  lastHovered;
+  advise = new Set;
   constructor(scene) {
     this.scene = scene;
     this.animation = new AnimationManager(scene.animations);
@@ -5308,15 +5927,16 @@ class Manager {
     }, { passive: false });
     this.hud.initialize();
     window.addEventListener("blur", (e) => {
-      this.hud.ui.classList.add("hidden");
+      this.hud.resourceOverlay.classList.add("hidden");
+      this.hud.buttonsOverlay.classList.add("hidden");
       this.showLabels = false;
-      this.setSelection(undefined);
       this.cursor?.hide();
       this.updateLabels();
       exports_littlejs_esm_min.overlayCanvas.style.cursor = "default";
     });
     window.addEventListener("focus", (e) => {
-      this.hud.ui.classList.remove("hidden");
+      this.hud.resourceOverlay.classList.remove("hidden");
+      this.hud.buttonsOverlay.classList.remove("hidden");
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
@@ -5324,12 +5944,15 @@ class Manager {
     });
   }
   updateLabels() {
-    this.iterateRevealedCells((gameObject) => {
+    this.getAllUnitsOrHouses().forEach((gameObject) => {
       gameObject.updateLabel(this.showLabels);
     });
   }
   refresh() {
     this.scene.elems.forEach((elem) => {
+      if (elem.debug && !DEBUG) {
+        return;
+      }
       this.sanitizeElem(elem);
       this.refreshElem(elem);
     });
@@ -5348,14 +5971,15 @@ class Manager {
       }
     });
   }
-  iterateGridCell(x, y, callback) {
-    Object.keys(this.scene.layers).forEach((layer) => {
+  async iterateGridCell(x, y, callback) {
+    const layers = Object.keys(this.scene.layers);
+    for (const layer of layers) {
       const tag = `${layer}_${x}_${y}`;
       const gameObject = this.grid[tag];
       if (gameObject) {
-        callback(gameObject);
+        await callback(gameObject);
       }
-    });
+    }
   }
   getRevealedCells() {
     const cells = [];
@@ -5365,47 +5989,48 @@ class Manager {
     });
     return cells;
   }
-  iterateRevealedCells(callback) {
+  async iterateRevealedCells(callback) {
     const cells = this.getRevealedCells();
     for (const cell of cells) {
-      Object.keys(this.scene.layers).forEach((layer) => {
+      for (const layer of Object.keys(this.scene.layers)) {
         const tag = `${layer}_${cell.x}_${cell.y}`;
         const gameObject = this.grid[tag];
         if (gameObject) {
-          callback(gameObject);
+          await callback(gameObject);
         }
-      });
+      }
     }
   }
-  fixWorld() {
+  async fixWorld() {
     if (this.scene.clearFogOfWar) {
       this.clearFogOfWar();
     }
-    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+    const entries = Object.entries(this.grid);
+    for (const [tag, gameObject] of entries) {
       if (gameObject.elem?.condition) {
         let conditionMet = false;
         if (gameObject.elem.condition.tile) {
           const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
-          tiles.forEach((tile2) => {
-            this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
+          for (const tile2 of tiles) {
+            await this.iterateGridCell(gameObject.px, gameObject.py, async (target) => {
               if (target?.elem?.name === tile2) {
                 conditionMet = true;
               }
             });
-          });
+          }
         }
         let violationMet = false;
         if (gameObject.elem.condition.noTile) {
           const tiles = Array.isArray(gameObject.elem.condition.noTile) ? gameObject.elem.condition.noTile : [gameObject.elem.condition.noTile];
-          tiles.forEach((tile2) => {
-            Object.keys(this.scene.layers).forEach((layer) => {
+          for (const tile2 of tiles) {
+            for (const layer of Object.keys(this.scene.layers)) {
               const tag2 = `${layer}_${gameObject.px}_${gameObject.py}`;
               const target = this.grid[tag2];
               if (target?.elem?.name === tile2) {
                 violationMet = true;
               }
-            });
-          });
+            }
+          }
         }
         if (gameObject.elem.condition.zeroUnit) {
           const tag2 = `unit_${gameObject.px}_${gameObject.py}`;
@@ -5419,7 +6044,7 @@ class Manager {
           delete this.grid[tag];
         }
       }
-    });
+    }
   }
   shiftCamera() {
     if (this.inUI) {
@@ -5458,9 +6083,9 @@ class Manager {
   }
   defineElem(elem) {
     if (elem.definition) {
-      const defintion = this.scene.definitions.find((def) => def.name === elem.definition);
-      if (defintion) {
-        Object.entries(defintion).forEach(([key, value]) => {
+      const definition = this.scene.definitions.find((def) => def.name === elem.definition);
+      if (definition) {
+        Object.entries(definition).forEach(([key, value]) => {
           const e = elem;
           if (e[key] === undefined) {
             e[key] = JSON.parse(JSON.stringify(value));
@@ -5469,6 +6094,7 @@ class Manager {
         delete elem.definition;
       }
     }
+    return elem;
   }
   refreshElem(elem) {
     this.defineElem(elem);
@@ -5499,8 +6125,15 @@ class Manager {
       if (elem.gameObject && !entry.gameObject.size) {
         const chance = elem.group?.chance ?? 1;
         const [col, row] = elem.group?.grid ?? [1, 1];
+        const farFromCenter = elem.group?.farFromCenter ?? 0;
         for (let x = 0;x < col; x++) {
           for (let y = 0;y < row; y++) {
+            if (farFromCenter) {
+              const distance = Math.abs(x - Math.floor(col / 2)) + Math.abs(y - Math.floor(row / 2));
+              if (distance < farFromCenter) {
+                continue;
+              }
+            }
             if (Math.random() <= chance) {
               const xx = x - Math.floor(col / 2);
               const yy = y - Math.floor(row / 2);
@@ -5581,7 +6214,7 @@ class Manager {
       delete this.grid[tag];
     }
   }
-  onCursorMove(x, y) {
+  checkOnMoveOptions(x, y) {
     this.onMoveOption = false;
     if (!this.selected?.moveOptions) {
       return;
@@ -5604,9 +6237,37 @@ class Manager {
         this.onMoveOption = true;
       }
     }
+  }
+  checkOnAttackOptions(x, y) {
+    this.onMoveOption = false;
+    if (!this.selected?.attackOptions) {
+      return;
+    }
+    const selectedAnimation = this.selected.elem?.selected?.moveIndic?.selectedAnimation;
+    const moveOptionAnimation = this.selected.elem?.selected?.moveIndic?.animation;
+    if (!selectedAnimation || !moveOptionAnimation) {
+      return;
+    }
+    const attackOptions = Object.values(this.selected.attackOptions);
+    if (attackOptions.length) {
+      let hoveringAttackOption = false;
+      attackOptions.forEach((option) => {
+        if (option.px === x && option.py === y) {
+          hoveringAttackOption = true;
+        }
+        option.animation = this.animation.getInfo(option.px === x && option.py === y ? selectedAnimation : moveOptionAnimation);
+      });
+      if (hoveringAttackOption) {
+        this.onMoveOption = true;
+      }
+    }
+  }
+  onCursorMove(x, y) {
+    this.checkOnMoveOptions(x, y);
+    this.checkOnAttackOptions(x, y);
     this.refreshCursor();
   }
-  onTap(x, y, mouseX, mouseY) {
+  async onTap(x, y, mouseX, mouseY) {
     this.onMoveOption = false;
     this.refreshCursor();
     if (Date.now() - this.doneShifting < 100) {
@@ -5622,28 +6283,38 @@ class Manager {
       this.selected.moveTo(x, y);
       return;
     }
+    if (this.selected?.canAttackAt(x, y) && this.selected.hasAttackOptionOn(x, y)) {
+      this.selected.attackAt(x, y);
+      return;
+    }
     let unit = this.grid[`unit_${x}_${y}`];
-    if (!unit?.canAct()) {
+    if (!await unit?.canAct()) {
       unit = undefined;
     }
     const house = this.grid[`house_${x}_${y}`];
     const nextSelection = unit === this.selected ? house : unit;
     this.setSelection(this.selected === nextSelection ? undefined : nextSelection);
   }
-  setSelection(gameObject) {
+  async setSelection(gameObject) {
     if (this.selected === gameObject) {
       return;
+    }
+    if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
+      this.advise.add(gameObject.elem.advise.name);
+      await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
     const previousSelected = this.selected;
     this.selected = gameObject;
     previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
-    this.hud.showSelected(this.selected);
+    await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
       this.makeWithinView(this.selected);
     }
     if (this.selected) {
       this.lastUnit = this.selected;
+    } else {
+      this.checkForAnyMove(true);
     }
   }
   makeWithinView(gameObject) {
@@ -5676,9 +6347,12 @@ class Manager {
       return;
     }
     this.hovered = gameObject;
+    if (this.hovered) {
+      this.lastHovered = gameObject;
+    }
     this.refreshCursor();
   }
-  checkCondition(condition, obj) {
+  async checkCondition(condition, obj) {
     if (!condition) {
       return null;
     }
@@ -5700,11 +6374,11 @@ class Manager {
     if (obj) {
       let proxyCheck = null;
       const PROXY_CHECK = [condition.proximity, condition.nonProximity];
-      PROXY_CHECK.forEach((check) => {
+      for (const check of PROXY_CHECK) {
         if (check && !proxyCheck) {
           const [item, message] = check;
           if (item) {
-            const nearby = obj.findNearby((obj2) => {
+            const nearby = await obj.findNearby((obj2) => {
               if (obj2.elem?.name === item) {
                 return true;
               }
@@ -5713,6 +6387,7 @@ class Manager {
               }
               return false;
             });
+            console.log(item, nearby);
             if (condition.proximity === check && nearby.size) {
               proxyCheck = message ?? "true";
             }
@@ -5721,7 +6396,7 @@ class Manager {
             }
           }
         }
-      });
+      }
       if (proxyCheck) {
         return proxyCheck;
       }
@@ -5732,31 +6407,34 @@ class Manager {
     if (condition.unitLimit) {
       const level = obj?.elem?.level ?? 0;
       const [unit, message] = condition.unitLimit;
-      const support = obj?.countUnitSupport(unit);
+      const support = await obj?.countUnitSupport(unit);
       if (support && support >= level) {
         return message ?? "true";
       }
     }
     return null;
   }
-  gotoNextTurn() {
+  async gotoNextTurn() {
     if (this.scene.turn) {
+      this.setSelection(undefined);
       if (this.scene.turn.player < this.scene.players.length) {
         this.scene.turn.player++;
       } else {
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
       }
-      if (this.scene.turn && this.getPlayer()) {
-        this.collectResources(this.getPlayer());
+      const player = this.getPlayer();
+      if (this.scene.turn && player) {
+        await this.collectResources(player);
       }
       this.refreshUnitsLabels();
-      if (this.getUnits(this.getPlayer()).length) {
-        this.giveUnitsTurns();
-        this.selectNext();
-      } else if (this.isAiPlayer(this.getPlayer())) {
-        this.gotoNextTurn();
+      if (this.getUnits(player).size) {
+        await this.giveUnitsTurns(player);
+        await this.selectNext();
+      } else if (this.isAiPlayer(player)) {
+        await this.gotoNextTurn();
       }
+      await this.checkForAnyMove(true);
     }
     this.hud.updated = false;
   }
@@ -5767,21 +6445,20 @@ class Manager {
       }
     });
   }
-  giveUnitsTurns() {
-    this.iterateRevealedCells((gameObject) => {
-      if ((gameObject.elem?.owner ?? 0) === this.getPlayer()) {
-        gameObject.giveTurn();
-      }
-    });
+  async giveUnitsTurns(player) {
+    const units = this.getUnits(player);
+    for (const gameObject of units) {
+      await gameObject.giveTurn();
+    }
   }
-  calculateRevenue(player) {
+  async calculateRevenue(player) {
     const playerResources = this.scene.players[player - 1]?.resources;
     if (!playerResources) {
       return 0;
     }
     let trade = 0;
     const visited = new Set;
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         if (!visited.has(`${gameObject.px}_${gameObject.py}`)) {
@@ -5795,12 +6472,13 @@ class Manager {
     });
     return trade;
   }
-  collectResources(player) {
+  async collectResources(player) {
+    await this.ensureResearch(player);
     const playerResources = this.scene.players[player - 1]?.resources;
     if (!playerResources) {
       return;
     }
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         const resources = this.getResources(gameObject.px, gameObject.py);
@@ -5811,31 +6489,96 @@ class Manager {
         }
       }
     });
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         gameObject.checkResourceCaps();
       }
     });
-    const globalResources = this.calculateResourceRevenue(player);
+    const globalResources = await this.calculateResourceRevenue(player);
     Object.entries(globalResources).forEach(([resource, value]) => {
       const r = resource;
       playerResources[r] = (playerResources[r] ?? 0) + value;
     });
+    this.checkResearch(this.getPlayer());
   }
-  checkForAnyMove() {
-    let anyMove = false;
-    this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct()) {
+  availableInventionsToDiscover(player) {
+    const allInventions = this.scene.research;
+    const playerResearch = this.scene.players[player - 1]?.research;
+    return allInventions.filter((invention) => {
+      if (playerResearch?.[invention.name]) {
+        return false;
+      }
+      const dependency = invention.dependency;
+      if (dependency && dependency.some((dep) => !playerResearch?.[dep])) {
+        return false;
+      }
+      return true;
+    });
+  }
+  async ensureResearch(player) {
+    const globalResources = await this.calculateResourceRevenue(player);
+    const brainsPerTurn = globalResources.brain;
+    if (brainsPerTurn) {
+      const currentResearch = this.getResearchInfo(player);
+      if (!currentResearch) {
+        await this.hud.showDialog("Use your research points to unlock new inventions.\nThis will help you evolve your animals and buildings.");
+        await this.findNextResearch(player);
+      }
+    }
+  }
+  checkResearch(player) {
+    const researchPoints = this.scene.players[this.getPlayer() - 1]?.resources.brain ?? 0;
+    const currentResearchName = this.scene.players[this.getPlayer() - 1]?.currentResearch;
+    const currentResearch = this.scene.research.find((research) => research.name === currentResearchName);
+    if (researchPoints) {
+      if (currentResearch) {
+        if (researchPoints >= currentResearch.cost) {
+          if (researchPoints >= currentResearch.cost) {
+            this.discover(this.getPlayer(), currentResearch);
+          }
+        }
+      } else {
+        this.findNextResearch(this.getPlayer());
+      }
+    }
+  }
+  async findNextResearch(player) {
+    const globalResources = await this.calculateResourceRevenue(player);
+    const brainsPerTurn = globalResources.brain;
+    const currentBrains = this.getPlayerResource("brain", player);
+    await this.hud.promptForResearch(this.availableInventionsToDiscover(player), brainsPerTurn, currentBrains);
+  }
+  async discover(player, invention) {
+    const playerInfo = this.scene.players[player - 1];
+    if (!playerInfo.research) {
+      playerInfo.research = {};
+    }
+    playerInfo.research[invention.name] = Date.now();
+    this.updateResource("brain", (brains) => Math.max(0, brains - invention.cost), this.getPlayer());
+    await this.hud.showResearchDialog(invention);
+    await this.findNextResearch(player);
+  }
+  async checkForAnyBuilding() {
+    let anyBuilding = undefined;
+    await this.iterateRevealedCells(async (gameObject) => {
+      if (gameObject.elem?.type === "house" && await gameObject.canAffordMoreHarvester()) {
+        anyBuilding = gameObject;
+      }
+    });
+    return anyBuilding;
+  }
+  async checkForAnyMove(forFlashingOnly) {
+    let anyMove = undefined;
+    await this.iterateRevealedCells(async (gameObject) => {
+      if (gameObject.elem?.owner === this.scene.turn?.player && await gameObject.canAct()) {
         if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting) {
-          anyMove = true;
-        } else if (gameObject?.elem?.type === "house" && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
-          anyMove = true;
+          anyMove = gameObject;
         }
       }
     });
     if (!anyMove) {
-      if (this.autoEndTurn) {
+      if (this.autoEndTurn && !forFlashingOnly) {
         this.hud.flashEndTurn(true);
         setTimeout(() => {
           this.gotoNextTurn();
@@ -5847,10 +6590,10 @@ class Manager {
     this.hud.updated = false;
   }
   getAllGlobalResources() {
-    return this.getAllResources().filter((resource) => !this.getResourceType(resource)?.hidden && this.getResourceType(resource)?.global).sort((a, b) => a.localeCompare(b));
+    return this.getAllResources().filter((resource) => !this.getResourceType(resource)?.hidden && this.getResourceType(resource)?.global).sort((a, b) => b.localeCompare(a));
   }
-  calculateResourceRevenue(player) {
-    const revenue = this.calculateRevenue(player);
+  async calculateResourceRevenue(player) {
+    const revenue = await this.calculateRevenue(player);
     const RESOURCES = this.getAllGlobalResources();
     const resources = {
       wheat: 0,
@@ -5871,11 +6614,19 @@ class Manager {
     return resources;
   }
   getUnits(player) {
-    const units = [];
-    this.iterateRevealedCells((gameObject) => {
-      const elem = gameObject.elem;
-      if (elem?.owner === player && elem?.type === "unit") {
-        units.push(gameObject);
+    const units = new Set;
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.type === "unit" && (player === undefined || gameObject.elem?.owner === player)) {
+        units.add(gameObject);
+      }
+    });
+    return units;
+  }
+  getAllUnitsOrHouses() {
+    const units = new Set;
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.type === "unit" || gameObject.elem?.type === "house") {
+        units.add(gameObject);
       }
     });
     return units;
@@ -5903,24 +6654,23 @@ class Manager {
   getResourceType(resource) {
     return this.scene.resources[resource];
   }
-  getUnitRotation() {
+  async getUnitRotation(player) {
     const cellsRotation = [];
-    this.iterateRevealedCells((gameObject) => {
+    const playerUnits = this.getUnits(player);
+    for (const gameObject of playerUnits) {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (gameObject.elem?.owner === this.getPlayer() && gameObject.canAct()) {
+      } else if (await gameObject.canAct()) {
         if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting) {
-          include = true;
-        } else if (gameObject?.elem?.type === "house" && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
           include = true;
         }
       }
       if (include) {
         cellsRotation.push(gameObject);
       }
-    });
-    if (this.getPlayer() === 0) {
+    }
+    if (player === 0) {
       cellsRotation.sort((a, b) => this.compareAI(a, b));
     }
     return cellsRotation;
@@ -5931,11 +6681,15 @@ class Manager {
     const distB = Math.abs(b.px - px) + Math.abs(b.py - py);
     return distA - distB;
   }
-  selectNext() {
-    const cellsRotation = this.getUnitRotation();
+  async selectNext() {
+    const cellsRotation = await this.getUnitRotation(this.getPlayer());
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
-    let nextIndex = (currentIndex + 1) % cellsRotation.length;
-    this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+    if (!cellsRotation.length) {
+      this.hud.flashEndTurn();
+    } else {
+      let nextIndex = (currentIndex + 1) % cellsRotation.length;
+      this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+    }
   }
   unitAt(x, y) {
     return this.grid[`unit_${x}_${y}`];
@@ -5946,6 +6700,7 @@ class Manager {
   updateResource(resource, value, player) {
     const val = typeof value === "function" ? value(this.scene.players[player - 1].resources[resource] ?? 0) : value;
     this.scene.players[player - 1].resources[resource] = val;
+    this.hud.updated = false;
   }
   isEmptySpot(x, y) {
     const unitTag = GameObject.getTag("unit", x, y);
@@ -5969,11 +6724,14 @@ class Manager {
     }
     return emptySpots;
   }
-  unlockRewards(obj) {
-    this.iterateGridCell(obj.px, obj.py, (gameObject) => {
+  async unlockRewards(obj) {
+    await this.iterateGridCell(obj.px, obj.py, async (gameObject) => {
       const rewards = gameObject.elem?.rewards;
       if (rewards) {
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
+        if (!reward) {
+          return;
+        }
         if (reward.gold) {
           const [min2, max2] = reward.gold;
           const gold = Math.floor(Math.random() * (max2 - min2 + 1) + min2);
@@ -5982,9 +6740,16 @@ class Manager {
             gold
           });
           this.hud.updated = false;
+          await this.hud.showDialog(`You found ${gold} gold!`);
         }
         if (reward.invention) {
-          console.log("invention", reward.invention);
+          if (!this.scene.players[this.getPlayer() - 1].research) {
+            await this.findNextResearch(this.getPlayer());
+          }
+          const currentResearch = this.getResearchInfo(this.getPlayer());
+          if (currentResearch) {
+            await this.discover(this.getPlayer(), currentResearch);
+          }
         }
         if (reward.spawnFoes) {
           const emptySpots = this.findEmptySpotsAround(obj.px, obj.py);
@@ -5998,6 +6763,7 @@ class Manager {
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
+          await this.hud.showDialog(`You have been ambushed by ${actualCount} savages!`);
         }
         if (reward.unit) {
           const emptySpots = this.findEmptySpotsAround(obj.px, obj.py);
@@ -6007,6 +6773,7 @@ class Manager {
               owner: obj?.elem?.owner
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
+            await this.hud.showDialog(`You have found a ${reward.unit.name}!`);
           }
         }
         gameObject.doom(true);
@@ -6032,6 +6799,16 @@ class Manager {
   }
   isAiPlayer(player) {
     return !player || this.scene.players[player - 1]?.ai;
+  }
+  isResearched(research, player) {
+    return this.scene.players[player - 1]?.research?.[research];
+  }
+  research(research, player) {
+    this.scene.players[player - 1].currentResearch = research;
+  }
+  getResearchInfo(player) {
+    const current = this.scene.players[player - 1]?.currentResearch;
+    return this.scene.research.find((research) => research.name === current);
   }
 }
 
@@ -6119,15 +6896,15 @@ var COW_DEFINITION = {
   worker: true,
   turn: {
     moves: 1,
-    attacks: 1,
+    attacks: 0,
     actions: 1
   },
   closeToHome: true,
   endlessMove: true,
   attack: {
-    range: 1,
     damage: 2,
-    defense: 2
+    defense: 1,
+    disabled: true
   }
 };
 
@@ -6174,7 +6951,6 @@ var DOG_DEFINITION = {
     attacks: 1
   },
   attack: {
-    range: 1,
     damage: 2,
     defense: 1,
     moveAfterAttack: true,
@@ -6212,10 +6988,17 @@ var HOUSE_DEFINITION = {
   building: true,
   turn: {
     moves: 0,
-    attacks: 0
+    attacks: 0,
+    actions: 1
   },
   resourcesProduced: {
+    wood: 1,
     trade: 1
+  },
+  rewards: [],
+  advise: {
+    name: "house",
+    message: "Nice house! In this house, you collect resources.\nYou can also spawn new animals once they are researched."
   }
 };
 
@@ -6232,9 +7015,6 @@ var RIVER_DEFINITION = {
   },
   animation: {
     name: "river"
-  },
-  condition: {
-    noTile: "lake"
   }
 };
 
@@ -6281,9 +7061,13 @@ var SHEEP_DEFINITION = {
     attacks: 1
   },
   attack: {
-    range: 1,
     damage: 2,
     defense: 1
+  },
+  advise: {
+    name: "sheep",
+    message: "Your sheep is the foundation of your animal kingdom.\nUse it to build settlements.\nFind a good spot with plenty of resources.",
+    music: true
   }
 };
 
@@ -6351,7 +7135,7 @@ var HOUSE_MENU_DEBUG = [
     imageSource: "./assets/tiles.png",
     spriteSize: [64, 64],
     padding: [2, 2],
-    frames: [86, 87],
+    frames: [94, 95],
     label: "spawn\nhobo",
     disabled: {},
     actions: [
@@ -6359,6 +7143,49 @@ var HOUSE_MENU_DEBUG = [
         deselect: true,
         create: {
           definition: "hobo",
+          selfSelect: true
+        }
+      }
+    ],
+    debug: true
+  },
+  {
+    name: "soldier",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [65, 66, 65, 67],
+    label: "spawn\nsoldier",
+    disabled: {},
+    actions: [
+      {
+        deselect: true,
+        create: {
+          definition: "soldier",
+          selfSelect: true
+        }
+      }
+    ],
+    debug: true
+  },
+  {
+    name: "squirrel",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [98],
+    label: "spawn\nsquirrel",
+    hidden: {
+      occupied: ["unit", "tile occupied\nby a unit"]
+    },
+    disabled: {
+      cannotAct: [true, "wait\nnext turn"]
+    },
+    actions: [
+      {
+        deselect: true,
+        create: {
+          definition: "squirrel",
           selfSelect: true
         }
       }
@@ -6393,7 +7220,7 @@ var HOUSE_MENU = {
       },
       disabled: {
         levelBelowEqual: [1, "Settlement\nlevel too low"],
-        cannotAct: [true, "Wait next turn"]
+        cannotAct: [true, "wait\nnext turn"]
       },
       actions: [
         {
@@ -6404,7 +7231,8 @@ var HOUSE_MENU = {
             selfSelect: true
           }
         }
-      ]
+      ],
+      researchNeeded: ["oviculture"]
     },
     {
       name: "cow",
@@ -6412,12 +7240,16 @@ var HOUSE_MENU = {
       spriteSize: [64, 64],
       padding: [2, 2],
       frames: [51],
+      resourceCost: {
+        wood: 5
+      },
       label: "spawn\ncow",
       hidden: {
-        occupied: ["unit", "Tile occupied\nby a unit"],
-        unitLimit: ["cow", "Increase level\nto spawn more"]
+        occupied: ["unit", "Tile occupied\nby a unit"]
       },
-      disabled: {},
+      disabled: {
+        unitLimit: ["cow", "Increase settlement level\nto spawn more"]
+      },
       actions: [
         {
           deselect: true,
@@ -6426,7 +7258,8 @@ var HOUSE_MENU = {
             selfSelect: true
           }
         }
-      ]
+      ],
+      researchNeeded: ["bovine"]
     },
     {
       name: "dog",
@@ -6452,14 +7285,15 @@ var HOUSE_MENU = {
             selfSelect: true
           }
         }
-      ]
+      ],
+      researchNeeded: ["canine"]
     },
     {
       name: "squirrel",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64],
       padding: [2, 2],
-      frames: [90],
+      frames: [98],
       label: "spawn\nsquirrel",
       resourceCost: {
         wood: 10
@@ -6478,7 +7312,8 @@ var HOUSE_MENU = {
             selfSelect: true
           }
         }
-      ]
+      ],
+      researchNeeded: ["squirrel"]
     },
     ...HOUSE_MENU_DEBUG
   ]
@@ -6521,43 +7356,143 @@ var SHEEP_MENU = {
   ]
 };
 
+// src/content/animations/beaver.ts
+var BEAVER_ANIMATION = {
+  name: "beaver",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    106
+  ]
+};
+var BEAVER_WAIT_ANIMATION = {
+  name: "beaver_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    106,
+    107
+  ]
+};
+var BEAVER_JUMP_ANIMATION = {
+  name: "beaver_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 3,
+  frames: [
+    106,
+    108,
+    109,
+    106
+  ],
+  airFrames: [108, 109]
+};
+
 // src/content/research/beaver.ts
 var BEAVER_RESEARCH = {
   name: "beaver",
-  description: "Beavers can build dams.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["squirrel"]
+  description: "Beavers can build dams to turn rivers into lakes.",
+  icon: BEAVER_ANIMATION,
+  waitIcon: BEAVER_WAIT_ANIMATION,
+  dependency: ["squirrel"],
+  cost: 30
+};
+
+// src/content/animations/cow.ts
+var COW_ANIMATION = {
+  name: "cow",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    51
+  ]
+};
+var COW_WAIT_ANIMATION = {
+  name: "cow_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    51,
+    52,
+    51
+  ]
+};
+var COW_JUMP_ANIMATION = {
+  name: "cow_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 5,
+  frames: [
+    51,
+    53,
+    54
+  ],
+  airFrames: [54]
+};
+var COW_SLEEP_ANIMATION = {
+  name: "cow_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    55
+  ]
 };
 
 // src/content/research/bovine.ts
 var BOVINE_RESEARCH = {
   name: "bovine",
   description: "Cows are your workers.\nUse them to harvest resources.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: []
+  icon: COW_ANIMATION,
+  waitIcon: COW_WAIT_ANIMATION,
+  dependency: [],
+  cost: 10
+};
+
+// src/content/animations/dog.ts
+var DOG_ANIMATION = {
+  name: "dog",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    46
+  ]
+};
+var DOG_WAIT_ANIMATION = {
+  name: "dog_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    46,
+    47
+  ]
+};
+var DOG_JUMP_ANIMATION = {
+  name: "dog_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    47,
+    48,
+    49,
+    49,
+    50
+  ],
+  airFrames: [48, 49]
 };
 
 // src/content/research/canine.ts
 var CANINE_RESEARCH = {
   name: "canine",
   description: "Dogs are your scouts.\nUse them to explore the world.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [46]
-  },
-  dependency: []
+  icon: DOG_ANIMATION,
+  waitIcon: DOG_WAIT_ANIMATION,
+  dependency: [],
+  cost: 10
 };
 
 // src/content/research/elephant.ts
@@ -6570,7 +7505,8 @@ var ELEPHANT_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["pig"]
+  dependency: ["pig"],
+  cost: 40
 };
 
 // src/content/research/eagle.ts
@@ -6583,7 +7519,8 @@ var EAGLE_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["owl"]
+  dependency: ["owl"],
+  cost: 20
 };
 
 // src/content/research/goat.ts
@@ -6596,7 +7533,8 @@ var GOAT_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: []
+  dependency: ["oviculture"],
+  cost: 20
 };
 
 // src/content/research/horse.ts
@@ -6609,7 +7547,8 @@ var HORSE_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: []
+  dependency: ["oviculture"],
+  cost: 20
 };
 
 // src/content/research/lama.ts
@@ -6622,7 +7561,8 @@ var LAMA_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: []
+  dependency: ["oviculture"],
+  cost: 20
 };
 
 // src/content/research/monkey.ts
@@ -6635,7 +7575,8 @@ var MONKEY_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["squirrel"]
+  dependency: ["squirrel"],
+  cost: 40
 };
 
 // src/content/research/owl.ts
@@ -6648,7 +7589,8 @@ var OWL_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["tortoise", "squirrel"]
+  dependency: ["squirrel"],
+  cost: 40
 };
 
 // src/content/research/panda.ts
@@ -6661,7 +7603,8 @@ var PANDA_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["squirrel"]
+  dependency: ["squirrel"],
+  cost: 20
 };
 
 // src/content/research/pig.ts
@@ -6674,7 +7617,8 @@ var PIG_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["bovine"]
+  dependency: ["bovine"],
+  cost: 20
 };
 
 // src/content/research/skunk.ts
@@ -6687,33 +7631,76 @@ var SKUNK_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["squirrel"]
+  dependency: ["squirrel"],
+  cost: 40
+};
+
+// src/content/animations/squirrel.ts
+var SQUIRREL_ANIMATION = {
+  name: "squirrel",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    98
+  ]
+};
+var SQUIRREL_WAIT_ANIMATION = {
+  name: "squirrel_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    98,
+    99
+  ]
+};
+var SQUIRREL_JUMP_ANIMATION = {
+  name: "squirrel_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    98,
+    100,
+    101,
+    102
+  ],
+  airFrames: [100, 101, 102]
+};
+var SQUIRREL_ATTACK_ANIMATION = {
+  name: "squirrel_attack",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 5,
+  frames: [
+    103,
+    104
+  ],
+  once: true
 };
 
 // src/content/research/squirrel.ts
 var SQUIRREL_RESEARCH = {
   name: "squirrel",
   description: "Squirrels can climb trees and throw nuts.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: []
+  icon: SQUIRREL_ANIMATION,
+  waitIcon: SQUIRREL_WAIT_ANIMATION,
+  dependency: [],
+  cost: 20
 };
 
 // src/content/research/tortoise.ts
 var TORTOISE_RESEARCH = {
   name: "tortoise",
-  description: "Turtles can carry others on water.",
+  description: "Turtles can carry others on water, and have high defense.",
   icon: {
     imageSource: "./assets/tiles.png",
     spriteSize: [64, 64],
     padding: [2, 2],
     frames: [51]
   },
-  dependency: []
+  dependency: [],
+  cost: 20
 };
 
 // src/content/research/wolves.ts
@@ -6726,7 +7713,8 @@ var WOLVES_RESEARCH = {
     padding: [2, 2],
     frames: [46]
   },
-  dependency: ["canine"]
+  dependency: ["canine"],
+  cost: 30
 };
 
 // src/content/resources/brain.ts
@@ -6794,7 +7782,8 @@ var RABBIT_RESEARCH = {
     padding: [2, 2],
     frames: [51]
   },
-  dependency: ["beaver"]
+  dependency: ["beaver"],
+  cost: 30
 };
 
 // src/content/animations/indicators.ts
@@ -7065,82 +8054,6 @@ var DIGITS_ANIMATION = new Array(10).fill(36).map((base, i) => ({
   ]
 }));
 
-// src/content/animations/dog.ts
-var DOG_ANIMATION = {
-  name: "dog",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    46
-  ]
-};
-var DOG_WAIT_ANIMATION = {
-  name: "dog_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    46,
-    47
-  ]
-};
-var DOG_JUMP_ANIMATION = {
-  name: "dog_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 2,
-  frames: [
-    47,
-    48,
-    49,
-    49,
-    50
-  ],
-  airFrames: [48, 49]
-};
-
-// src/content/animations/cow.ts
-var COW_ANIMATION = {
-  name: "cow",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    51
-  ]
-};
-var COW_WAIT_ANIMATION = {
-  name: "cow_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    51,
-    52,
-    51
-  ]
-};
-var COW_JUMP_ANIMATION = {
-  name: "cow_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 5,
-  frames: [
-    51,
-    53,
-    54
-  ],
-  airFrames: [54]
-};
-var COW_SLEEP_ANIMATION = {
-  name: "cow_sleep",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 10,
-  frames: [
-    55
-  ]
-};
-
 // src/content/animations/resources.ts
 var WHEAT_ANIMATION = {
   name: "wheat",
@@ -7220,7 +8133,7 @@ var CLOUD = {
     count: [4, 5],
     color: "#ffffffaa",
     size: 1.2,
-    moving: true
+    moving: 0.1
   }
 };
 
@@ -7296,13 +8209,14 @@ var LAKE = {
     count: [3, 7]
   },
   branchOut: {
-    count: [1, 5],
-    chance: 0.2,
+    count: [3, 5],
+    chance: 0.1,
     element: {
       definition: "river"
     }
   },
-  water: true
+  water: true,
+  copy: true
 };
 
 // src/content/elems/tree.ts
@@ -7314,7 +8228,8 @@ var TREE = {
   },
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.1
+    chance: 0.5,
+    farFromCenter: 4
   },
   condition: {
     tile: "plain",
@@ -7343,7 +8258,7 @@ var MOUNTAIN = {
   },
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.1
+    chance: 0.3
   },
   condition: {
     tile: "plain"
@@ -7400,14 +8315,12 @@ var HOBO_DEFINITION = {
   shadow: {
     animation: "shadow"
   },
-  clearCloud: true,
   dynamic: true,
   turn: {
     moves: 1,
     attacks: 1
   },
   attack: {
-    range: 1,
     damage: 2,
     defense: 2
   }
@@ -7416,11 +8329,7 @@ var HOBO_DEFINITION = {
 // src/content/elems/sheep.ts
 var SHEEP = {
   definition: "sheep",
-  owner: 1,
-  turn: {
-    moves: 1,
-    attacks: 1
-  }
+  owner: 1
 };
 
 // src/content/elems/cabana.ts
@@ -7428,7 +8337,8 @@ var CABANA = {
   name: "cabana",
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.03
+    chance: 0.1,
+    farFromCenter: 4
   },
   definition: "cabana"
 };
@@ -7439,7 +8349,7 @@ var HOBO_ANIMATION = {
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64],
   frames: [
-    86
+    94
   ]
 };
 var HOBO_WAIT_ANIMATION = {
@@ -7448,8 +8358,8 @@ var HOBO_WAIT_ANIMATION = {
   spriteSize: [64, 64],
   mul: 10,
   frames: [
-    86,
-    87
+    94,
+    95
   ]
 };
 var HOBO_JUMP_ANIMATION = {
@@ -7458,55 +8368,11 @@ var HOBO_JUMP_ANIMATION = {
   spriteSize: [64, 64],
   mul: 2,
   frames: [
-    86,
-    88,
-    86,
-    89
+    94,
+    96,
+    94,
+    97
   ]
-};
-
-// src/content/animations/squirrel.ts
-var SQUIRREL_ANIMATION = {
-  name: "squirrel",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    90
-  ]
-};
-var SQUIRREL_WAIT_ANIMATION = {
-  name: "squirrel_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    90,
-    91
-  ]
-};
-var SQUIRREL_JUMP_ANIMATION = {
-  name: "squirrel_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 2,
-  frames: [
-    90,
-    92,
-    93,
-    94
-  ],
-  airFrames: [92, 93, 94]
-};
-var SQUIRREL_ATTACK_ANIMATION = {
-  name: "squirrel_attack",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 5,
-  frames: [
-    95,
-    96
-  ],
-  once: true
 };
 
 // src/content/definitions/squirrel.ts
@@ -7555,14 +8421,400 @@ var SQUIRREL_DEFINITION = {
     range: 2,
     damage: 2,
     defense: 1,
-    attackAfterMove: true
+    attackAfterMove: true,
+    projectile: "nut"
+  },
+  canCrossTerrains: ["tree"]
+};
+
+// src/content/elems/test-units.ts
+var TEST_UNITS = [
+  {
+    definition: "hobo",
+    owner: 0,
+    gameObject: {
+      offset: [0, 0.2],
+      size: [1.2, 1.2],
+      speed: 0.08,
+      pos: [2, 0]
+    },
+    debug: true
   }
+];
+
+// src/content/animations/soldier.ts
+var SOLDIER_ANIMATION = {
+  soldier_blue_center_down_still: {
+    name: "soldier_blue_center_down_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      62
+    ]
+  },
+  soldier_red_center_down_still: {
+    name: "soldier_red_center_down_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      65
+    ]
+  },
+  soldier_blue_center_down_walk: {
+    name: "soldier_blue_center_down_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      62,
+      63,
+      64,
+      63
+    ]
+  },
+  soldier_red_center_down_walk: {
+    name: "soldier_red_center_down_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      65,
+      66,
+      67,
+      66
+    ]
+  },
+  soldier_blue_center_up_still: {
+    name: "soldier_blue_center_up_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      68
+    ]
+  },
+  soldier_red_center_up_still: {
+    name: "soldier_red_center_up_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      71
+    ]
+  },
+  soldier_blue_center_up_walk: {
+    name: "soldier_blue_center_up_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      68,
+      69,
+      70,
+      69
+    ]
+  },
+  soldier_red_center_up_walk: {
+    name: "soldier_red_center_up_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      71,
+      72,
+      73,
+      72
+    ]
+  },
+  soldier_blue_right_down_still: {
+    name: "soldier_blue_right_down_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      74
+    ]
+  },
+  soldier_red_right_down_still: {
+    name: "soldier_red_right_down_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      77
+    ]
+  },
+  soldier_blue_right_down_walk: {
+    name: "soldier_blue_right_down_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      74,
+      75,
+      76,
+      75
+    ]
+  },
+  soldier_red_right_down_walk: {
+    name: "soldier_red_right_down_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      77,
+      78,
+      79,
+      78
+    ]
+  },
+  soldier_blue_right_up_still: {
+    name: "soldier_blue_right_up_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      80
+    ]
+  },
+  soldier_red_right_up_still: {
+    name: "soldier_red_right_up_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      83
+    ]
+  },
+  soldier_blue_right_up_walk: {
+    name: "soldier_blue_right_up_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      80,
+      81,
+      82,
+      81
+    ]
+  },
+  soldier_red_right_up_walk: {
+    name: "soldier_red_right_up_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      83,
+      84,
+      85,
+      84
+    ]
+  },
+  soldier_blue_right_center_still: {
+    name: "soldier_blue_right_center_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      86
+    ]
+  },
+  soldier_red_right_center_still: {
+    name: "soldier_red_right_center_still",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    frames: [
+      90
+    ]
+  },
+  soldier_blue_right_center_walk: {
+    name: "soldier_blue_right_center_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      86,
+      87,
+      88,
+      89
+    ]
+  },
+  soldier_red_right_center_walk: {
+    name: "soldier_red_right_center_walk",
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    mul: 5,
+    frames: [
+      90,
+      91,
+      92,
+      93
+    ]
+  }
+};
+
+// src/content/definitions/soldier.ts
+var SOLDIER_DEFINITION = {
+  name: "soldier",
+  type: "unit",
+  hitpoints: 15,
+  maxHitPoints: 15,
+  gameObject: {
+    offset: [0, 0.2],
+    size: [1.2, 1.2],
+    speed: 0.08
+  },
+  animation: {
+    name: "soldier_blue_center_down_still"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "soldier_blue_center_down_walk",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "soldier_blue_center_down_walk",
+    distance: 1
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 2,
+    defense: 2
+  }
+};
+
+// src/content/animations/nut.ts
+var NUT_ANIMATION = {
+  name: "nut",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    105
+  ]
+};
+
+// src/content/research/crocodile.ts
+var CROCODILE_RESEARCH = {
+  name: "crocodile",
+  description: "Crocodiles are ferocious. They can also navigate through lakes.",
+  icon: {
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [51]
+  },
+  dependency: ["tortoise"],
+  cost: 30
+};
+
+// src/content/research/oviculture.ts
+var OVICULTURE_RESEARCH = {
+  name: "oviculture",
+  description: "You can spawn more sheeps, which build settlements.",
+  icon: SHEEP_ANIMATION,
+  waitIcon: SHEEP_WAIT_ANIMATION,
+  dependency: [],
+  cost: 10
+};
+
+// src/content/definitions/beaver.ts
+var BEAVER_DEFINITION = {
+  name: "beaver",
+  type: "unit",
+  hitpoints: 10,
+  maxHitPoints: 10,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.08
+  },
+  animation: {
+    name: "beaver"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "beaver_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "beaver_jump"
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    animation: "beaver_attack",
+    damage: 1,
+    defense: 2
+  },
+  canCrossTerrains: ["tree", "water"]
+};
+
+// src/content/menu/squirrel-menu.ts
+var SQUIRREL_MENU = {
+  name: "squirrel",
+  description: "Squirrels can climb on trees and throw nuts.",
+  icon: {
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [6, 7]
+  },
+  items: [
+    {
+      name: "beaver",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64],
+      padding: [2, 2],
+      frames: [27, 28, 29],
+      label: "evolve into\nbeaver",
+      researchNeeded: ["beaver"],
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "beaver",
+            selfSelect: true
+          }
+        },
+        {
+          destroy: true
+        }
+      ]
+    }
+  ]
 };
 
 // src/content/world.ts
 var worldData = {
   scale: 80,
-  clearFogOfWar: true,
   turn: {
     player: 1,
     turn: 1
@@ -7599,7 +8851,9 @@ var worldData = {
     RIVER_DEFINITION,
     HOUSE_DEFINITION,
     CABANA_DEFINITION,
-    SQUIRREL_DEFINITION
+    SQUIRREL_DEFINITION,
+    SOLDIER_DEFINITION,
+    BEAVER_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -7642,7 +8896,12 @@ var worldData = {
     SQUIRREL_ANIMATION,
     SQUIRREL_WAIT_ANIMATION,
     SQUIRREL_JUMP_ANIMATION,
-    SQUIRREL_ATTACK_ANIMATION
+    SQUIRREL_ATTACK_ANIMATION,
+    ...Object.values(SOLDIER_ANIMATION),
+    NUT_ANIMATION,
+    BEAVER_ANIMATION,
+    BEAVER_WAIT_ANIMATION,
+    BEAVER_JUMP_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -7653,12 +8912,14 @@ var worldData = {
     LAKE,
     TREE,
     MOUNTAIN,
-    CABANA
+    CABANA,
+    ...TEST_UNITS
   ],
   menu: [
     SHEEP_MENU,
     HOUSE_MENU,
-    COW_MENU
+    COW_MENU,
+    SQUIRREL_MENU
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -7669,7 +8930,6 @@ var worldData = {
   },
   research: [
     CANINE_RESEARCH,
-    BOVINE_RESEARCH,
     WOLVES_RESEARCH,
     BOVINE_RESEARCH,
     TORTOISE_RESEARCH,
@@ -7685,7 +8945,9 @@ var worldData = {
     OWL_RESEARCH,
     LAMA_RESEARCH,
     EAGLE_RESEARCH,
-    RABBIT_RESEARCH
+    RABBIT_RESEARCH,
+    CROCODILE_RESEARCH,
+    OVICULTURE_RESEARCH
   ]
 };
 window.worldData = worldData;
@@ -7706,4 +8968,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=ADE25219E4C0371264756e2164756e21
+//# debugId=99B8C851AEE5930564756e2164756e21

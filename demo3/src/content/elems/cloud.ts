@@ -20,6 +20,6 @@ export const CLOUD: Elem = {
     count: [4, 5] as [number, number],
     color: "#ffffffaa",
     size: 1.2,
-    moving: true,
+    moving: .1,
   },
 };

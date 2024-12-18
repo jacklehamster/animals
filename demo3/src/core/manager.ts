@@ -3,12 +3,14 @@ import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseW
 import { AnimationManager } from "../animation/animation-manager";
 import type { Elem } from "../definition/elem";
 import type { Scene } from "../definition/scene";
-import { GameObject } from "./game-object";
+import { GameObject } from "./objects/game-object";
 import { Hud } from "../ui/hud";
 import type { Condition } from "../definition/condition";
 import type { Resources } from "../definition/resources";
 import type { ResourceType } from '../definition/resource-type';
 import { Thinker } from '../ai/thinker';
+import { DEBUG } from '../content/constant';
+import type { Research } from '../definition/research';
 
 
 interface Entry {
@@ -37,6 +39,8 @@ export class Manager {
   showLabels = true;
   thinker = new Thinker(this);
   lastUnit: GameObject | undefined;
+  lastHovered?: GameObject | undefined;
+  advise: Set<string> = new Set();
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -53,15 +57,18 @@ export class Manager {
     this.hud.initialize();
 
     window.addEventListener("blur", (e) => {
-      this.hud.ui.classList.add("hidden");
+      // this.hud.ui.classList.add("hidden");
+      this.hud.resourceOverlay.classList.add("hidden");
+      this.hud.buttonsOverlay.classList.add("hidden");
       this.showLabels = false;
-      this.setSelection(undefined);
       this.cursor?.hide();
       this.updateLabels();
       LittleJS.overlayCanvas.style.cursor = "default";
     });
     window.addEventListener("focus", (e) => {
-      this.hud.ui.classList.remove("hidden");
+      // this.hud.ui.classList.remove("hidden");
+      this.hud.resourceOverlay.classList.remove("hidden");
+      this.hud.buttonsOverlay.classList.remove("hidden");
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
@@ -70,13 +77,16 @@ export class Manager {
   }
 
   updateLabels() {
-    this.iterateRevealedCells((gameObject) => {
+    this.getAllUnitsOrHouses().forEach((gameObject) => {
       gameObject.updateLabel(this.showLabels);
     });
   }
 
   refresh() {
     this.scene.elems.forEach((elem) => {
+      if (elem.debug && !DEBUG) {
+        return;
+      }
       this.sanitizeElem(elem);
       this.refreshElem(elem);
     });
@@ -97,14 +107,15 @@ export class Manager {
     });
   }
 
-  iterateGridCell(x: number, y: number, callback: (gameObject: GameObject) => void) {
-    Object.keys(this.scene.layers).forEach((layer) => {
+  async iterateGridCell(x: number, y: number, callback: (gameObject: GameObject) => Promise<void>) {
+    const layers = Object.keys(this.scene.layers);
+    for (const layer of layers) {
       const tag = `${layer}_${x}_${y}`;
       const gameObject = this.grid[tag];
       if (gameObject) {
-        callback(gameObject);
+        await callback(gameObject);
       }
-    });
+    }
   }
 
   getRevealedCells() {
@@ -116,49 +127,50 @@ export class Manager {
     return cells;
   }
 
-  iterateRevealedCells(callback: (gameObject: GameObject) => void) {
+  async iterateRevealedCells(callback: (gameObject: GameObject) => Promise<void>) {
     const cells = this.getRevealedCells();
     for (const cell of cells) {
-      Object.keys(this.scene.layers).forEach((layer) => {
+      for (const layer of Object.keys(this.scene.layers)) {
         const tag = `${layer}_${cell.x}_${cell.y}`;
         const gameObject = this.grid[tag];
         if (gameObject) {
-          callback(gameObject);
+          await callback(gameObject);
         }
-      });
+      }
     }
   }
 
-  fixWorld() {
+  async fixWorld() {
     if (this.scene.clearFogOfWar) {
       this.clearFogOfWar();
     }
 
-    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+    const entries = Object.entries(this.grid);
+    for (const [tag, gameObject] of entries) {
       if (gameObject.elem?.condition) {
         let conditionMet = false;
         if (gameObject.elem.condition.tile) {
           const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
-          tiles.forEach((tile) => {
-            this.iterateGridCell(gameObject.px, gameObject.py, (target) => {
+          for (const tile of tiles) {
+            await this.iterateGridCell(gameObject.px, gameObject.py, async (target) => {
               if (target?.elem?.name === tile) {
                 conditionMet = true;
               }
             });
-          });
+          }
         }
         let violationMet = false;
         if (gameObject.elem.condition.noTile) {
           const tiles = Array.isArray(gameObject.elem.condition.noTile) ? gameObject.elem.condition.noTile : [gameObject.elem.condition.noTile];
-          tiles.forEach((tile) => {
-            Object.keys(this.scene.layers).forEach((layer) => {
+          for (const tile of tiles) {
+            for (const layer of Object.keys(this.scene.layers)) {
               const tag = `${layer}_${gameObject.px}_${gameObject.py}`;
               const target = this.grid[tag];
               if (target?.elem?.name === tile) {
                 violationMet = true;
               }
-            });
-          });
+            }
+          }
         }
         if (gameObject.elem.condition.zeroUnit) {
           const tag = `unit_${gameObject.px}_${gameObject.py}`;
@@ -172,7 +184,7 @@ export class Manager {
           delete this.grid[tag];
         }
       }
-    });
+    }
   }
 
   private shiftCamera() {
@@ -215,9 +227,9 @@ export class Manager {
 
   defineElem(elem: Elem) {
     if (elem.definition) {
-      const defintion = this.scene.definitions.find(def => def.name === elem.definition);
-      if (defintion) {
-        Object.entries(defintion).forEach(([key, value]) => {
+      const definition = this.scene.definitions.find(def => def.name === elem.definition);
+      if (definition) {
+        Object.entries(definition).forEach(([key, value]) => {
           const e = elem as Record<string, any>;
           if (e[key] === undefined) {
             e[key] = JSON.parse(JSON.stringify(value));
@@ -226,6 +238,7 @@ export class Manager {
         delete elem.definition;
       }
     }
+    return elem;
   }
 
   private refreshElem(elem: Elem) {
@@ -258,8 +271,15 @@ export class Manager {
       if (elem.gameObject && !entry.gameObject.size) {
         const chance = elem.group?.chance ?? 1;
         const [col, row] = elem.group?.grid ?? [1, 1];
+        const farFromCenter = elem.group?.farFromCenter ?? 0;
         for (let x = 0; x < col; x++) {
           for (let y = 0; y < row; y++) {
+            if (farFromCenter) {
+              const distance = Math.abs(x - Math.floor(col / 2)) + Math.abs(y - Math.floor(row / 2));
+              if (distance < farFromCenter) {
+                continue;
+              }
+            }
             if (Math.random() <= chance) {
               const xx = x - Math.floor(col / 2);
               const yy = y - Math.floor(row / 2);
@@ -352,7 +372,7 @@ export class Manager {
     }
   }
 
-  onCursorMove(x: number, y: number) {
+  private checkOnMoveOptions(x: number, y: number) {
     this.onMoveOption = false;
     if (!this.selected?.moveOptions) {
       return;
@@ -366,7 +386,7 @@ export class Manager {
     const moveOptions = Object.values(this.selected.moveOptions);
     if (moveOptions.length) {
       let hoveringMoveOption = false;
-      moveOptions.forEach((option: any) => {
+      moveOptions.forEach((option) => {
         if (option.px === x && option.py === y) {
           hoveringMoveOption = true;
         }
@@ -377,10 +397,42 @@ export class Manager {
         this.onMoveOption = true;
       }
     }
+  }
+
+  private checkOnAttackOptions(x: number, y: number) {
+    this.onMoveOption = false;
+    if (!this.selected?.attackOptions) {
+      return;
+    }
+    const selectedAnimation = this.selected.elem?.selected?.moveIndic?.selectedAnimation
+    const moveOptionAnimation = this.selected.elem?.selected?.moveIndic?.animation;
+    if (!selectedAnimation || !moveOptionAnimation) {
+      return;
+    }
+
+    const attackOptions = Object.values(this.selected.attackOptions);
+    if (attackOptions.length) {
+      let hoveringAttackOption = false;
+      attackOptions.forEach((option) => {
+        if (option.px === x && option.py === y) {
+          hoveringAttackOption = true;
+        }
+        option.animation = this.animation.getInfo(
+          option.px === x && option.py === y ? selectedAnimation : moveOptionAnimation);
+      });
+      if (hoveringAttackOption) {
+        this.onMoveOption = true;
+      }
+    }
+  }
+
+  onCursorMove(x: number, y: number) {
+    this.checkOnMoveOptions(x, y);
+    this.checkOnAttackOptions(x, y);
     this.refreshCursor();
   }
 
-  onTap(x: number, y: number, mouseX: number, mouseY: number) {
+  async onTap(x: number, y: number, mouseX: number, mouseY: number) {
     this.onMoveOption = false;
     this.refreshCursor();
     if (Date.now() - this.doneShifting < 100) {
@@ -396,8 +448,12 @@ export class Manager {
       this.selected.moveTo(x, y);
       return;
     }
+    if (this.selected?.canAttackAt(x, y) && this.selected.hasAttackOptionOn(x, y)) {
+      this.selected.attackAt(x, y);
+      return;
+    }
     let unit: GameObject | undefined = this.grid[`unit_${x}_${y}`];
-    if (!unit?.canAct()) {
+    if (!await unit?.canAct()) {
       unit = undefined;
     }
     const house = this.grid[`house_${x}_${y}`];
@@ -405,20 +461,26 @@ export class Manager {
     this.setSelection(this.selected === nextSelection ? undefined : nextSelection);
   }
 
-  setSelection(gameObject: GameObject | undefined) {
+  async setSelection(gameObject: GameObject | undefined) {
     if (this.selected === gameObject) {
       return;
+    }
+    if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
+      this.advise.add(gameObject.elem.advise.name);
+      await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
     const previousSelected = this.selected;
     this.selected = gameObject;
     previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
-    this.hud.showSelected(this.selected);
+    await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
       this.makeWithinView(this.selected);
     }
     if (this.selected) {
       this.lastUnit = this.selected;
+    } else {
+      this.checkForAnyMove(true);
     }
   }
 
@@ -455,10 +517,13 @@ export class Manager {
       return;
     }
     this.hovered = gameObject;
+    if (this.hovered) {
+      this.lastHovered = gameObject;
+    }
     this.refreshCursor();
   }
 
-  checkCondition(condition?: Condition, obj?: GameObject) {
+  async checkCondition(condition?: Condition, obj?: GameObject) {
     if (!condition) {
       return null;
     }
@@ -480,11 +545,11 @@ export class Manager {
     if (obj) {
       let proxyCheck: string | null = null;
       const PROXY_CHECK = [condition.proximity, condition.nonProximity];
-      PROXY_CHECK.forEach((check) => {
+      for (const check of PROXY_CHECK) {
         if (check && !proxyCheck) {
           const [item, message] = check;
           if (item) {
-            const nearby = obj.findNearby(obj => {
+            const nearby = await obj.findNearby(obj => {
               if (obj.elem?.name === item) {
                 return true;
               }
@@ -493,6 +558,7 @@ export class Manager {
               }
               return false;
             });
+            console.log(item, nearby);
             if (condition.proximity === check && nearby.size) {
               proxyCheck = message ?? "true";
             }
@@ -501,7 +567,7 @@ export class Manager {
             }
           }
         }
-      });
+      }
       if (proxyCheck) {
         return proxyCheck;
       }
@@ -512,7 +578,7 @@ export class Manager {
     if (condition.unitLimit) {
       const level = obj?.elem?.level ?? 0;
       const [unit, message] = condition.unitLimit;
-      const support = obj?.countUnitSupport(unit);
+      const support = await obj?.countUnitSupport(unit);
       if (support && support >= level) {
         return message ?? "true";
       }
@@ -520,9 +586,10 @@ export class Manager {
     return null;
   }
 
-  gotoNextTurn() {
+  async gotoNextTurn() {
     // Increase turn count
     if (this.scene.turn) {
+      this.setSelection(undefined);
       //  Change player
       if (this.scene.turn.player < this.scene.players.length) {
         this.scene.turn.player++;
@@ -530,16 +597,18 @@ export class Manager {
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
       }
-      if (this.scene.turn && this.getPlayer()) {
-        this.collectResources(this.getPlayer());
+      const player = this.getPlayer();
+      if (this.scene.turn && player) {
+        await this.collectResources(player);
       }
       this.refreshUnitsLabels();
-      if (this.getUnits(this.getPlayer()).length) {
-        this.giveUnitsTurns();
-        this.selectNext();
-      } else if (this.isAiPlayer(this.getPlayer())) {
-        this.gotoNextTurn();
+      if (this.getUnits(player).size) {
+        await this.giveUnitsTurns(player);
+        await this.selectNext();
+      } else if (this.isAiPlayer(player)) {
+        await this.gotoNextTurn();
       }
+      await this.checkForAnyMove(true);
     }
 
     this.hud.updated = false;
@@ -553,22 +622,21 @@ export class Manager {
     });
   }
 
-  giveUnitsTurns() {
-    this.iterateRevealedCells((gameObject) => {
-      if ((gameObject.elem?.owner ?? 0) === this.getPlayer()) {
-        gameObject.giveTurn();
-      }
-    });
+  async giveUnitsTurns(player: number) {
+    const units = this.getUnits(player);
+    for (const gameObject of units) {
+      await gameObject.giveTurn();
+    }
   }
 
-  calculateRevenue(player: number) {
+  async calculateRevenue(player: number) {
     const playerResources = this.scene.players[player - 1]?.resources;
     if (!playerResources) {
       return 0;
     }
     let trade = 0;
     const visited = new Set<string>();
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         if (!visited.has(`${gameObject.px}_${gameObject.py}`)) {
@@ -583,12 +651,13 @@ export class Manager {
     return trade;
   }
 
-  collectResources(player: number) {
+  async collectResources(player: number) {
+    await this.ensureResearch(player);
     const playerResources = this.scene.players[player - 1]?.resources;
     if (!playerResources) {
       return;
     }
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         const resources = this.getResources(gameObject.px, gameObject.py);
@@ -600,7 +669,7 @@ export class Manager {
       }
     });
     // cap resources
-    this.iterateRevealedCells((gameObject) => {
+    await this.iterateRevealedCells(async (gameObject) => {
       const elem = gameObject.elem;
       if (elem?.owner === player && elem.harvesting) {
         gameObject.checkResourceCaps();
@@ -608,29 +677,106 @@ export class Manager {
     })
 
     //  Save global resources
-    const globalResources = this.calculateResourceRevenue(player);
+    const globalResources = await this.calculateResourceRevenue(player);
     Object.entries(globalResources).forEach(([resource, value]) => {
       const r = resource as keyof Resources;
       playerResources[r] = (playerResources[r] ?? 0) + value;
     });
+
+    //  check researched resources
+    this.checkResearch(this.getPlayer());
   }
 
-  checkForAnyMove() {
-    //  check if any unit can move
-    let anyMove = false;
-    this.iterateRevealedCells((gameObject) => {
-      if (gameObject.elem?.owner === this.scene.turn?.player && gameObject.canAct()) {
-        if (gameObject.elem?.type === "unit"
-          && !gameObject.elem?.harvesting) {
-          anyMove = true;
-        } else if (gameObject?.elem?.type === "house"
-          && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
-          anyMove = true;
+  availableInventionsToDiscover(player: number) {
+    const allInventions = this.scene.research;
+    const playerResearch = this.scene.players[player - 1]?.research;
+    return allInventions.filter(invention => {
+      if (playerResearch?.[invention.name]) {
+        return false;
+      }
+      const dependency = invention.dependency;
+      if (dependency && dependency.some(dep => !playerResearch?.[dep])) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  async ensureResearch(player: number) {
+    const globalResources = await this.calculateResourceRevenue(player);
+    const brainsPerTurn = globalResources.brain;
+    if (brainsPerTurn) {
+      const currentResearch = this.getResearchInfo(player);
+      if (!currentResearch) {
+        await this.hud.showDialog("Use your research points to unlock new inventions.\nThis will help you evolve your animals and buildings.");
+        await this.findNextResearch(player);
+      }
+    }
+  }
+
+  checkResearch(player: number) {
+    const researchPoints = this.scene.players[this.getPlayer() - 1]?.resources.brain ?? 0;
+    const currentResearchName = this.scene.players[this.getPlayer() - 1]?.currentResearch;
+    const currentResearch = this.scene.research.find(research => research.name === currentResearchName);
+    if (researchPoints) {
+      if (currentResearch) {
+        if (researchPoints >= currentResearch.cost) {
+          if (researchPoints >= currentResearch.cost) {
+            this.discover(this.getPlayer(), currentResearch);
+          }
         }
+      } else {
+        this.findNextResearch(this.getPlayer());
+      }
+    }
+  }
+
+  async findNextResearch(player: number) {
+    const globalResources = await this.calculateResourceRevenue(player);
+    const brainsPerTurn = globalResources.brain;
+    const currentBrains = this.getPlayerResource("brain", player);
+    await this.hud.promptForResearch(this.availableInventionsToDiscover(player), brainsPerTurn, currentBrains);
+  }
+
+  async discover(player: number, invention: Research) {
+    const playerInfo = this.scene.players[player - 1];
+    if (!playerInfo.research) {
+      playerInfo.research = {};
+    }
+    playerInfo.research[invention.name] = Date.now();
+    this.updateResource("brain", brains => Math.max(0, brains - invention.cost), this.getPlayer());
+    await this.hud.showResearchDialog(invention);
+
+    await this.findNextResearch(player);
+  }
+
+  async checkForAnyBuilding() {
+    let anyBuilding = undefined;
+    await this.iterateRevealedCells(async (gameObject) => {
+      if (gameObject.elem?.type === "house"
+        && await gameObject.canAffordMoreHarvester()) {
+        anyBuilding = gameObject;
+      }
+    });
+    return anyBuilding;
+  }
+
+  async checkForAnyMove(forFlashingOnly?: boolean) {
+    //  check if any unit can move
+    let anyMove = undefined;
+    await this.iterateRevealedCells(async (gameObject) => {
+      if (gameObject.elem?.owner === this.scene.turn?.player && await gameObject.canAct()) {
+        if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting) {
+          anyMove = gameObject;
+        }
+        //  else if (gameObject?.elem?.type === "house"
+        //   && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
+        //   anyMove = gameObject;
+        // }
       }
     });
     if (!anyMove) {
-      if (this.autoEndTurn) {
+      if (this.autoEndTurn && !forFlashingOnly) {
         this.hud.flashEndTurn(true);
         setTimeout(() => {
           this.gotoNextTurn();
@@ -645,11 +791,11 @@ export class Manager {
   getAllGlobalResources() {
     return this.getAllResources()
       .filter(resource => !this.getResourceType(resource)?.hidden && this.getResourceType(resource)?.global)
-      .sort((a, b) => a.localeCompare(b))
+      .sort((a, b) => b.localeCompare(a))
   }
 
-  calculateResourceRevenue(player: number) {
-    const revenue = this.calculateRevenue(player);
+  async calculateResourceRevenue(player: number) {
+    const revenue = await this.calculateRevenue(player);
     const RESOURCES = this.getAllGlobalResources();
     const resources: Record<keyof Resources, number> = {
       wheat: 0,
@@ -671,11 +817,20 @@ export class Manager {
   }
 
   getUnits(player?: number) {
-    const units: GameObject[] = [];
-    this.iterateRevealedCells((gameObject) => {
-      const elem = gameObject.elem;
-      if (elem?.owner === player && elem?.type === "unit") {
-        units.push(gameObject);
+    const units: Set<GameObject> = new Set();
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.type === "unit" && (player === undefined || gameObject.elem?.owner === player)) {
+        units.add(gameObject);
+      }
+    });
+    return units;
+  }
+
+  private getAllUnitsOrHouses() {
+    const units: Set<GameObject> = new Set();
+    Object.entries(this.grid).forEach(([tag, gameObject]) => {
+      if (gameObject.elem?.type === "unit" || gameObject.elem?.type === "house") {
+        units.add(gameObject);
       }
     });
     return units;
@@ -711,28 +866,29 @@ export class Manager {
     return this.scene.resources[resource];
   }
 
-  getUnitRotation() {
+  async getUnitRotation(player: number) {
     const cellsRotation: GameObject[] = [];
-    this.iterateRevealedCells((gameObject) => {
+    const playerUnits = this.getUnits(player);
+    for (const gameObject of playerUnits) {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (gameObject.elem?.owner === this.getPlayer()
-        && gameObject.canAct()) {
+      } else if (await gameObject.canAct()) {
         if (gameObject.elem?.type === "unit"
           && !gameObject.elem?.harvesting) {
           include = true;
-        } else if (gameObject?.elem?.type === "house"
-          && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
-          include = true;
         }
+        //  else if (gameObject?.elem?.type === "house"
+        //   && (gameObject.canAffordMoreHarvester() || gameObject.resourceMaxedOut())) {
+        //   include = true;
+        // }
       }
       if (include) {
         cellsRotation.push(gameObject);
       }
-    });
+    }
 
-    if (this.getPlayer() === 0) {
+    if (player === 0) {
       cellsRotation.sort((a, b) => this.compareAI(a, b));
     }
 
@@ -746,12 +902,16 @@ export class Manager {
     return distA - distB;
   }
 
-  selectNext() {
-    const cellsRotation: GameObject[] = this.getUnitRotation();
+  async selectNext() {
+    const cellsRotation: GameObject[] = await this.getUnitRotation(this.getPlayer());
     const currentIndex = this.selected ? cellsRotation.indexOf(this.selected) : -1;
-    // rotate cells
-    let nextIndex = (currentIndex + 1) % cellsRotation.length;
-    this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+    if (!cellsRotation.length) {
+      this.hud.flashEndTurn();
+    } else {
+      // rotate cells
+      let nextIndex = (currentIndex + 1) % cellsRotation.length;
+      this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+    }
   }
 
   unitAt(x: number, y: number): GameObject | undefined {
@@ -765,6 +925,7 @@ export class Manager {
   updateResource(resource: keyof Resources, value: number | ((value: number) => number), player: number) {
     const val = typeof value === "function" ? value(this.scene.players[player - 1].resources[resource] ?? 0) : value;
     this.scene.players[player - 1].resources[resource] = val;
+    this.hud.updated = false;
   }
 
   isEmptySpot(x: number, y: number) {
@@ -793,11 +954,14 @@ export class Manager {
 
   }
 
-  unlockRewards(obj: GameObject) {
-    this.iterateGridCell(obj.px, obj.py, (gameObject) => {
+  async unlockRewards(obj: GameObject) {
+    await this.iterateGridCell(obj.px, obj.py, async (gameObject) => {
       const rewards = gameObject.elem?.rewards;
       if (rewards) {
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
+        if (!reward) {
+          return;
+        }
 
         if (reward.gold) {
           const [min, max] = reward.gold;
@@ -807,10 +971,16 @@ export class Manager {
             gold,
           });
           this.hud.updated = false;
+          await this.hud.showDialog(`You found ${gold} gold!`);
         }
         if (reward.invention) {
-          //  invention
-          console.log("invention", reward.invention);
+          if (!this.scene.players[this.getPlayer() - 1].research) {
+            await this.findNextResearch(this.getPlayer());
+          }
+          const currentResearch = this.getResearchInfo(this.getPlayer());
+          if (currentResearch) {
+            await this.discover(this.getPlayer(), currentResearch);
+          }
         }
         if (reward.spawnFoes) {
           const emptySpots: Vector2[] = this.findEmptySpotsAround(obj.px, obj.py);
@@ -824,6 +994,7 @@ export class Manager {
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
           }
+          await this.hud.showDialog(`You have been ambushed by ${actualCount} savages!`);
         }
         if (reward.unit) {
           const emptySpots: Vector2[] = this.findEmptySpotsAround(obj.px, obj.py);
@@ -833,6 +1004,7 @@ export class Manager {
               owner: obj?.elem?.owner
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
+            await this.hud.showDialog(`You have found a ${reward.unit.name}!`);
           }
         }
         gameObject.doom(true);
@@ -863,5 +1035,18 @@ export class Manager {
 
   isAiPlayer(player: number | undefined) {
     return !player || this.scene.players[player - 1]?.ai;
+  }
+
+  isResearched(research: string, player: number) {
+    return this.scene.players[player - 1]?.research?.[research];
+  }
+
+  research(research: string, player: number) {
+    this.scene.players[player - 1].currentResearch = research;
+  }
+
+  getResearchInfo(player: number) {
+    const current = this.scene.players[player - 1]?.currentResearch;
+    return this.scene.research.find(research => research.name === current);
   }
 }

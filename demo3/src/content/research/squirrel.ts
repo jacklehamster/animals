@@ -1,13 +1,11 @@
 import type { Research } from "../../definition/research";
+import { SQUIRREL_ANIMATION, SQUIRREL_WAIT_ANIMATION } from "../animations/squirrel";
 
 export const SQUIRREL_RESEARCH: Research = {
   name: "squirrel",
   description: "Squirrels can climb trees and throw nuts.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  icon: SQUIRREL_ANIMATION,
+  waitIcon: SQUIRREL_WAIT_ANIMATION,
   dependency: [],
+  cost: 20,
 };

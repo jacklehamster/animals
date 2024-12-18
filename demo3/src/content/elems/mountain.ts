@@ -9,7 +9,7 @@ export const MOUNTAIN: Elem = {
   },
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.1,
+    chance: 0.3,
   },
   condition: {
     tile: "plain",

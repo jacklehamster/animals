@@ -45,14 +45,14 @@ export const COW_DEFINITION: Elem = {
   worker: true,
   turn: {
     moves: 1,
-    attacks: 1,
+    attacks: 0,
     actions: 1,
   },
   closeToHome: true,
   endlessMove: true,
   attack: {
-    range: 1,
     damage: 2,
-    defense: 2,
+    defense: 1,
+    disabled: true,
   }
 };

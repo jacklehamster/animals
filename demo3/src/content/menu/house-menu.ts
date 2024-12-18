@@ -26,7 +26,7 @@ export const HOUSE_MENU: Menu = {
       },
       disabled: {
         levelBelowEqual: [1, "Settlement\nlevel too low"],
-        cannotAct: [true, "Wait next turn"],
+        cannotAct: [true, "wait\nnext turn"],
       },
       actions: [
         {
@@ -38,6 +38,7 @@ export const HOUSE_MENU: Menu = {
           },
         },
       ],
+      researchNeeded: ["oviculture"],
     },
     {
       name: "cow",
@@ -45,12 +46,15 @@ export const HOUSE_MENU: Menu = {
       spriteSize: [64, 64] as [number, number],
       padding: [2, 2],
       frames: [51],
+      resourceCost: {
+        wood: 5,
+      },
       label: "spawn\ncow",
       hidden: {
         occupied: ["unit", "Tile occupied\nby a unit"],
-        unitLimit: ["cow", "Increase level\nto spawn more"],
       },
       disabled: {
+        unitLimit: ["cow", "Increase settlement level\nto spawn more"],
       },
       actions: [
         {
@@ -61,6 +65,7 @@ export const HOUSE_MENU: Menu = {
           },
         },
       ],
+      researchNeeded: ["bovine"],
     },
     {
       name: "dog",
@@ -87,13 +92,14 @@ export const HOUSE_MENU: Menu = {
           },
         },
       ],
+      researchNeeded: ["canine"],
     },
     {
       name: "squirrel",
       imageSource: "./assets/tiles.png",
       spriteSize: [64, 64] as [number, number],
       padding: [2, 2],
-      frames: [90],
+      frames: [98],
       label: "spawn\nsquirrel",
       resourceCost: {
         wood: 10,
@@ -113,6 +119,7 @@ export const HOUSE_MENU: Menu = {
           },
         },
       ],
+      researchNeeded: ["squirrel"],
     },
     ...HOUSE_MENU_DEBUG,
   ],

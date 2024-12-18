@@ -24,11 +24,12 @@ export const LAKE: Elem = {
     count: [3, 7] as [number, number],
   },
   branchOut: {
-    count: [1, 5] as [number, number],
-    chance: .2,
+    count: [3, 5] as [number, number],
+    chance: .1,
     element: {
       definition: "river",
     },
   },
   water: true,
+  copy: true,
 };

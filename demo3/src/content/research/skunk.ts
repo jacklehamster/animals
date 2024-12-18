@@ -10,4 +10,5 @@ export const SKUNK_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["squirrel"],
+  cost: 40,
 };

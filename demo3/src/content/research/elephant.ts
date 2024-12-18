@@ -10,4 +10,5 @@ export const ELEPHANT_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["pig"],
+  cost: 40,
 };

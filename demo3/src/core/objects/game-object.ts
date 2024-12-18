@@ -1,8 +1,12 @@
-import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "../lib/littlejs";
-import type { Elem } from "../definition/elem";
-import type { Manager } from "./manager";
-import type { AnimationInfo } from "../animation/animation-manager";
-import type { Resources } from "../definition/resources";
+import { Color, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, randColor, vec2, Vector2 } from "../../lib/littlejs";
+import type { Elem } from "../../definition/elem";
+import type { Manager } from "../manager";
+import type { AnimationInfo } from "../../animation/animation-manager";
+import type { Resources } from "../../definition/resources";
+import { DecorObject } from "./decor";
+import { MoveOption } from "./move-option";
+import { AttackOption } from "./attack-option";
+import { Projectile } from "../projectile";
 
 export class GameObject extends EngineObject {
   animationInfo?: AnimationInfo;
@@ -21,14 +25,15 @@ export class GameObject extends EngineObject {
   visible: boolean = true;
   elem?: Elem;
   hovered: boolean = false;
-  decors: EngineObject[] = [];
+  decors: DecorObject[] = [];
   shadow?: EngineObject;
   labels: EngineObject[] = [];
   updated?: boolean = false;
-  moveOptions?: Record<string, EngineObject>;
+  moveOptions?: Record<string, MoveOption>;
+  attackOptions?: Record<string, AttackOption>;
   clearedCloud?: boolean;
   bornTime: number = Date.now() - Math.random() * 10000;
-  moveQueue?: Vector2[];
+  moveQueue: Vector2[] = [];
   resources: EngineObject[] = [];
   floatResources?: number;
   resourceBars: EngineObject[] = [];
@@ -36,10 +41,13 @@ export class GameObject extends EngineObject {
   talkingTime?: number;
   attackTarget?: GameObject;
   attackOrigin?: Vector2;
-  aggressor?: boolean;
   retaliationDamage?: number;
   onDone?: (self: GameObject) => void;
   hasPendingActions?: boolean;
+  damageTime?: number;
+  retaliating?: boolean;
+  projectile?: Projectile;
+  unitsSupported: Set<GameObject> = new Set();
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -53,19 +61,26 @@ export class GameObject extends EngineObject {
     }
   }
 
-  refresh(elem: Elem) {
+  async refresh(elem: Elem) {
     if (!this.elem) {
       const definition = this.manager.scene.definitions.find((def) => def.name === elem.definition);
       if (definition) {
         this.elem = JSON.parse(JSON.stringify(definition));
       } else {
-        this.elem = elem;
+        this.elem = elem.copy ? JSON.parse(JSON.stringify(elem)) : elem;
       }
+      this.manager.defineElem(this.elem!);
+
+      // this.elem = JSON.parse(JSON.stringify(elem));
+
     }
     elem = this.elem!;
     const config = elem.gameObject;
     if (config) {
       this.visible = !config.hidden;
+      if (this.home) {
+        this.home.unitsSupported.add(this);
+      }
       if (elem.owner === undefined) {
         elem.owner = 0;
       }
@@ -135,40 +150,40 @@ export class GameObject extends EngineObject {
           if (radius && x * x + y * y > radius * radius) {
             continue;
           }
-          const decor = new EngineObject();
+          const decor = new DecorObject(this, x, y);
           decor.tileInfo = this.getTileInfoAnimate(animInfo);
-          this.addChild(decor, vec2(x, y));
-          (decor as any).initialPos = vec2(x, y);
-          (decor as any).bornTime = Date.now() - Math.random() * 100000;
           if (color) {
             decor.color = this.getColor(color);
           }
           this.decors.push(decor);
         }
-        if (elem.branchOut) {
-          const shouldBrachOut = Math.random() <= (elem.branchOut.chance ?? 1);
+        if (elem.branchOut && Math.random() <= (elem.branchOut.chance ?? 1)) {
           const { count, element } = elem.branchOut;
-          const actualCount = !shouldBrachOut ? 1 : count[0] + Math.floor(Math.random() * (count[1] - count[0]));
-          let pos = vec2(this.pos.x, this.pos.y);
+          const actualCount = count[0] + Math.floor(Math.random() * (count[1] - count[0]));
+          const pos = vec2(this.pos.x, this.pos.y);
           const directions: [number, number][] = [[-1, 0], [0, -1], [1, 0], [0, 1]];
           let lastDir: [number, number] | undefined;
-          let prePos: Vector2 = pos.copy();
           for (let i = 0; i < actualCount; i++) {
+            const el = this.manager.defineElem(JSON.parse(JSON.stringify(element)));
             const oppositeDirIndex = lastDir ? (directions.indexOf(lastDir) + 2) % 4 : undefined;
             const filteredDirections = directions.filter((_dir, index) => index !== oppositeDirIndex);
             const dir = filteredDirections[Math.floor(Math.random() * filteredDirections.length)];
             pos.set(pos.x + dir[0], pos.y + dir[1]);
-            const rot = Math.atan2((pos.y - prePos.y), -(pos.x - prePos.x));
 
-            this.manager.scene.elems.push(element);
-            if (!element.gameObject) {
-              element.gameObject = {};
+            if (this.manager.grid[`road_${pos.x}_${pos.y}`]) {
+              break;
             }
-            if (!element.gameObject.noRotation) {
-              element.gameObject.rotation = rot;
+
+            const rot = Math.atan2(-dir[1], dir[0]);
+
+            if (!el.gameObject) {
+              el.gameObject = {};
             }
-            element.gameObject.pos = [pos.x, pos.y];
-            prePos.set(pos.x, pos.y);
+            if (!el.gameObject.noRotation) {
+              el.gameObject.rotation = rot;
+            }
+            el.gameObject.pos = [pos.x, pos.y];
+            this.manager.scene.elems.push(el);
             lastDir = dir;
           }
         }
@@ -179,7 +194,7 @@ export class GameObject extends EngineObject {
           this.manager.setSelection(this);
         }, 300);
       }
-      this.refreshLabel();
+      await this.refreshLabel();
       this.refreshBars();
       this.refreshAlpha();
     } else {
@@ -236,10 +251,17 @@ export class GameObject extends EngineObject {
     this.updated = false;
   }
 
-  refreshLabel() {
+  isRevealed() {
+    return this.manager.isRevealed(this.px, this.py);
+  }
+
+  async refreshLabel() {
     this.labels.forEach(label => label.destroy());
     this.labels.length = 0;
     if (this.elem?.harvesting && !this.elem?.level) {
+      return;
+    }
+    if (!this.isRevealed()) {
       return;
     }
     let numToShow = this.elem?.level ?? this.elem?.hitpoints;
@@ -249,7 +271,7 @@ export class GameObject extends EngineObject {
     const size = this.elem?.level ? .5 : .3;
     const offset = this.elem?.level ? vec2(0, .25) : vec2(-.5, .2);
     const charSize = this.elem?.level ? .2 : .15;
-    const labelAlpha = this.canAct() ? 1 : .5;
+    const labelAlpha = await this.canAct() ? 1 : .5;
     const isOwnedByPlayer = this.elem?.owner === this.manager.getPlayer();
     const color = !this.elem?.owner ?
       new Color(1, .5, .5, labelAlpha) :
@@ -258,7 +280,7 @@ export class GameObject extends EngineObject {
           ? (this.elem.hitpoints < (this.elem.maxHitPoints ?? 0)
             ? new Color(1, 1, 0, labelAlpha)
             : new Color(0, 1, 0, labelAlpha))
-          : this.canAffordMoreHarvester()
+          : await this.canAffordMoreHarvester()
             ? new Color(1, .9, 0, labelAlpha)
             : new Color(1, 1, 1, labelAlpha);
     if (!this.labels) {
@@ -269,8 +291,8 @@ export class GameObject extends EngineObject {
     this.labels.forEach(label => label.renderOrder = this.renderOrder + .2);
   }
 
-  canAffordMoreHarvester() {
-    return this.findNearby((obj) => !!obj?.elem?.harvesting).size < (this.elem?.level ?? 0);
+  async canAffordMoreHarvester() {
+    return (await this.findNearby((obj) => !!obj?.elem?.harvesting)).size < (this.elem?.level ?? 0);
   }
 
   resourceMaxedOut() {
@@ -323,7 +345,7 @@ export class GameObject extends EngineObject {
     const resourceSpacing = .15;
     const offset = this.elem?.gameObject?.offset ?? [0, 0];
     const offX = (x - this.px - offset[0]) + rand, offY = y - this.py - offset[1];
-    const RESOURCES: ["wheat", "wood", "trade"] = ["wheat", "wood", "trade"];
+    const RESOURCES: ["wheat", "wood", "trade", "gold", "brain"] = ["wheat", "wood", "trade", "gold", "brain"];
     let total = 0;
     RESOURCES.forEach((resource) => {
       for (let i = 0; i < (resources[resource] ?? 0); i++) {
@@ -337,18 +359,26 @@ export class GameObject extends EngineObject {
       if (!value) {
         return;
       }
+      const MAX_ROW = 8;
       for (let i = 0; i < value; i++) {
         const indic = new EngineObject(vec2(0, 0), vec2(.5, .5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
         indic.color = new Color(1, 1, 1, 1);
-        this.addChild(indic, vec2(offX + (count - (total - 1) / 2) * resourceSpacing + rand, offY));
+        const col = count % MAX_ROW;
+        const row = Math.floor(count / MAX_ROW);
+        this.addChild(indic,
+          vec2(
+            offX + (col - (Math.min(total, MAX_ROW) - 1) / 2) * resourceSpacing + rand,
+            offY + (row - Math.floor(total / MAX_ROW) / 2) * resourceSpacing + rand
+          )
+        );
         this.resources.push(indic);
         count++;
       }
     });
     let harvesting = floatResources;
     if (!floatResources) {
-      this.manager.iterateGridCell(x, y, (elem) => {
+      this.manager.iterateGridCell(x, y, async (elem) => {
         if (elem.elem?.owner === owner && elem.elem?.harvesting) {
           harvesting = true;
         }
@@ -359,7 +389,6 @@ export class GameObject extends EngineObject {
       indic.color = harvesting ? new Color(1, .5, 1, .8) : new Color(.5, .5, .5, .8);
       this.addChild(indic, vec2(offX, offY));
       this.resources.push(indic);
-
     }
     this.updated = false;
     if (floatResources) {
@@ -419,11 +448,8 @@ export class GameObject extends EngineObject {
     return this.elem?.turn?.actions;
   }
 
-  canAttack() {
-    if (!this.elem?.attack) {
-      return false;
-    }
-    if (!this.findNearbyFoe(this.elem.attack.range).size) {
+  async canAttack() {
+    if (!this.elem?.attack || this.elem.attack.disabled) {
       return false;
     }
     if (!this.elem.turn?.attacks) {
@@ -432,13 +458,27 @@ export class GameObject extends EngineObject {
     if (!this.elem?.turn.moves && !this.elem.attack.attackAfterMove) {
       return false;
     }
+    const foes = await this.findNearbyFoe(this.elem.attack.range);
+    if (!foes.size) {
+      return false;
+    }
+    let hasFoeToAttack = false;
+    foes.forEach((foe) => {
+      if (this.canAttackAt(foe.px, foe.py)) {
+        hasFoeToAttack = true;
+      }
+    });
+    if (!hasFoeToAttack) {
+      return false;
+    }
+
     return true;
   }
 
   spendAttack() {
     const elem = this.elem;
     if (elem && elem.turn?.attacks) {
-      elem.turn.attacks--;
+      elem.turn.attacks = 0;
       elem.turn.moves = this.elem?.attack?.moveAfterAttack ? 1 : 0;
     }
   }
@@ -456,20 +496,27 @@ export class GameObject extends EngineObject {
   }
 
   doneMoving() {
+    if (this.hasPendingActions) {
+      return;
+    }
+    this.afterDoneMoving();
+  }
+
+  private async afterDoneMoving() {
     this.refreshAlpha();
     this.refreshLabel();
-    this.manager.unlockRewards(this);
+    await this.manager.unlockRewards(this);
     this.manager.checkForAnyMove();
 
     if (this.manager.isAiPlayer(this.elem?.owner)) {
-      this.manager.selectNext();
+      await this.manager.selectNext();
     } else if (!this.canAct() || this.elem?.harvesting) {
-      this.manager.selectNext();
+      await this.manager.selectNext();
     } else if (this.manager.selected === this) {
       if (this.elem?.settler || this.elem?.worker) {
         this.showResourcesNearby();
       }
-      this.showMoveOptions();
+      await this.showActionOptions();
       this.manager.hud.showSelected(this);
     }
   }
@@ -482,8 +529,8 @@ export class GameObject extends EngineObject {
     }
   }
 
-  canAct() {
-    return this.hasMove() || (this.hasAttack() && this.canAttack()) || this.hasAction();
+  async canAct() {
+    return this.hasMove() || (this.hasAttack() && await this.canAttack()) || this.hasAction();
   }
 
   refreshAlpha() {
@@ -496,7 +543,7 @@ export class GameObject extends EngineObject {
     }
   }
 
-  giveTurn() {
+  async giveTurn() {
     const elem = this.elem;
     if (elem?.turn) {
       elem.turn.moves = elem.turn.attacks = 1;
@@ -505,7 +552,7 @@ export class GameObject extends EngineObject {
       }
       if (this.elem?.harvesting) {
         //  check nearby foes
-        const foes = this.findNearbyFoe();
+        const foes = await this.findNearbyFoe();
         if (foes.size) {
           this.elem.harvesting = false;
           this.updated = false;
@@ -517,8 +564,21 @@ export class GameObject extends EngineObject {
     }
   }
 
-  attackWithRange(px: number, py: number) {
-    console.log("Attack with range", px, py);
+  attackTowards(px: number, py: number) {
+    console.log(this.elem?.name, "Attack towards", px, py);
+    const dx = px - this.px;
+    const dy = py - this.py;
+    const dist = Math.max(Math.abs(dx), Math.abs(dy));
+    if (dist === 0) {
+      return;
+    }
+    if (dist > 1) {
+      const x = Math.sign(dx);
+      const y = Math.sign(dy);
+      this.simpleMoveTo(this.px + x, this.py + y);
+      console.log("move by", x, y);
+    }
+    this.moveQueue.push(vec2(px, py));
   }
 
   simpleMoveTo(px: number, py: number) {
@@ -526,6 +586,26 @@ export class GameObject extends EngineObject {
     this.hideResources();
     this.hideMoveOptions();
     this.manager.hud.showSelected(undefined);
+  }
+
+  attackAt(px: number, py: number) {
+    const dx = px - this.px;
+    const dy = py - this.py;
+    if (!this.elem?.attack?.range) {
+      //  melee attack. Just move to the target
+      this.moveQueue.push(vec2(px, py));
+      this.hideResources();
+      this.hideMoveOptions();
+      this.manager.hud.showSelected(undefined);
+    } else {
+      //  ranged attack
+      const unit = this.manager.unitAt(px, py);
+      if (unit) {
+        this.attackRange(unit);
+
+      }
+
+    }
   }
 
   moveTo(px: number, py: number) {
@@ -540,7 +620,7 @@ export class GameObject extends EngineObject {
       this.moveQueue = [];
     }
     this.moveQueue.push(vec2(px, py));
-    const from = (moveOption as any).from;
+    const from = moveOption.from;
     if (from.x !== this.px || from.y !== this.py) {
       this.moveTo(from.x, from.y);
       return;
@@ -562,7 +642,7 @@ export class GameObject extends EngineObject {
     this.talkingTime = Date.now() + Math.random() * 3000;
   }
 
-  moveUnitTo(px: number, py: number) {
+  async moveUnitTo(px: number, py: number) {
     this.talkingTime = undefined;
     // check if there's a unit at the target position
     const target = this.manager.unitAt(px, py);
@@ -572,9 +652,8 @@ export class GameObject extends EngineObject {
         target.talkTo(this);
         return;
       }
-      if (this.elem?.owner !== target.elem?.owner && this.canAttack()) {
-        this.attack(target, true);
-        console.log("Attack!");
+      if (this.elem?.owner !== target.elem?.owner && await this.canAttack()) {
+        this.attack(target);
         return;
       }
     } else {
@@ -607,12 +686,17 @@ export class GameObject extends EngineObject {
     if (this.elem?.type === "cloud") {
       this.manager.revealed.delete(`${px}_${py}`);
     }
+
     this.clearedCloud = false;
     this.updated = false;
   }
 
   hasMoveOptionToLandOn(x: number, y: number) {
-    return (this.moveOptions?.[`${x}_${y}`] as any)?.canLand;
+    return this.moveOptions?.[`${x}_${y}`]?.canLand;
+  }
+
+  hasAttackOptionOn(x: number, y: number) {
+    return this.attackOptions?.[`${x}_${y}`];
   }
 
   canLandOn(px: number, py: number) {
@@ -620,6 +704,31 @@ export class GameObject extends EngineObject {
       return false;
     }
     return true;
+  }
+
+  canAttackAt(px: number, py: number) {
+    const elem = this.elem;
+    if (!elem) {
+      return false;
+    }
+    if (this.elem?.owner && !this.manager.isRevealed(px, py)) {
+      return false;
+    }
+    const dx = px - this.px;
+    const dy = py - this.py;
+    const distance = Math.max(Math.abs(dx), Math.abs(dy));
+    if (distance > (elem.attack?.range ?? 1)) {
+      return false;
+    }
+    const targetUnit = this.manager.unitAt(px, py);
+    // const targetHouse = this.manager.houseAt(px, py);
+    if (targetUnit) {
+      return targetUnit.elem?.owner !== elem.owner;
+    }
+    // if (targetHouse) {
+    //   return targetHouse.elem?.owner !== elem.owner;
+    // }
+    return false;
   }
 
   canMoveTo(px: number, py: number) {
@@ -630,14 +739,20 @@ export class GameObject extends EngineObject {
     if (this.px === px && this.py === py) {
       return false;
     }
-    if (!this.manager.revealed.has(`${px}_${py}`)) {
+    if (!this.elem?.turn?.moves) {
       return false;
     }
     if (elem.type !== "unit") {
       return false;
     }
-    if (this.manager.grid[`decor_${px}_${py}`]) {
+    if (!this.manager.isAiPlayer(this.elem.owner) && !this.manager.isRevealed(px, py)) {
       return false;
+    }
+    const decor = this.manager.grid[`decor_${px}_${py}`];
+    if (decor) {
+      if (!elem?.canCrossTerrains?.includes(decor.elem?.name ?? "")) {
+        return false;
+      }
     }
     if (this.manager.grid[`tile_overlay_${px}_${py}`]?.elem?.water) {
       return false
@@ -651,15 +766,24 @@ export class GameObject extends EngineObject {
       }
     }
     const targetUnit = this.manager.unitAt(px, py);
-    if (!targetUnit) {
-      return this.hasMove();
+    if (targetUnit) {
+      return false;
     }
 
-    if (targetUnit?.elem?.owner === elem.owner) {
-      return false;
-    } else if (!this.canAttack()) {
-      return false;
-    }
+    // const targetHouse = this.manager.houseAt(px, py);
+    // if (targetHouse && targetHouse.elem?.owner !== elem.owner) {
+    //   return false;
+    // }
+    // if (!targetUnit) {
+    //   return this.hasMove();
+    // }
+
+    // if (targetUnit?.elem?.owner === elem.owner) {
+    //   return false;
+    // }
+    //  else if (!this.canAttack() || (this.elem?.attack?.range ?? 1) > 1) {
+    //   return false;
+    // }
 
     return true;
   }
@@ -745,7 +869,7 @@ export class GameObject extends EngineObject {
         }
 
         //  show move options
-        this.showMoveOptions();
+        this.showActionOptions();
         if (!this.moving) {
           const resourcesFloating = Date.now() - (this.floatResources ?? 0) < 2000;
 
@@ -772,11 +896,12 @@ export class GameObject extends EngineObject {
     }
   }
 
-  showMoveOptions() {
-    if (this.hasMove() && !this.manager.checkCondition(this.elem?.move?.disabled, this)) {
+  async showActionOptions() {
+    if (this.hasMove() && !await this.manager.checkCondition(this.elem?.move?.disabled, this)) {
       this.addMoveOptions(this.elem?.move?.distance ?? 1, vec2(this.px, this.py));
-    } else if (this.hasAttack() && this.canAttack()) {
-      this.addMoveOptions(this.elem?.attack?.range ?? 1, vec2(this.px, this.py));
+    }
+    if (this.hasAttack() && await this.canAttack()) {
+      this.addAttackOptions(this.elem?.attack?.range ?? 1);
     }
   }
 
@@ -784,6 +909,10 @@ export class GameObject extends EngineObject {
     if (this.moveOptions) {
       Object.values(this.moveOptions).forEach(moveOption => moveOption.destroy());
       delete this.moveOptions;
+    }
+    if (this.attackOptions) {
+      Object.values(this.attackOptions).forEach(attackOption => attackOption.destroy());
+      delete this.attackOptions;
     }
   }
 
@@ -801,7 +930,7 @@ export class GameObject extends EngineObject {
         return;
       }
       const newDistanceTravelled = distanceTravelled + Math.sqrt(dx * dx + dy * dy);
-      const existingMoveOption = this.moveOptions?.[`${from.x + dx}_${from.y + dy}`] as any;
+      const existingMoveOption = this.moveOptions?.[`${from.x + dx}_${from.y + dy}`];
       if (existingMoveOption) {
         const canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
         let shouldReplace = false;
@@ -827,7 +956,15 @@ export class GameObject extends EngineObject {
         return;
       }
 
-      const obj = new EngineObject();
+      const obj = new MoveOption(
+        from.x + dx,
+        from.y + dy,
+        from,
+        revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy),
+        movePoints,
+        newDistanceTravelled,
+        this.canLandOn(from.x + dx, from.y + dy),
+      );
       obj.size.set(this.size.x, this.size.y);
       if (this.elem?.selected?.moveIndic) {
         obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
@@ -835,14 +972,7 @@ export class GameObject extends EngineObject {
         obj.color = new Color(0, 0, 0, .3);
         obj.tileInfo = this.tileInfo;
       }
-      (obj as any).from = from;
-      (obj as any).canReveal = revealPotential + this.manager.countRevealPotential(from.x + dx, from.y + dy);
-      (obj as any).movePoints = movePoints;
-      (obj as any).distanceTravelled = newDistanceTravelled;
-      (obj as any).canLand = this.canLandOn(from.x + dx, from.y + dy);
-      (obj as any).px = from.x + dx;
-      (obj as any).py = from.y + dy;
-      if (!(obj as any).canLand) {
+      if (!obj.canLand) {
         obj.color = new Color(0, 0, 0, 0);
       }
       const unit = this.manager.unitAt(from.x + dx, from.y + dy);
@@ -850,16 +980,45 @@ export class GameObject extends EngineObject {
         obj.color = new Color(1, 0, 0, .5);
       }
       const offset = this.elem?.gameObject?.offset ?? [0, 0];
-      // obj.pos.set(this.px, this.py);
       this.addChild(obj, vec2((from.x + dx - this.px) - offset[0], (from.y + dy - this.py) - offset[1]));
       if (!this.moveOptions) {
         this.moveOptions = {};
       }
       this.moveOptions[`${from.x + dx}_${from.y + dy}`] = obj;
-      froms.push([vec2(from.x + dx, from.y + dy), (obj as any).canReveal, (obj as any).distanceTravelled]);
+      froms.push([vec2(from.x + dx, from.y + dy), obj.canReveal, obj.distanceTravelled]);
       this.updated = false;
     });
     froms.forEach(([from, revealing, newDistanceTravelled]) => this.addMoveOptions(movePoints - 1, from, revealing, newDistanceTravelled));
+  }
+
+  addAttackOptions(range: number) {
+    if (!range) {
+      return;
+    }
+    for (let y = -range; y <= range; y++) {
+      for (let x = -range; x <= range; x++) {
+        if (this.canAttackAt(this.px + x, this.py + y)) {
+          const obj = new AttackOption(this.px + x, this.py + y);
+          obj.size.set(this.size.x, this.size.y);
+          if (this.elem?.selected?.moveIndic) {
+            obj.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.moveIndic.animation));
+          } else {
+            obj.color = new Color(0, 0, 0, .3);
+            obj.tileInfo = this.tileInfo;
+          }
+          const unit = this.manager.unitAt(this.px + x, this.py + y);
+          if (unit) {
+            obj.color = new Color(1, 0, 0, .5);
+          }
+          this.addChild(obj, vec2(x, y));
+          if (!this.attackOptions) {
+            this.attackOptions = {};
+          }
+          this.attackOptions[`${this.px + x}_${this.py + y}`] = obj;
+          this.updated = false;
+        }
+      }
+    }
   }
 
   getFrame(animInfo?: AnimationInfo) {
@@ -891,6 +1050,30 @@ export class GameObject extends EngineObject {
         elem.resourcesCapped[k] = value;
       }
     });
+  }
+
+  calculateUnitResourcesRevenue() {
+    const resources: Resources = {
+      wheat: 0,
+      wood: 0,
+      trade: 0,
+      gold: 0,
+      brain: 0,
+    };
+    this.unitsSupported.forEach(unit => {
+      const res = unit.calculateUnitResourcesRevenue();
+      Object.entries(res).forEach(([key, value]) => {
+        resources[key as keyof Resources] += value;
+      });
+    });
+    Object.entries(resources).forEach(([key, value]) => {
+      const k = key as keyof Resources;
+      if (this.manager.scene.resources[k]?.global) {
+        return;
+      }
+      resources[k] += value;
+    });
+    return resources;
   }
 
   accumulateResources(resources: Resources) {
@@ -933,8 +1116,9 @@ export class GameObject extends EngineObject {
     if (!this.elem.resourcesAccumulated) {
       this.elem.resourcesAccumulated = {};
     }
-    const val = typeof value === "function" ? value(this.elem.resourcesAccumulated[resource] ?? 0) : value;
-    const resObj = this.manager.scene.resources[resource];
+    const resObj = this.manager.getResourceType(resource);
+    const previousVal = resObj?.global ? this.manager.getPlayerResource(resource, this.elem.owner ?? 0) : this.elem.resourcesAccumulated[resource] ?? 0;
+    const val = typeof value === "function" ? value(previousVal) : value;
     if (resObj?.global) {
       if (this.elem.owner) {
         this.manager.updateResource(resource, val, this.elem.owner);
@@ -948,13 +1132,13 @@ export class GameObject extends EngineObject {
     this.updated = false;
   }
 
-  fixCows() {
+  async fixCows() {
     // cows number can't be higher than house level
-    const cows = this.countUnitSupport("cow");
+    const cows = await this.countUnitSupport("cow");
     const maxCows = this.elem?.level ?? 0;
     if (cows > maxCows) {
       let toRemove = cows - maxCows;
-      this.manager.iterateRevealedCells((obj) => {
+      await this.manager.iterateRevealedCells(async (obj) => {
         if (toRemove <= 0) {
           return;
         }
@@ -970,11 +1154,11 @@ export class GameObject extends EngineObject {
     return this.elem?.type === "house" && (this.elem?.level ?? 0) < 6;
   }
 
-  updateLevel(level: number) {
+  async updateLevel(level: number) {
     if (this.elem?.type === "house") {
       this.elem.level = level;
-      this.fixCows();
-      this.refreshLabel();
+      await this.fixCows();
+      await this.refreshLabel();
       this.updated = false;
     }
   }
@@ -988,9 +1172,9 @@ export class GameObject extends EngineObject {
     return capacity * 10;
   }
 
-  countUnitSupport(unit: string) {
+  async countUnitSupport(unit: string) {
     let count = 0;
-    this.manager.iterateRevealedCells((obj) => {
+    await this.manager.iterateRevealedCells(async (obj) => {
       if (obj.elem?.name === unit && obj.home === this) {
         count++;
       }
@@ -1018,8 +1202,13 @@ export class GameObject extends EngineObject {
       this.selectIndic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.selected.indic.animation));
     }
     Object.values(this.moveOptions ?? {}).forEach(moveOption => {
-      if ((moveOption as any).animation) {
-        moveOption.tileInfo = this.getTileInfoAnimate((moveOption as any).animation);
+      if (moveOption.animation) {
+        moveOption.tileInfo = this.getTileInfoAnimate(moveOption.animation);
+      }
+    });
+    Object.values(this.attackOptions ?? {}).forEach(option => {
+      if (option.animation) {
+        option.tileInfo = this.getTileInfoAnimate(option.animation);
       }
     });
     if (this.mouseFollower) {
@@ -1041,7 +1230,7 @@ export class GameObject extends EngineObject {
         ? this.harvestAnimationInfo
         : this.moveAnimationInfo && (dx || dy)
           ? this.moveAnimationInfo
-          : this.selectedAnimationInfo && (this.manager.selected === this || talking)
+          : this.selectedAnimationInfo && this.isRevealed() && (this.manager.selected === this || talking)
             ? this.selectedAnimationInfo
             : this.hoveredAnimationInfo && this.manager.hovering(this)
               ? this.hoveredAnimationInfo : this.animationInfo;
@@ -1071,13 +1260,20 @@ export class GameObject extends EngineObject {
       }
     } else {
       if (this.attackTarget) {
-        this.finishAttack(this.attackTarget);
+        if (this.projectile) {
+          this.projectile.move();
+          if (this.projectile.landed()) {
+            const projectile = this.projectile;
+            this.projectile = undefined;
+            projectile.destroy();
+            this.finishAttack(this.attackTarget, true);
+          }
+        } else {
+          this.finishAttack(this.attackTarget);
+        }
       } else if (this.moveQueue?.length) {
         const dest = this.moveQueue.pop()!;
         this.moveUnitTo(dest.x, dest.y);
-        if (!this.moveQueue.length) {
-          delete this.moveQueue;
-        }
       } else if (this.moving) {
         this.moving = false;
         if (this.onDone) {
@@ -1085,21 +1281,25 @@ export class GameObject extends EngineObject {
           this.onDone = undefined;
           onDone(this);
         } else if (!this.hasPendingActions) {
-          this.spendMove();
+          if (!this.retaliating) {
+            this.spendMove();
+          } else {
+            this.retaliating = false;
+          }
         }
       }
     }
 
     if (this.elem?.type === "cursor") {
       if (mouseWasReleased(0)) {
-        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
         this.manager.mousePosDown = undefined;
+        this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
       }
     }
 
 
     const coLayers = this.manager.scene?.colayers;
-    const renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * .001;
+    let renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * .001;
     if (this.renderOrder !== renderOrder || !this.updated) {
       this.renderOrder = renderOrder;
       this.decors.forEach((decor) => {
@@ -1107,6 +1307,12 @@ export class GameObject extends EngineObject {
       });
       if (this.moveOptions) {
         Object.values(this.moveOptions).forEach(moveOption => moveOption.renderOrder = this.renderOrder - .1);
+      }
+      if (this.attackOptions) {
+        Object.values(this.attackOptions).forEach(option => option.renderOrder = this.renderOrder - .1);
+      }
+      if (this.projectile) {
+        this.projectile.renderOrder = this.renderOrder + .1;
       }
 
       if (this.shadow) {
@@ -1120,11 +1326,11 @@ export class GameObject extends EngineObject {
       this.resourceBars.forEach((resource) => resource.renderOrder = 100000 + (resource.tileInfo ? .1 : -.1));
     }
 
-    if (this.elem?.spread?.moving) {
-      this.decors.forEach((decor: any) => {
+    if (this.elem?.spread?.moving && Math.random() < this.elem.spread.moving) {
+      this.decors.forEach((decor) => {
         const time = Date.now() - decor.bornTime;
-        const dx = Math.sin(time / 10000) * .5;
-        const dy = Math.cos(time / 10000) * .5;
+        const dx = Math.sin(time / 5000 * decor.motionX) * .2;
+        const dy = Math.cos(time / 5000 * decor.motionY) * .2;
         decor.localPos.set(decor.initialPos.x + dx, decor.initialPos.y + dy);
       });
     }
@@ -1167,18 +1373,36 @@ export class GameObject extends EngineObject {
         this.resources.forEach(res => res.localPos.y += .005);
       }
     }
+
+    if (this.damageTime) {
+      const timeLeft = this.damageTime - Date.now();
+      if (timeLeft >= 0) {
+        this.angle = Math.sin(Date.now() / 10) * timeLeft / 5000;
+        this.color = new Color(2, 0, 0, timeLeft / 1000);
+      } else {
+        this.damageTime = undefined;
+        this.angle = 0;
+        this.color = new Color(1, 1, 1, 1);
+      }
+    }
   }
 
   get home(): GameObject | undefined {
     if (this.elem?.home && !this.elem?.building) {
-      return this.manager.grid[GameObject.getTag("house", this.elem.home[0], this.elem?.home[1])] ?? undefined;
+      return this.manager.grid[GameObject.getTag("house", this.elem.home[0], this.elem.home[1])] ?? undefined;
     }
     return undefined;
   }
 
   doomed?: boolean = false;
   doom(immediate?: boolean) {
+    if (this.doomed) {
+      return;
+    }
     this.doomed = true;
+    if (this.home) {
+      this.home.unitsSupported.delete(this);
+    }
     this.size.set(0, 0);
     const destroy = () => {
       if (this.manager.grid[this.getTag()] === this) {
@@ -1201,7 +1425,7 @@ export class GameObject extends EngineObject {
     setTimeout(destroy, DURATION * 2);
     if (!immediate) {
       this.decors.forEach((decor) => {
-        (decor as any).doomTime = Date.now() + DURATION * Math.random();
+        decor.doomTime = Date.now() + DURATION * Math.random();
       });
     }
   }
@@ -1239,14 +1463,14 @@ export class GameObject extends EngineObject {
     }, distance);
   }
 
-  findNearby(cellCondition: (cell: GameObject) => boolean, distance: number = 1) {
+  async findNearby(cellCondition: (cell: GameObject) => boolean, distance: number = 1) {
     const set: Set<GameObject> = new Set();
     for (let y = -distance; y <= distance; y++) {
       for (let x = -distance; x <= distance; x++) {
         if (x === 0 && y === 0) {
           continue;
         }
-        this.manager.iterateGridCell(this.px + x, this.py + y, (cell) => {
+        await this.manager.iterateGridCell(this.px + x, this.py + y, async (cell) => {
           if (cellCondition(cell)) {
             set.add(cell);
           }
@@ -1290,7 +1514,7 @@ export class GameObject extends EngineObject {
     });
   }
 
-  attack(target: GameObject, aggressor: boolean, retaliationDamage?: number) {
+  attack(target: GameObject, retaliationDamage?: number) {
     if (!target || target.elem?.owner === this.elem?.owner) {
       return;
     }
@@ -1298,40 +1522,82 @@ export class GameObject extends EngineObject {
     this.attackOrigin = vec2(this.px, this.py);
     this.px = target.px;
     this.py = target.py;
-    this.aggressor = aggressor;
     this.retaliationDamage = retaliationDamage;
   }
 
-  finishAttack(target: GameObject) {
+  attackRange(target: GameObject, retaliationDamage?: number) {
+    if (!target || target.elem?.owner === this.elem?.owner) {
+      return;
+    }
+    this.attackTarget = target;
+    this.attackOrigin = vec2(this.px, this.py);
+    this.retaliationDamage = this.retaliationDamage;
+    if (this.projectile) {
+      this.projectile.destroy();
+    }
+    this.projectile = new Projectile(this.pos, target.pos, .05);
+    if (this.elem?.attack?.projectile) {
+      this.projectile.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(this.elem.attack.projectile));
+    }
+  }
+
+  finishAttack(target: GameObject, done: boolean = false) {
     const targetX = target.px, targetY = target.py;
-    const { retaliation, death } = this.aggressor
+    const { retaliation, death } = !this.retaliating
       ? target.takeDamageAndCheckDeath(this.elem?.attack?.damage ?? 1, this)
       : target.takeDirectDamageAndCheckDeath(this.retaliationDamage);
     this.px = this.attackOrigin?.x ?? this.px;
     this.py = this.attackOrigin?.y ?? this.py;
     this.attackTarget = undefined;
     this.attackOrigin = undefined;
-    if (this.aggressor) {
+    if (!this.retaliating) {
       this.spendAttack();
       if (death) {
-        this.setPosition(targetX, targetY);
+        if (!this.elem?.attack?.range) {
+          this.setPosition(targetX, targetY);
+        }
         this.doneMoving();
       } else {
-        this.hasPendingActions = true;
-        this.onDone = (self: GameObject) => {
-          target.attack(self, false, retaliation);
-        };
+        // check distance
+        const dx = this.px - targetX;
+        const dy = this.py - targetY;
+        const distance = Math.max(Math.abs(dx), Math.abs(dy));
+        if (distance <= (target?.elem?.attack?.range ?? 1)) {
+          //  retaliate
+          this.hasPendingActions = true;
+          this.onDone = (self: GameObject) => {
+            setTimeout(() => {
+              target.retaliating = true;
+              target.onDone = (target: GameObject) => {
+                target.retaliating = false;
+                self.hasPendingActions = false;
+                self.doneMoving();
+              };
+              const rangedAttack = target?.elem?.attack?.range;
+              if (rangedAttack) {
+                target.attackRange(self, retaliation);
+              } else {
+                target.attack(self, retaliation);
+              }
+            }, 1000);
+          };
+          if (done) {
+            const onDone = this.onDone;
+            this.onDone = undefined;
+            onDone(this);
+          }
+        } else {
+          this.doneMoving();
+        }
       }
-      this.aggressor = false;
-    } else if (!death) {
-      target.hasPendingActions = false;
-      target.doneMoving();
+    } else {
+      target.doneMoving();  //  give back control to target
     }
   }
 
   getDefenseBonus() {
     let bonus = 1;
-    this.manager.iterateGridCell(this.px, this.py, (cell) => {
+    this.manager.iterateGridCell(this.px, this.py, async (cell) => {
       if (cell.elem?.defenseBonus) {
         bonus *= cell.elem.defenseBonus;
       }
@@ -1349,6 +1615,7 @@ export class GameObject extends EngineObject {
 
   takeDirectDamageAndCheckDeath(damage: number = 0) {
     if (this.elem) {
+      this.damageTime = Date.now() + damage * 100;
       this.elem.hitpoints = (this.elem.hitpoints ?? 1) - damage;
       if (this.elem.hitpoints > 0) {
         this.refreshLabel();
@@ -1374,9 +1641,7 @@ export class GameObject extends EngineObject {
       const attackResult = Math.ceil((attackForce / totalDamage) * attack * 4.5);
       const defenseResult = Math.ceil((defenseForce / totalDamage) * this.getDefense() * 4.5);
 
-      console.log(attackForce, defenseForce, totalDamage);
-
-      console.log(attackResult, defenseResult);
+      this.damageTime = Date.now() + attackResult * 100;
       this.elem.hitpoints = (this.elem.hitpoints ?? 1) - attackResult;
       if (this.elem.hitpoints > 0) {
         this.refreshLabel();

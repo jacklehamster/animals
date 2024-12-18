@@ -9,7 +9,8 @@ export const TREE: Elem = {
   },
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.1,
+    chance: 0.5,
+    farFromCenter: 4,
   },
   condition: {
     tile: "plain",

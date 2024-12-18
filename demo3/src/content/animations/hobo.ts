@@ -5,7 +5,7 @@ export const HOBO_ANIMATION: Anim = {
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64],
   frames: [
-    86,
+    94,
   ],
 };
 
@@ -15,7 +15,7 @@ export const HOBO_WAIT_ANIMATION: Anim = {
   spriteSize: [64, 64] as [number, number],
   mul: 10,
   frames: [
-    86, 87,
+    94, 95,
   ],
 };
 
@@ -25,6 +25,6 @@ export const HOBO_JUMP_ANIMATION: Anim = {
   spriteSize: [64, 64] as [number, number],
   mul: 2,
   frames: [
-    86, 88, 86, 89,
+    94, 96, 94, 97,
   ],
 };

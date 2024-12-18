@@ -10,4 +10,5 @@ export const EAGLE_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["owl"],
+  cost: 20,
 };

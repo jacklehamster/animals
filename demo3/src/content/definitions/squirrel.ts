@@ -46,5 +46,7 @@ export const SQUIRREL_DEFINITION: Elem = {
     damage: 2,
     defense: 1,
     attackAfterMove: true,
-  }
+    projectile: "nut",
+  },
+  canCrossTerrains: ["tree"],
 };

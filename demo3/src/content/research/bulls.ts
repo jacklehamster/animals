@@ -10,4 +10,5 @@ export const BULLS_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["bovine"],
+  cost: 40,
 };

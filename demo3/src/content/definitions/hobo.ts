@@ -36,14 +36,12 @@ export const HOBO_DEFINITION: Elem = {
   shadow: {
     animation: "shadow",
   },
-  clearCloud: true,
   dynamic: true,
   turn: {
     moves: 1,
     attacks: 1,
   },
   attack: {
-    range: 1,
     damage: 2,
     defense: 2,
   },
