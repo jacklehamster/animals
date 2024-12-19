@@ -123,4 +123,5 @@ export interface Elem {
   advise?: Advise;
   adviseOnDeselect?: Advise;
   disableQuickActions?: boolean;
+  maxLevel?: number;
 }

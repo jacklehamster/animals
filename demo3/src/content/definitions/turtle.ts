@@ -1,16 +1,16 @@
 import type { Elem } from "../../definition/elem";
 
-export const BEAVER_DEFINITION: Elem = {
-  name: "beaver",
+export const TURTLE_DEFINITION: Elem = {
+  name: "turtle",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
   gameObject: {
-    size: [1.5, 1.5] as [number, number],
-    speed: 0.08,
+    size: [1.8, 1.8] as [number, number],
+    speed: 0.03,
   },
   animation: {
-    name: "beaver",
+    name: "turtle",
   },
   onHover: {
     hideCursor: true,
@@ -19,7 +19,7 @@ export const BEAVER_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "beaver_wait",
+    animation: "turtle_wait",
     indic: {
       animation: "indic",
     },
@@ -29,7 +29,7 @@ export const BEAVER_DEFINITION: Elem = {
     },
   },
   move: {
-    animation: "beaver_jump",
+    animation: "turtle_jump",
   },
   shadow: {
     animation: "shadow",
@@ -41,13 +41,8 @@ export const BEAVER_DEFINITION: Elem = {
     attacks: 1,
   },
   attack: {
-    animation: "beaver_attack",
     damage: 1,
-    defense: 2,
+    defense: 4,
   },
-  canCrossTerrains: ["tree", "lake"],
-  advise: {
-    "name": "beaver",
-    "message": "Beavers can cut down trees and turn rivers into lakes.",
-  },
+  canCrossTerrains: ["lake"],
 };

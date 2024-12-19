@@ -49,4 +49,8 @@ export const SQUIRREL_DEFINITION: Elem = {
     projectile: "nut",
   },
   canCrossTerrains: ["tree"],
+  advise: {
+    name: "squirrel",
+    message: "Squirrel can throw nuts and foes, and climb on trees.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do.",
+  },
 };

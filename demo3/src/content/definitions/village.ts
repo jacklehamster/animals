@@ -1,15 +1,15 @@
 import type { Elem } from "../../definition/elem";
 
-export const HOUSE_DEFINITION: Elem = {
-  name: "house",
+export const VILLAGE_DEFINITION: Elem = {
+  name: "village",
   type: "house",
-  level: 1,
+  level: 7,
   gameObject: {
     offset: [0, .7] as [number, number],
     size: [2, 2] as [number, number],
   },
   animation: {
-    name: "house",
+    name: "village",
   },
   onHover: {
     hideCursor: true,
@@ -18,7 +18,7 @@ export const HOUSE_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "house",
+    animation: "village",
     indic: {
       animation: "indic",
     },
@@ -34,17 +34,12 @@ export const HOUSE_DEFINITION: Elem = {
   },
   resourcesProduced: {
     // wood: 1,
-    trade: 1,
+    trade: 2,
   },
   rewards: [],
   advise: {
     name: "house",
-    message: "Nice house! In this house, you collect resources.\nYou can also spawn new animals once they are researched.",
-  },
-  adviseOnDeselect: {
-    name: "house-deselect",
-    message: "You can move on to the next turn and collect resources.",
+    message: "Villages hold more population and can produce more resources.",
   },
   clearCloud: true,
-  maxLevel: 6,
 };

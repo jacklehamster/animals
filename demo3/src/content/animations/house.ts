@@ -18,3 +18,22 @@ export const CABANA_ANIMATION: Anim = {
     61,
   ],
 };
+
+export const HOUSE_EXPAND_ANIMATION: Anim = {
+  name: "house_expand",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    120,
+  ],
+};
+
+export const VILLAGE_ANIMATION: Anim = {
+  name: "village",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    121, 122, 123,
+  ],
+  mul: 20,
+}

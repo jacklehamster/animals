@@ -35,7 +35,7 @@ import { SHEEP_ANIMATION, SHEEP_JUMP_ANIMATION, SHEEP_WAIT_ANIMATION } from "./a
 import { GRASS_ANIMATION, GRASSLAND_ANIMATION, LAKE_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION, WAVE_ANIMATION } from "./animations/terrain";
 import { CLOUD_ANIMATION } from "./animations/cloud";
 import { SHADOW_ANIMATION } from "./animations/shadow";
-import { CABANA_ANIMATION, HOUSE_ANIMATION } from "./animations/house";
+import { CABANA_ANIMATION, HOUSE_ANIMATION, HOUSE_EXPAND_ANIMATION, VILLAGE_ANIMATION } from "./animations/house";
 import { DIGITS_ANIMATION } from "./animations/digits";
 import { DOG_ANIMATION, DOG_JUMP_ANIMATION, DOG_WAIT_ANIMATION } from "./animations/dog";
 import { COW_ANIMATION, COW_JUMP_ANIMATION, COW_SLEEP_ANIMATION, COW_WAIT_ANIMATION } from "./animations/cow";
@@ -65,6 +65,25 @@ import { SQUIRREL_MENU } from "./menu/squirrel-menu";
 import { BULL_ANIMATION, BULL_JUMP_ANIMATION, BULL_WAIT_ANIMATION } from "./animations/bull";
 import { BULL_DEFINITION } from "./definitions/bull";
 import { TAUROLOGY_RESEARCH } from "./research/taurology";
+import { BEAVER_MENU } from "./menu/beaver-menu";
+import { TURTLE_ANIMATION, TURTLE_JUMP_ANIMATION, TURTLE_WAIT_ANIMATION } from "./animations/turtle";
+import { TREE_DEFINITION } from "./definitions/tree";
+import { TURTLE_DEFINITION } from "./definitions/turtle";
+import { FRUIT_DEFINITION } from "./definitions/fruit";
+import { CORAL_ANIMATION, FRUIT_ANIMATION, POTGOLD_ANIMATION } from "./animations/goodies";
+import { FRUIT } from "./elems/fruit";
+import { POTGOLD_DEFINITION } from "./definitions/potgold";
+import { CORAL_DEFINITION } from "./definitions/coral";
+import { CORAL } from "./elems/coral";
+import { POTGOLD } from "./elems/potgold";
+import { EXPLORATION as EXPLORATION_RESEARCH, } from "./research/exploration";
+import { PRODUCTIVITY_RESEARCH as PRODUCTIVITY_RESEARCH } from "./research/productivity";
+import { EXPANSION_RESEARCH } from "./research/expansion";
+import { VILLAGE_DEFINITION } from "./definitions/village";
+import { VILLAGE_RESEARCH } from "./research/village";
+import { VILLAGE_MENU } from "./menu/village-menu";
+import { SPACESHIP_RESEARCH } from "./research/spaceship";
+import { SPACESHIP_ANIMATION } from "./animations/spaceship";
 
 export const worldData: Scene = {
   scale: 80,
@@ -101,6 +120,7 @@ export const worldData: Scene = {
     "house": 4,
     "unit": 4,
     "decor": 4,
+    "goodies": 5,
     "cloud": 6,
     "cursor": 7,
   },
@@ -121,6 +141,12 @@ export const worldData: Scene = {
     SOLDIER_DEFINITION,
     BEAVER_DEFINITION,
     BULL_DEFINITION,
+    TREE_DEFINITION,
+    TURTLE_DEFINITION,
+    FRUIT_DEFINITION,
+    POTGOLD_DEFINITION,
+    CORAL_DEFINITION,
+    VILLAGE_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -172,6 +198,15 @@ export const worldData: Scene = {
     BULL_ANIMATION,
     BULL_WAIT_ANIMATION,
     BULL_JUMP_ANIMATION,
+    TURTLE_ANIMATION,
+    TURTLE_WAIT_ANIMATION,
+    TURTLE_JUMP_ANIMATION,
+    FRUIT_ANIMATION,
+    POTGOLD_ANIMATION,
+    CORAL_ANIMATION,
+    HOUSE_EXPAND_ANIMATION,
+    VILLAGE_ANIMATION,
+    SPACESHIP_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -183,6 +218,9 @@ export const worldData: Scene = {
     TREE,
     MOUNTAIN,
     CABANA,
+    FRUIT,
+    POTGOLD,
+    CORAL,
     ...TEST_UNITS,
   ],
   menu: [
@@ -190,6 +228,8 @@ export const worldData: Scene = {
     HOUSE_MENU,
     COW_MENU,
     SQUIRREL_MENU,
+    BEAVER_MENU,
+    VILLAGE_MENU,
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -202,23 +242,29 @@ export const worldData: Scene = {
     CANINE_RESEARCH,
     WOLVES_RESEARCH,
     BOVINE_RESEARCH,
-    TORTOISE_RESEARCH,
-    GOAT_RESEARCH,
     SQUIRREL_RESEARCH,
-    SKUNK_RESEARCH,
-    HORSE_RESEARCH,
-    MONKEY_RESEARCH,
-    PANDA_RESEARCH,
-    PIG_RESEARCH,
-    ELEPHANT_RESEARCH,
-    BEAVER_RESEARCH,
-    OWL_RESEARCH,
-    LAMA_RESEARCH,
-    EAGLE_RESEARCH,
-    RABBIT_RESEARCH,
-    CROCODILE_RESEARCH,
     OVICULTURE_RESEARCH,
     TAUROLOGY_RESEARCH,
+    BEAVER_RESEARCH,
+    TORTOISE_RESEARCH,
+    EXPLORATION_RESEARCH,
+    PRODUCTIVITY_RESEARCH,
+    EXPANSION_RESEARCH,
+    VILLAGE_RESEARCH,
+    SPACESHIP_RESEARCH,
+
+    // GOAT_RESEARCH,
+    // SKUNK_RESEARCH,
+    // HORSE_RESEARCH,
+    // MONKEY_RESEARCH,
+    // PANDA_RESEARCH,
+    // PIG_RESEARCH,
+    // ELEPHANT_RESEARCH,
+    // OWL_RESEARCH,
+    // LAMA_RESEARCH,
+    // EAGLE_RESEARCH,
+    // RABBIT_RESEARCH,
+    // CROCODILE_RESEARCH,
   ],
 };
 (window as any).worldData = worldData;

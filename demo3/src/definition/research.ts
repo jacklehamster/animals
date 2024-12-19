@@ -1,3 +1,4 @@
+import type { Action } from "./action";
 import type { Anim } from "./animation";
 
 export interface Research {
@@ -9,4 +10,5 @@ export interface Research {
   cost: number;
   recommended?: number;
   forceInDebug?: boolean;
+  action?: Action;
 }

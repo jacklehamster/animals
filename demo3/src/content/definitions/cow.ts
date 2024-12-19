@@ -54,5 +54,9 @@ export const COW_DEFINITION: Elem = {
     damage: 2,
     defense: 1,
     disabled: true,
-  }
+  },
+  advise: {
+    name: "cow",
+    message: "Your cow must remain close to home.\nUse it to harvest nearby resources.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do."
+  },
 };

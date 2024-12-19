@@ -23,7 +23,7 @@ export const COW_MENU: Menu = {
         harvesting: true,
       },
       disabled: {
-        nonProximity: ["house", "Must be\nnext to a house"],
+        // nonProximity: ["house", "Must be\nnext to a house"],
         proximity: ["foe", "Nearby foes,\ntoo dangerous."],
       },
       actions: [
@@ -32,6 +32,9 @@ export const COW_MENU: Menu = {
         },
         {
           harvest: true,
+        },
+        {
+          clearMoves: true,
         },
       ],
     },
@@ -71,7 +74,7 @@ export const COW_MENU: Menu = {
           },
         },
         {
-          destroy: true,
+          selfDestroy: true,
         },
       ],
     },

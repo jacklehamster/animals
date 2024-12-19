@@ -1,14 +1,6 @@
 import type { Elem } from "../../definition/elem";
-import { SIZE } from "../constant";
 
-export const LAKE: Elem = {
-  // definition: "lake",
-  group: {
-    grid: [SIZE + 1, SIZE + 1],
-    chance: .1,
-  },
-
-
+export const LAKE_DEFINITION: Elem = {
   name: "lake",
   type: "tile_overlay",
   resourcesProduced: {
@@ -34,5 +26,4 @@ export const LAKE: Elem = {
   },
   water: true,
   copy: true,
-
-};
+}

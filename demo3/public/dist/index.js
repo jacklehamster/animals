@@ -4088,8 +4088,14 @@ class GameObject extends EngineObject {
       const home = this.home;
       const dx = px - home.px;
       const dy = py - home.py;
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
-        return false;
+      if (this.manager.isResearched("expansion", this.manager.getPlayer())) {
+        if (Math.abs(dx * dy) >= 4) {
+          return false;
+        }
+      } else {
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          return false;
+        }
       }
     }
     const targetUnit = this.manager.unitAt(px, py);
@@ -4142,17 +4148,20 @@ class GameObject extends EngineObject {
   showResourcesNearby() {
     const home = this.elem?.settler ? this : this.elem?.worker ? this.home : this;
     if (home) {
-      for (let y = -1;y <= 1; y++) {
-        for (let x = -1;x <= 1; x++) {
-          if (this.elem?.building || home.px + x === this.px && home.py + y === this.py || this.canMoveTo(home.px + x, home.py + y)) {
-            this.showResources(home.px + x, home.py + y, this.elem?.owner);
+      const range = this.manager.isResearched("expansion", this.elem?.owner ?? 0) ? 2 : 1;
+      for (let y = -range;y <= range; y++) {
+        for (let x = -range;x <= range; x++) {
+          if (Math.abs(x * y) < 4) {
+            if (this.elem?.building || home.px + x === this.px && home.py + y === this.py || this.canMoveTo(home.px + x, home.py + y)) {
+              this.showResources(home.px + x, home.py + y, this.elem?.owner);
+            }
           }
         }
       }
       home?.hideBars();
     }
   }
-  onSelectChange() {
+  async onSelectChange() {
     if (this.manager.selected === this) {
       if (this.elem?.selected?.indic && !this.selectIndic) {
         this.selectIndic = new EngineObject;
@@ -4167,7 +4176,9 @@ class GameObject extends EngineObject {
           this.selectIndic.color = new Color(1, 0, 0, 1);
         }
         if (this.manager.isAiPlayer(this.elem?.owner)) {
-          this.manager.thinker?.think(this);
+          if (await this.canAct() && this.manager.isRevealed(this.px, this.py)) {
+            this.manager.thinker?.think(this);
+          }
           return;
         }
         this.showActionOptions();
@@ -4386,6 +4397,9 @@ class GameObject extends EngineObject {
       }
     });
     if (elem.type === "house" && elem.resourcesAccumulated) {
+      if (this.manager.isResearched("productivity", this.manager.getPlayer())) {
+        elem.resourcesAccumulated.wood = (elem.resourcesAccumulated.wood ?? 0) + 1;
+      }
       if ((elem.resourcesAccumulated.wheat ?? 0) >= this.nextLevelCost() && this.canUpdateLevel()) {
         elem.resourcesAccumulated.wheat = (elem.resourcesAccumulated.wheat ?? 0) - this.nextLevelCost();
         this.updateLevel((elem.level ?? 0) + 1);
@@ -4432,7 +4446,7 @@ class GameObject extends EngineObject {
     }
   }
   canUpdateLevel() {
-    return this.elem?.type === "house" && (this.elem?.level ?? 0) < 6;
+    return this.elem?.type === "house" && (this.elem?.level ?? 0) < (this.elem?.maxLevel ?? 999);
   }
   async updateLevel(level) {
     if (this.elem?.type === "house") {
@@ -4591,7 +4605,8 @@ class GameObject extends EngineObject {
       });
     }
     if (this.elem?.clearCloud && !this.clearedCloud) {
-      const SIZE = 1, LIMIT = 2;
+      const expansion = this.elem?.type === "house" && this.manager.isResearched("expansion", this.elem?.owner ?? 0);
+      const SIZE = expansion ? 2 : 1, LIMIT = 2;
       for (let y = -SIZE;y <= SIZE; y++) {
         for (let x = -SIZE;x <= SIZE; x++) {
           if (Math.abs(x * y) < LIMIT * LIMIT) {
@@ -4731,9 +4746,10 @@ class GameObject extends EngineObject {
     return Object.entries(resources).every(([key, value]) => {
       const res = this.manager.getResourceType(key);
       if (res?.global) {
+        return this.manager.getPlayerResource(key, this.elem?.owner ?? 0) >= value;
       } else {
+        return (this.elem?.resourcesAccumulated?.[key] ?? 0) >= value;
       }
-      return (this.elem?.resourcesAccumulated?.[key] ?? 0) >= value;
     });
   }
   turnAround() {
@@ -4750,8 +4766,13 @@ class GameObject extends EngineObject {
     const resourcesAccumulated = this.elem?.resourcesAccumulated;
     Object.entries(resources).forEach(([key, value]) => {
       const k = key;
-      if (resourcesAccumulated?.[k]) {
-        resourcesAccumulated[k] = Math.max(0, resourcesAccumulated[k] - value);
+      const res = this.manager.getResourceType(k);
+      if (res?.global) {
+        this.manager.updateResource(k, (amount) => Math.max(0, amount - value), this.elem?.owner ?? 0);
+      } else {
+        if (resourcesAccumulated?.[k]) {
+          resourcesAccumulated[k] = Math.max(0, resourcesAccumulated[k] - value);
+        }
       }
     });
   }
@@ -4903,9 +4924,10 @@ class Hud {
   researchList = document.createElement("div");
   researchInfoDiv = document.createElement("div");
   researchPopup = document.createElement("div");
+  spaceshipPopup = document.createElement("div");
   music = document.createElement("audio");
   updated = false;
-  onTaxKnob = false;
+  onKnob = false;
   constructor(manager) {
     this.manager = manager;
   }
@@ -5039,6 +5061,20 @@ class Hud {
     this.researchPopup.style.pointerEvents = "none";
     this.researchPopup.style.opacity = "0";
     this.researchPopup.style.transition = "opacity .2s";
+    this.researchPopup.style.display = "none";
+    this.spaceshipPopup.style.position = "absolute";
+    this.spaceshipPopup.style.zIndex = "100";
+    this.spaceshipPopup.style.top = "50%";
+    this.spaceshipPopup.style.left = "50%";
+    this.spaceshipPopup.style.transform = "translate(-50%, -50%)";
+    this.spaceshipPopup.style.width = "800px";
+    this.spaceshipPopup.style.height = "600px";
+    this.spaceshipPopup.style.backgroundImage = "url(./assets/spaceship.png)";
+    this.spaceshipPopup.style.backgroundSize = "cover";
+    this.spaceshipPopup.style.pointerEvents = "none";
+    this.spaceshipPopup.style.opacity = "0";
+    this.spaceshipPopup.style.transition = "opacity .2s";
+    this.spaceshipPopup.style.display = "none";
     const researchImage = this.researchPopup.appendChild(document.createElement("div"));
     researchImage.id = "researchImage";
     researchImage.style.position = "absolute";
@@ -5065,6 +5101,25 @@ class Hud {
     researchText.style.textTransform = "uppercase";
     researchText.style.display = "flex";
     researchText.style.pointerEvents = "none";
+    const spaceshipText = this.spaceshipPopup.appendChild(document.createElement("div"));
+    spaceshipText.id = "spaceshipText";
+    spaceshipText.style.position = "absolute";
+    spaceshipText.style.bottom = "10px";
+    spaceshipText.style.left = "50%";
+    spaceshipText.style.transform = "translate(-50%, 0)";
+    spaceshipText.style.width = "80%";
+    spaceshipText.style.height = "100px";
+    spaceshipText.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    spaceshipText.style.color = "snow";
+    spaceshipText.style.flexDirection = "column";
+    spaceshipText.style.justifyContent = "center";
+    spaceshipText.style.alignItems = "center";
+    spaceshipText.style.textAlign = "center";
+    spaceshipText.style.textTransform = "uppercase";
+    spaceshipText.style.display = "flex";
+    spaceshipText.style.pointerEvents = "none";
+    spaceshipText.style.whiteSpace = "pre-wrap";
+    this.ui.appendChild(this.spaceshipPopup);
     this.setupShortcutKeys();
     this.initializeErrorBanner();
     this.setupMusic();
@@ -5092,13 +5147,15 @@ class Hud {
     if (this.updated) {
       return;
     }
-    this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
-    this.refreshResources();
-    this.refreshTax();
-    this.refreshButtons();
-    this.refreshResearchInfo();
-    this.ui.style.display = "block";
-    this.updated = true;
+    if (this.manager.getPlayer()) {
+      this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
+      this.refreshResources();
+      this.refreshTax();
+      this.refreshButtons();
+      this.refreshResearchInfo();
+      this.ui.style.display = "block";
+      this.updated = true;
+    }
   }
   refreshButtons() {
     const player = this.manager.getPlayer();
@@ -5137,10 +5194,10 @@ class Hud {
         this.refreshResearchInfo();
       });
       taxKnob.addEventListener("mouseover", (e) => {
-        this.onTaxKnob = true;
+        this.onKnob = true;
       });
       taxKnob.addEventListener("mouseout", (e) => {
-        this.onTaxKnob = false;
+        this.onKnob = false;
       });
     }
     taxKnob.style.display = hasRevenue ? "block" : "none";
@@ -5190,9 +5247,7 @@ class Hud {
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
     const hasResource = RESOURCES.some((resource) => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
-    if (hasRevenue || hasResource) {
-      this.resourceOverlay.style.display = "block";
-    }
+    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
   flashEndTurn(temp = false) {
     this.buttonsOverlay.style.display = "block";
@@ -5215,7 +5270,6 @@ class Hud {
       icon.style.backgroundImage = `url(${imageSource})`;
       icon.style.width = `${spriteSize[0]}px`;
       icon.style.height = `${spriteSize[1]}px`;
-      icon.style.transform = "scale(.5)";
       icon.title = action.description;
       const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
       const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
@@ -5273,6 +5327,33 @@ class Hud {
         this.manager.checkForAnyMove();
       }
     });
+    const zoomGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
+    zoomGroup.style.display = "flex";
+    zoomGroup.style.flexDirection = "row";
+    zoomGroup.style.justifyContent = "center";
+    zoomGroup.style.alignItems = "center";
+    zoomGroup.style.gap = "10px";
+    const zoomLabel = zoomGroup.appendChild(document.createElement("label"));
+    zoomLabel.textContent = "zoom";
+    zoomLabel.htmlFor = "zoom";
+    const zoomKnob = zoomGroup.appendChild(document.createElement("input"));
+    zoomKnob.id = "zoom";
+    zoomKnob.type = "range";
+    zoomKnob.min = "40";
+    zoomKnob.max = "200";
+    zoomKnob.step = "5";
+    zoomKnob.value = "80";
+    zoomKnob.style.width = "100px";
+    zoomKnob.style.marginTop = "20px";
+    zoomKnob.addEventListener("input", (e) => {
+      setCameraScale(parseInt(zoomKnob.value));
+    });
+    zoomKnob.addEventListener("mouseover", (e) => {
+      this.onKnob = true;
+    });
+    zoomKnob.addEventListener("mouseout", (e) => {
+      this.onKnob = false;
+    });
   }
   clear() {
     this.itemsToDestroy.forEach((item) => item());
@@ -5313,6 +5394,7 @@ class Hud {
       label.style.textAlign = "center";
       label.style.fontSize = "10pt";
       label.style.color = "silver";
+      label.style.pointerEvents = "none";
       const descDiv = this.bg.appendChild(document.createElement("div"));
       const desc = descDiv.appendChild(document.createElement("div"));
       desc.style.margin = "20px 20px";
@@ -5321,6 +5403,7 @@ class Hud {
       const descContent = desc.appendChild(document.createElement("div"));
       descContent.style.position = "absolute";
       descContent.style.maxWidth = "200px";
+      descContent.style.pointerEvents = "none";
       descContent.textContent = menu.description ?? "";
       const healthDiv = descDiv.appendChild(document.createElement("div"));
       healthDiv.style.position = "absolute";
@@ -5507,39 +5590,17 @@ class Hud {
             e.preventDefault();
             e.stopPropagation();
           });
-          menuItemDiv.addEventListener("mouseup", (e) => {
+          menuItemDiv.addEventListener("click", async (e) => {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             if (disabled) {
               return;
             }
-            const actions = item.actions ?? [];
             obj.spend(item.resourceCost);
-            actions.forEach((action) => {
-              if (action.destroy) {
-                obj.doom(true);
-              }
-              if (action.create) {
-                const elem = JSON.parse(JSON.stringify(action.create));
-                this.manager.addSceneElemAt(elem, obj.px, obj.py, {
-                  owner: obj?.elem?.owner,
-                  home: [obj.px, obj.py]
-                });
-              }
-              if (action.deselect) {
-                this.manager.setSelection(undefined);
-              }
-              if (action.level && obj.elem) {
-                obj.updateLevel((obj.elem.level ?? 0) + action.level);
-                obj.refreshLabel();
-              }
-              if (action.harvest && obj.elem) {
-                obj.setHarvesting(true);
-              }
-              if (action.stopHarvest && obj.elem) {
-                obj.setHarvesting(false);
-              }
-              obj.refreshLabel();
-            });
+            const actions = item.actions ?? [];
+            for (const action of actions) {
+              await this.manager.performAction(action, obj);
+            }
+            obj.refreshLabel();
             this.updated = false;
             obj.refreshBars();
             e.preventDefault();
@@ -5565,7 +5626,101 @@ class Hud {
   hideBlocker() {
     this.blocker.style.display = "none";
   }
+  async showSpaceshipDialog() {
+    this.spaceshipPopup.style.display = "flex";
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return new Promise(async (resolve) => {
+      this.spaceshipPopup.style.opacity = "1";
+      this.showBlocker(true);
+      const spaceshipText = this.spaceshipPopup.querySelector("#spaceshipText");
+      spaceshipText.textContent = `Good news, great leader! We have built the spaceship!\nWe can now travel accross the galaxy,\nand leave those poor humans behind!\nTHE END`;
+      const animalsSaved = [];
+      await this.manager.iterateRevealedCells(async (cell) => {
+        if (cell.elem?.owner === this.manager.getPlayer() && cell.elem?.type === "unit") {
+          animalsSaved.push(cell.elem);
+        }
+      });
+      const overlay = this.spaceshipPopup.appendChild(document.createElement("div"));
+      overlay.style.position = "absolute";
+      overlay.style.top = "50%";
+      overlay.style.left = "50%";
+      overlay.style.transform = `translate(-50%, -50%)`;
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+      overlay.style.pointerEvents = "none";
+      overlay.style.display = "flex";
+      overlay.style.flexDirection = "row";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
+      overlay.style.gap = "10px";
+      overlay.style.flexWrap = "wrap";
+      overlay.style.overflow = "auto";
+      overlay.style.maxHeight = "80%";
+      for (let i = 0;i < 5; i++) {
+        animalsSaved.push(...animalsSaved);
+      }
+      for (const animal of animalsSaved) {
+        const anim = animal.selected?.animation ?? animal.animation;
+        if (!anim) {
+          continue;
+        }
+        const animObj = this.manager.scene.animations.find((animObj2) => animObj2.name === anim);
+        if (!animObj) {
+          continue;
+        }
+        const { imageSource, spriteSize, frames, padding } = animObj;
+        const icon = this.spaceshipPopup.appendChild(document.createElement("div"));
+        icon.style.backgroundImage = `url(${imageSource})`;
+        icon.style.width = `${spriteSize[0]}px`;
+        icon.style.height = `${spriteSize[1]}px`;
+        icon.style.position = "absolute";
+        icon.style.top = "50%";
+        icon.style.left = "50%";
+        icon.style.transform = `translate(-50%, -50%)`;
+        icon.style.pointerEvents = "none";
+        const cols = 30;
+        const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+        const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
+        const x = 50 + (Math.random() - 0.5) * 50;
+        const y = 50 + (Math.random() - 0.5) * 30;
+        icon.style.left = `${x}%`;
+        icon.style.top = `${y}%`;
+        let animationFrame;
+        const animateIcon = () => {
+          animationFrame = requestAnimationFrame(animateIcon);
+          const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        };
+        animateIcon();
+        this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
+      }
+      this.playMusic();
+      const utterance = new SpeechSynthesisUtterance(spaceshipText.textContent);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find((voice2) => voice2.name.indexOf("Daniel") >= 0);
+      if (voice) {
+        utterance.voice = voice;
+      }
+      speechSynthesis.speak(utterance);
+      setTimeout(() => {
+        this.blocker.addEventListener("click", () => {
+          overlay.parentNode?.removeChild(overlay);
+          speechSynthesis.cancel();
+          this.fadeMusicOut();
+          this.clear();
+          this.spaceshipPopup.style.opacity = "0";
+          this.hideBlocker();
+          resolve();
+          setTimeout(() => {
+            this.spaceshipPopup.style.display = "none";
+          }, 300);
+        }, { once: true });
+      }, 1000);
+    });
+  }
   async showResearchDialog(research) {
+    this.researchPopup.style.display = "flex";
+    await new Promise((resolve) => setTimeout(resolve, 100));
     return new Promise((resolve) => {
       this.showBlocker(true);
       this.researchPopup.style.opacity = "1";
@@ -5605,6 +5760,9 @@ class Hud {
           this.hideBlocker();
           resolve();
           researchImage.style.opacity = "0";
+          setTimeout(() => {
+            this.researchPopup.style.display = "none";
+          }, 300);
         }, { once: true });
       }, 1000);
     });
@@ -5738,6 +5896,9 @@ class Hud {
     }, { once: true });
   }
   async promptForResearch(inventions, brainsPerTurn, currentBrains) {
+    if (!inventions.length) {
+      return;
+    }
     return new Promise((resolve) => {
       this.showBlocker();
       const inv = [...inventions];
@@ -5829,7 +5990,7 @@ class Hud {
         costDiv.style.right = "10px";
         costDiv.style.marginTop = "-40px";
         costDiv.style.color = "silver";
-        const numTurns = Math.ceil((invention.cost - currentBrains) / brainsPerTurn);
+        const numTurns = Math.max(0, Math.ceil((invention.cost - currentBrains) / brainsPerTurn));
         costDiv.textContent = `${numTurns} turns`;
         researchDiv.style.cursor = "pointer";
         researchDiv.style.width = "100%";
@@ -5890,7 +6051,7 @@ class Hud {
     turnDiv.style.color = researched ? "#00ffff" : !brainsPerTurn ? "#ff0000" : "silver";
     turnDiv.style.fontSize = "8pt";
     const currentBrains = this.manager.getPlayerResource("brain", this.manager.getPlayer());
-    const numTurns = Math.ceil((research.cost - currentBrains) / brainsPerTurn);
+    const numTurns = Math.max(0, Math.ceil((research.cost - currentBrains) / brainsPerTurn));
     turnDiv.textContent = researched ? `researched` : !brainsPerTurn ? "research halted" : `${numTurns} turns`;
   }
 }
@@ -5958,8 +6119,8 @@ class Thinker {
         }
       });
       if (target.obj) {
-        const dx = Math.sign(target.obj?.px - gameObject.px) || Math.floor(Math.random() * 3) - 1;
-        const dy = Math.sign(target.obj?.py - gameObject.py) || Math.floor(Math.random() * 3) - 1;
+        const dx = Math.sign(target.obj.px - gameObject.px) || Math.floor(Math.random() * 3) - 1;
+        const dy = Math.sign(target.obj.py - gameObject.py) || Math.floor(Math.random() * 3) - 1;
         if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 || this.manager.isEmptySpot(gameObject.px + dx, gameObject.py + dy)) {
           actions.push({
             time: nextActionTime,
@@ -6159,8 +6320,9 @@ class Manager {
     const entries = Object.entries(this.grid);
     for (const [tag, gameObject] of entries) {
       if (gameObject.elem?.condition) {
-        let conditionMet = false;
+        let conditionMet = true;
         if (gameObject.elem.condition.tile) {
+          conditionMet = false;
           const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
           for (const tile2 of tiles) {
             await this.iterateGridCell(gameObject.px, gameObject.py, async (target) => {
@@ -6200,7 +6362,7 @@ class Manager {
   shiftCamera() {
     if (this.inUI) {
     }
-    if (!this.hud.onTaxKnob) {
+    if (!this.hud.onKnob) {
       if (!this.mousePosDown && mouseWasPressed(0)) {
         this.mousePosDown = vec2(mousePos.x, mousePos.y);
       }
@@ -6340,6 +6502,9 @@ class Manager {
         resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resourcesProduced?.brain ?? 0);
         resources.gold = (resources.gold ?? 0) + (gameObject.elem?.resourcesProduced?.gold ?? 0);
         resources.trade = (resources.trade ?? 0) + (gameObject.elem?.resourcesProduced?.trade ?? 0);
+        if (gameObject.elem?.type === "house" && this.isResearched("productivity", this.getPlayer())) {
+          resources.wood = (resources.wood ?? 0) + 1;
+        }
       }
     });
     return Math.max(resources.wheat ?? 0, 0) + Math.max(resources.wood ?? 0, 0) + Math.max(resources.brain ?? 0, 0) + Math.max(resources.gold ?? 0, 0) + Math.max(resources.trade ?? 0, 0) ? resources : undefined;
@@ -6457,7 +6622,7 @@ class Manager {
     }
     const previousSelected = this.selected;
     this.selected = undefined;
-    previousSelected?.onSelectChange();
+    await previousSelected?.onSelectChange();
     await this.hud.showSelected(undefined);
     if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
       this.advise.add(previousSelected.elem.adviseOnDeselect.name);
@@ -6468,7 +6633,7 @@ class Manager {
       await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
     this.selected = gameObject;
-    this.selected?.onSelectChange();
+    await this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
       this.makeWithinView(this.selected);
@@ -6721,6 +6886,10 @@ class Manager {
     playerInfo.research[invention.name] = Date.now();
     this.updateResource("brain", (brains) => Math.max(0, brains - invention.cost), this.getPlayer());
     await this.hud.showResearchDialog(invention);
+    if (invention.action) {
+      console.log(player, invention.name, playerInfo.research, playerInfo.research[invention.name]);
+      await this.performAction(invention.action);
+    }
     await this.findNextResearch(player);
   }
   async checkForAnyBuilding() {
@@ -6852,7 +7021,7 @@ class Manager {
       this.hud.flashEndTurn();
     } else {
       let nextIndex = (currentIndex + 1) % cellsRotation.length;
-      this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+      this.setSelection(cellsRotation[nextIndex]);
     }
   }
   unitAt(x, y) {
@@ -6937,7 +7106,7 @@ class Manager {
               owner: obj?.elem?.owner
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
-            await this.hud.showDialog(`You have found a ${reward.unit.name}!`);
+            await this.hud.showDialog(`A ${reward.unit.name ?? reward.unit.definition} has joined your flock!`);
           }
         }
         gameObject.doom(true);
@@ -6986,6 +7155,7 @@ class Manager {
         this.selected.elem.waiting = true;
         this.selected.refreshAlpha();
         this.selected.updated = false;
+        this.setSelection(undefined);
         await this.selectNext();
         this.hud.updated = false;
         break;
@@ -6994,6 +7164,53 @@ class Manager {
         await this.selectNext();
         this.hud.updated = false;
         break;
+    }
+  }
+  async performAction(action, obj) {
+    if (action.selfDestroy) {
+      obj?.doom(true);
+    }
+    if (action.destroy && obj) {
+      await this.iterateGridCell(obj.px, obj.py, async (cell) => {
+        if (cell.elem?.name === action.destroy) {
+          cell.doom();
+        }
+      });
+    }
+    if (action.create && obj) {
+      const elem = JSON.parse(JSON.stringify(action.create));
+      this.addSceneElemAt(elem, obj.px, obj.py, {
+        owner: obj?.elem?.owner,
+        home: [obj.px, obj.py]
+      });
+    }
+    if (action.deselect) {
+      this.setSelection(undefined);
+    }
+    if (action.level && obj?.elem) {
+      obj.updateLevel((obj.elem.level ?? 0) + action.level);
+      obj.refreshLabel();
+    }
+    if (action.harvest && obj?.elem) {
+      obj.setHarvesting(true);
+    }
+    if (action.stopHarvest && obj?.elem) {
+      obj.setHarvesting(false);
+    }
+    if (action.clearFogOfWar) {
+      this.scene.clearFogOfWar = true;
+      this.worldChanged = true;
+    }
+    if (action.updateHouseCloud) {
+      await this.iterateRevealedCells(async (gameObject) => {
+        if (gameObject.elem?.type === "house" && gameObject.elem?.owner === this.getPlayer()) {
+          gameObject.clearedCloud = false;
+          gameObject.updated = false;
+        }
+      });
+    }
+    if (action.spaceship) {
+      await this.hud.showSpaceshipDialog();
     }
   }
 }
@@ -7091,6 +7308,10 @@ var COW_DEFINITION = {
     damage: 2,
     defense: 1,
     disabled: true
+  },
+  advise: {
+    name: "cow",
+    message: "Your cow must remain close to home.\nUse it to harvest nearby resources.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do."
   }
 };
 
@@ -7141,6 +7362,10 @@ var DOG_DEFINITION = {
     defense: 1,
     moveAfterAttack: true,
     attackAfterMove: true
+  },
+  advise: {
+    name: "dog",
+    message: "Dogs move 2 tiles each turn, and they can move after attacks.\nUse them to explore the world.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do."
   }
 };
 
@@ -7178,7 +7403,6 @@ var HOUSE_DEFINITION = {
     actions: 1
   },
   resourcesProduced: {
-    wood: 1,
     trade: 1
   },
   rewards: [],
@@ -7189,7 +7413,9 @@ var HOUSE_DEFINITION = {
   adviseOnDeselect: {
     name: "house-deselect",
     message: "You can move on to the next turn and collect resources."
-  }
+  },
+  clearCloud: true,
+  maxLevel: 6
 };
 
 // src/content/definitions/river.ts
@@ -7314,7 +7540,6 @@ var COW_MENU = {
         harvesting: true
       },
       disabled: {
-        nonProximity: ["house", "Must be\nnext to a house"],
         proximity: ["foe", "Nearby foes,\ntoo dangerous."]
       },
       actions: [
@@ -7323,6 +7548,9 @@ var COW_MENU = {
         },
         {
           harvest: true
+        },
+        {
+          clearMoves: true
         }
       ]
     },
@@ -7362,11 +7590,235 @@ var COW_MENU = {
           }
         },
         {
-          destroy: true
+          selfDestroy: true
         }
       ]
     }
   ]
+};
+
+// src/content/animations/cow.ts
+var COW_ANIMATION = {
+  name: "cow",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    51
+  ]
+};
+var COW_WAIT_ANIMATION = {
+  name: "cow_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    51,
+    52,
+    51
+  ]
+};
+var COW_JUMP_ANIMATION = {
+  name: "cow_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 5,
+  frames: [
+    51,
+    53,
+    54
+  ],
+  airFrames: [54]
+};
+var COW_SLEEP_ANIMATION = {
+  name: "cow_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    55
+  ]
+};
+
+// src/content/animations/dog.ts
+var DOG_ANIMATION = {
+  name: "dog",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    46
+  ]
+};
+var DOG_WAIT_ANIMATION = {
+  name: "dog_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    46,
+    47
+  ]
+};
+var DOG_JUMP_ANIMATION = {
+  name: "dog_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    47,
+    48,
+    49,
+    49,
+    50
+  ],
+  airFrames: [48, 49]
+};
+
+// src/content/animations/house.ts
+var HOUSE_ANIMATION = {
+  name: "house",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    27,
+    28,
+    29
+  ],
+  mul: 20
+};
+var CABANA_ANIMATION = {
+  name: "cabana",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    61
+  ]
+};
+var HOUSE_EXPAND_ANIMATION = {
+  name: "house_expand",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    120
+  ]
+};
+var VILLAGE_ANIMATION = {
+  name: "village",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    121,
+    122,
+    123
+  ],
+  mul: 20
+};
+
+// src/content/animations/sheep.ts
+var SHEEP_ANIMATION = {
+  name: "sheep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    6
+  ]
+};
+var SHEEP_WAIT_ANIMATION = {
+  name: "sheep_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    6,
+    7
+  ]
+};
+var SHEEP_JUMP_ANIMATION = {
+  name: "sheep_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    6,
+    7,
+    8,
+    8
+  ],
+  airFrames: [8]
+};
+
+// src/content/animations/squirrel.ts
+var SQUIRREL_ANIMATION = {
+  name: "squirrel",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    98
+  ]
+};
+var SQUIRREL_WAIT_ANIMATION = {
+  name: "squirrel_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    98,
+    99
+  ]
+};
+var SQUIRREL_JUMP_ANIMATION = {
+  name: "squirrel_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    98,
+    100,
+    101,
+    102
+  ],
+  airFrames: [100, 101, 102]
+};
+var SQUIRREL_ATTACK_ANIMATION = {
+  name: "squirrel_attack",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 5,
+  frames: [
+    103,
+    104
+  ],
+  once: true
+};
+
+// src/content/animations/turtle.ts
+var TURTLE_ANIMATION = {
+  name: "turtle",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    114
+  ]
+};
+var TURTLE_WAIT_ANIMATION = {
+  name: "turtle_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    114,
+    115
+  ]
+};
+var TURTLE_JUMP_ANIMATION = {
+  name: "turtle_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    114,
+    115
+  ],
+  airFrames: [114]
 };
 
 // src/content/animations/beaver.ts
@@ -7493,19 +7945,12 @@ var HOUSE_MENU_DEBUG = [
 var HOUSE_MENU = {
   name: "house",
   description: "Use settlements to grow your animal kingdom.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [27, 28, 29]
-  },
+  icon: HOUSE_ANIMATION,
   items: [
     {
       name: "sheep",
       imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [6],
+      ...SHEEP_ANIMATION,
       label: "spawn\nsheep",
       resourceCost: {
         wood: 10
@@ -7532,9 +7977,7 @@ var HOUSE_MENU = {
     {
       name: "cow",
       imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [51],
+      ...COW_ANIMATION,
       resourceCost: {
         wood: 5
       },
@@ -7559,9 +8002,7 @@ var HOUSE_MENU = {
     {
       name: "dog",
       imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [46],
+      ...DOG_ANIMATION,
       label: "spawn\ndog",
       resourceCost: {
         wood: 10
@@ -7586,9 +8027,7 @@ var HOUSE_MENU = {
     {
       name: "squirrel",
       imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [98],
+      ...SQUIRREL_ANIMATION,
       label: "spawn\nsquirrel",
       resourceCost: {
         wood: 10
@@ -7609,6 +8048,53 @@ var HOUSE_MENU = {
         }
       ],
       researchNeeded: ["squirrel"]
+    },
+    {
+      name: "turtle",
+      ...TURTLE_ANIMATION,
+      label: "spawn\nturtle",
+      resourceCost: {
+        wood: 10
+      },
+      hidden: {
+        occupied: ["unit", "tile occupied\nby a unit"]
+      },
+      disabled: {
+        cannotAct: [true, "wait\nnext turn"]
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "turtle",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["tortoise"]
+    },
+    {
+      name: "village",
+      ...VILLAGE_ANIMATION,
+      label: "upgrade to\nvillage",
+      disabled: {
+        levelBelowEqual: [5, "You need to level up\nyour settlement first"]
+      },
+      resourceCost: {
+        wood: 60
+      },
+      researchNeeded: ["village"],
+      actions: [
+        {
+          selfDestroy: true
+        },
+        {
+          create: {
+            definition: "village",
+            selfSelect: true
+          }
+        }
+      ]
     },
     ...HOUSE_MENU_DEBUG
   ]
@@ -7644,7 +8130,7 @@ var SHEEP_MENU = {
           }
         },
         {
-          destroy: true
+          selfDestroy: true
         }
       ]
     }
@@ -7659,50 +8145,7 @@ var BEAVER_RESEARCH = {
   waitIcon: BEAVER_WAIT_ANIMATION,
   dependency: ["squirrel"],
   cost: 30,
-  recommended: 5,
-  forceInDebug: true
-};
-
-// src/content/animations/cow.ts
-var COW_ANIMATION = {
-  name: "cow",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    51
-  ]
-};
-var COW_WAIT_ANIMATION = {
-  name: "cow_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    51,
-    52,
-    51
-  ]
-};
-var COW_JUMP_ANIMATION = {
-  name: "cow_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 5,
-  frames: [
-    51,
-    53,
-    54
-  ],
-  airFrames: [54]
-};
-var COW_SLEEP_ANIMATION = {
-  name: "cow_sleep",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 10,
-  frames: [
-    55
-  ]
+  recommended: 5
 };
 
 // src/content/research/bovine.ts
@@ -7716,40 +8159,6 @@ var BOVINE_RESEARCH = {
   recommended: 1
 };
 
-// src/content/animations/dog.ts
-var DOG_ANIMATION = {
-  name: "dog",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    46
-  ]
-};
-var DOG_WAIT_ANIMATION = {
-  name: "dog_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    46,
-    47
-  ]
-};
-var DOG_JUMP_ANIMATION = {
-  name: "dog_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 2,
-  frames: [
-    47,
-    48,
-    49,
-    49,
-    50
-  ],
-  airFrames: [48, 49]
-};
-
 // src/content/research/canine.ts
 var CANINE_RESEARCH = {
   name: "canine",
@@ -7759,200 +8168,6 @@ var CANINE_RESEARCH = {
   dependency: [],
   cost: 10,
   recommended: 2
-};
-
-// src/content/research/elephant.ts
-var ELEPHANT_RESEARCH = {
-  name: "elephant",
-  description: "Elephants can trample enemies.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["pig"],
-  cost: 80,
-  recommended: 8
-};
-
-// src/content/research/eagle.ts
-var EAGLE_RESEARCH = {
-  name: "eagle",
-  description: "Eagles are airborn fighters.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["owl"],
-  cost: 80,
-  recommended: 8
-};
-
-// src/content/research/goat.ts
-var GOAT_RESEARCH = {
-  name: "goat",
-  description: "Goats can climb mountains.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["oviculture"],
-  cost: 20,
-  recommended: 5
-};
-
-// src/content/research/horse.ts
-var HORSE_RESEARCH = {
-  name: "horse",
-  description: "Horses a fast fighters.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["oviculture"],
-  cost: 20,
-  recommended: 5
-};
-
-// src/content/research/lama.ts
-var LAMA_RESEARCH = {
-  name: "lama",
-  description: "Lamas spit at their enemies.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["oviculture"],
-  cost: 20,
-  recommended: 5
-};
-
-// src/content/research/monkey.ts
-var MONKEY_RESEARCH = {
-  name: "monkey",
-  description: "Monkeys throw coconuts.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["squirrel"],
-  cost: 40,
-  recommended: 6
-};
-
-// src/content/research/owl.ts
-var OWL_RESEARCH = {
-  name: "owl",
-  description: "Owls are flying scouts.\nThey hide in trees.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["squirrel"],
-  cost: 40,
-  recommended: 6
-};
-
-// src/content/research/panda.ts
-var PANDA_RESEARCH = {
-  name: "panda",
-  description: "Pandas are strong fighters.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["squirrel"],
-  cost: 40,
-  recommended: 6
-};
-
-// src/content/research/pig.ts
-var PIG_RESEARCH = {
-  name: "pig",
-  description: "Pigs can harvest resources faster.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["bovine"],
-  cost: 20,
-  recommended: 5
-};
-
-// src/content/research/skunk.ts
-var SKUNK_RESEARCH = {
-  name: "skunk",
-  description: "Skunks can spray enemies.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["squirrel"],
-  cost: 40,
-  recommended: 7
-};
-
-// src/content/animations/squirrel.ts
-var SQUIRREL_ANIMATION = {
-  name: "squirrel",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    98
-  ]
-};
-var SQUIRREL_WAIT_ANIMATION = {
-  name: "squirrel_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    98,
-    99
-  ]
-};
-var SQUIRREL_JUMP_ANIMATION = {
-  name: "squirrel_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 2,
-  frames: [
-    98,
-    100,
-    101,
-    102
-  ],
-  airFrames: [100, 101, 102]
-};
-var SQUIRREL_ATTACK_ANIMATION = {
-  name: "squirrel_attack",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 5,
-  frames: [
-    103,
-    104
-  ],
-  once: true
 };
 
 // src/content/research/squirrel.ts
@@ -7970,12 +8185,8 @@ var SQUIRREL_RESEARCH = {
 var TORTOISE_RESEARCH = {
   name: "tortoise",
   description: "Turtles can carry others on water, and have high defense.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
+  icon: TURTLE_ANIMATION,
+  waitIcon: TURTLE_WAIT_ANIMATION,
   dependency: [],
   cost: 20,
   recommended: 5
@@ -8049,21 +8260,6 @@ var WOOD_RESOURCE = {
     padding: [2, 2],
     frames: [57]
   }
-};
-
-// src/content/research/rabbit.ts
-var RABBIT_RESEARCH = {
-  name: "rabbit",
-  description: "Rabbits cast magic spells to heal.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["beaver"],
-  cost: 40,
-  recommended: 7
 };
 
 // src/content/animations/indicators.ts
@@ -8192,39 +8388,6 @@ var WAVE_ICON = {
   ]
 };
 
-// src/content/animations/sheep.ts
-var SHEEP_ANIMATION = {
-  name: "sheep",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    6
-  ]
-};
-var SHEEP_WAIT_ANIMATION = {
-  name: "sheep_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    6,
-    7
-  ]
-};
-var SHEEP_JUMP_ANIMATION = {
-  name: "sheep_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 2,
-  frames: [
-    6,
-    7,
-    8,
-    8
-  ],
-  airFrames: [8]
-};
-
 // src/content/animations/terrain.ts
 var GRASSLAND_ANIMATION = {
   name: "grassland",
@@ -8316,27 +8479,6 @@ var SHADOW_ANIMATION = {
   spriteSize: [64, 64],
   frames: [
     19
-  ]
-};
-
-// src/content/animations/house.ts
-var HOUSE_ANIMATION = {
-  name: "house",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    27,
-    28,
-    29
-  ],
-  mul: 20
-};
-var CABANA_ANIMATION = {
-  name: "cabana",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    61
   ]
 };
 
@@ -8483,18 +8625,17 @@ var PLAIN = {
 
 // src/content/elems/lake.ts
 var LAKE = {
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  },
   name: "lake",
   type: "tile_overlay",
   resourcesProduced: {
     wheat: -1,
     trade: 2
   },
-  group: {
-    grid: [SIZE + 1, SIZE + 1],
-    chance: 0.1
-  },
   gameObject: {
-    pos: [0, 0],
     size: [2, 2]
   },
   animation: {
@@ -8506,7 +8647,7 @@ var LAKE = {
   },
   branchOut: {
     count: [3, 5],
-    chance: 0.1,
+    chance: 0.3,
     element: {
       definition: "river"
     }
@@ -8517,31 +8658,11 @@ var LAKE = {
 
 // src/content/elems/tree.ts
 var TREE = {
-  name: "tree",
-  type: "decor",
-  resourcesProduced: {
-    wood: 1
-  },
+  definition: "tree",
   group: {
     grid: [SIZE + 1, SIZE + 1],
     chance: 0.5,
     farFromCenter: 4
-  },
-  condition: {
-    tile: "plain",
-    noTile: "lake"
-  },
-  gameObject: {
-    pos: [0, 0],
-    size: [2, 2]
-  },
-  animation: {
-    name: "tree"
-  },
-  spread: {
-    animation: "tree_leaf",
-    count: [50, 100],
-    radius: 0.25
   }
 };
 
@@ -8721,23 +8842,15 @@ var SQUIRREL_DEFINITION = {
     attackAfterMove: true,
     projectile: "nut"
   },
-  canCrossTerrains: ["tree"]
+  canCrossTerrains: ["tree"],
+  advise: {
+    name: "squirrel",
+    message: "Squirrel can throw nuts and foes, and climb on trees.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do."
+  }
 };
 
 // src/content/elems/test-units.ts
-var TEST_UNITS = [
-  {
-    definition: "hobo",
-    owner: 0,
-    gameObject: {
-      offset: [0, 0.2],
-      size: [1.2, 1.2],
-      speed: 0.08,
-      pos: [2, 0]
-    },
-    debug: true
-  }
-];
+var TEST_UNITS = [];
 
 // src/content/animations/soldier.ts
 var SOLDIER_ANIMATION = {
@@ -9001,21 +9114,6 @@ var NUT_ANIMATION = {
   ]
 };
 
-// src/content/research/crocodile.ts
-var CROCODILE_RESEARCH = {
-  name: "crocodile",
-  description: "Crocodiles are ferocious. They can also navigate through lakes.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  dependency: ["tortoise"],
-  cost: 40,
-  recommended: 6
-};
-
 // src/content/research/oviculture.ts
 var OVICULTURE_RESEARCH = {
   name: "oviculture",
@@ -9073,7 +9171,11 @@ var BEAVER_DEFINITION = {
     damage: 1,
     defense: 2
   },
-  canCrossTerrains: ["tree", "lake"]
+  canCrossTerrains: ["tree", "lake"],
+  advise: {
+    name: "beaver",
+    message: "Beavers can cut down trees and turn rivers into lakes."
+  }
 };
 
 // src/content/menu/squirrel-menu.ts
@@ -9099,7 +9201,7 @@ var SQUIRREL_MENU = {
           }
         },
         {
-          destroy: true
+          selfDestroy: true
         }
       ]
     }
@@ -9164,7 +9266,539 @@ var TAUROLOGY_RESEARCH = {
   waitIcon: BULL_WAIT_ANIMATION,
   dependency: ["bovine"],
   cost: 40,
-  recommended: 7,
+  recommended: 7
+};
+
+// src/content/menu/beaver-menu.ts
+var BEAVER_MENU = {
+  name: "beaver",
+  description: "Beavers can build dam, turning rivers into lakes.\nThey can also cut down trees.",
+  icon: {
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [51]
+  },
+  items: [
+    {
+      name: "lake",
+      ...LAKE_ANIMATION,
+      label: "make lake",
+      hidden: {
+        notOnTile: ["river", "Must be\non a river"],
+        onTile: ["lake", "Already a lake"]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          create: {
+            definition: "lake"
+          }
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "river",
+      ...RIVER_ANIMATION,
+      label: "produce a river",
+      hidden: {
+        onTile: ["river", "Already on a river"],
+        nonProximity: ["lake", "Must be\nnext to a lake"]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          create: {
+            definition: "river"
+          }
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "tree",
+      ...TREE_ANIMATION,
+      label: "cut tree",
+      hidden: {
+        notOnTile: ["tree", "Must be\non a tree"]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          destroy: "tree"
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    }
+  ]
+};
+
+// src/content/definitions/tree.ts
+var TREE_DEFINITION = {
+  name: "tree",
+  type: "decor",
+  resourcesProduced: {
+    wood: 1
+  },
+  condition: {
+    tile: "plain",
+    noTile: "lake"
+  },
+  gameObject: {
+    size: [2, 2]
+  },
+  animation: {
+    name: "tree"
+  },
+  spread: {
+    animation: "tree_leaf",
+    count: [50, 100],
+    radius: 0.25
+  }
+};
+
+// src/content/definitions/turtle.ts
+var TURTLE_DEFINITION = {
+  name: "turtle",
+  type: "unit",
+  hitpoints: 10,
+  maxHitPoints: 10,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.03
+  },
+  animation: {
+    name: "turtle"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "turtle_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "turtle_jump"
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 1,
+    defense: 4
+  },
+  canCrossTerrains: ["lake"]
+};
+
+// src/content/definitions/fruit.ts
+var FRUIT_DEFINITION = {
+  name: "fruit",
+  type: "goodies",
+  resourcesProduced: {
+    wheat: 2
+  },
+  condition: {
+    noTile: ["lake", "mountain"]
+  },
+  gameObject: {
+    size: [1, 1]
+  },
+  animation: {
+    name: "fruit"
+  }
+};
+
+// src/content/animations/goodies.ts
+var FRUIT_ANIMATION = {
+  name: "fruit",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    116
+  ]
+};
+var POTGOLD_ANIMATION = {
+  name: "potgold",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    117
+  ]
+};
+var CORAL_ANIMATION = {
+  name: "coral",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    118
+  ]
+};
+
+// src/content/elems/fruit.ts
+var FRUIT = {
+  definition: "fruit",
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.03
+  }
+};
+
+// src/content/definitions/potgold.ts
+var POTGOLD_DEFINITION = {
+  name: "potgold",
+  type: "goodies",
+  resourcesProduced: {
+    gold: 5
+  },
+  condition: {
+    tile: "mountain"
+  },
+  gameObject: {
+    size: [1, 1]
+  },
+  animation: {
+    name: "potgold"
+  }
+};
+
+// src/content/definitions/coral.ts
+var CORAL_DEFINITION = {
+  name: "coral",
+  type: "goodies",
+  resourcesProduced: {
+    wheat: 2
+  },
+  condition: {
+    tile: "lake"
+  },
+  gameObject: {
+    size: [1, 1]
+  },
+  animation: {
+    name: "coral"
+  }
+};
+
+// src/content/elems/coral.ts
+var CORAL = {
+  definition: "coral",
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  }
+};
+
+// src/content/elems/potgold.ts
+var POTGOLD = {
+  definition: "potgold",
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.1
+  }
+};
+
+// src/content/animations/globe.ts
+var GLOBE_ANIMATION = {
+  name: "globe",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    119
+  ]
+};
+
+// src/content/research/exploration.ts
+var EXPLORATION = {
+  name: "exploration",
+  description: "Exploration lets you view the entire map.",
+  icon: GLOBE_ANIMATION,
+  dependency: ["village"],
+  cost: 100,
+  recommended: 10,
+  action: {
+    clearFogOfWar: true
+  }
+};
+
+// src/content/research/productivity.ts
+var PRODUCTIVITY_RESEARCH = {
+  name: "productivity",
+  description: "Each settlement will produces one unit of production.",
+  icon: WOOD_ANIMATION,
+  dependency: [],
+  cost: 5,
+  recommended: 0
+};
+
+// src/content/research/expansion.ts
+var EXPANSION_RESEARCH = {
+  name: "expansion",
+  description: "Settlements have a larger area for harvesting resources.",
+  icon: HOUSE_EXPAND_ANIMATION,
+  dependency: ["oviculture"],
+  cost: 20,
+  recommended: 5,
+  action: {
+    updateHouseCloud: true
+  }
+};
+
+// src/content/definitions/village.ts
+var VILLAGE_DEFINITION = {
+  name: "village",
+  type: "house",
+  level: 7,
+  gameObject: {
+    offset: [0, 0.7],
+    size: [2, 2]
+  },
+  animation: {
+    name: "village"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "village",
+    indic: {
+      animation: "indic"
+    }
+  },
+  dynamic: true,
+  settler: true,
+  harvesting: true,
+  building: true,
+  turn: {
+    moves: 0,
+    attacks: 0,
+    actions: 1
+  },
+  resourcesProduced: {
+    trade: 2
+  },
+  rewards: [],
+  advise: {
+    name: "house",
+    message: "Villages hold more population and can produce more resources."
+  },
+  clearCloud: true
+};
+
+// src/content/research/village.ts
+var VILLAGE_RESEARCH = {
+  name: "village",
+  description: "Your settlements can turn into a village, growing beyond level 6.",
+  icon: VILLAGE_ANIMATION,
+  dependency: ["oviculture"],
+  cost: 30,
+  recommended: 5,
+  forceInDebug: true
+};
+
+// src/content/animations/spaceship.ts
+var SPACESHIP_ANIMATION = {
+  name: "spaceship",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    124,
+    125,
+    126
+  ]
+};
+
+// src/content/menu/village-menu.ts
+var VILLAGE_MENU = {
+  name: "village",
+  description: "Villages hold a larger population.",
+  icon: VILLAGE_ANIMATION,
+  items: [
+    {
+      name: "sheep",
+      imageSource: "./assets/tiles.png",
+      ...SHEEP_ANIMATION,
+      label: "spawn\nsheep",
+      resourceCost: {
+        wood: 10
+      },
+      hidden: {
+        occupied: ["unit", "Tile occupied\nby a unit"]
+      },
+      disabled: {
+        levelBelowEqual: [1, "Settlement\nlevel too low"],
+        cannotAct: [true, "wait\nnext turn"]
+      },
+      actions: [
+        {
+          deselect: true,
+          level: -1,
+          create: {
+            definition: "sheep",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["oviculture"]
+    },
+    {
+      name: "cow",
+      imageSource: "./assets/tiles.png",
+      ...COW_ANIMATION,
+      resourceCost: {
+        wood: 5
+      },
+      label: "spawn\ncow",
+      hidden: {
+        occupied: ["unit", "Tile occupied\nby a unit"]
+      },
+      disabled: {
+        unitLimit: ["cow", "Increase settlement level\nto spawn more"]
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "cow",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["bovine"]
+    },
+    {
+      name: "dog",
+      imageSource: "./assets/tiles.png",
+      ...DOG_ANIMATION,
+      label: "spawn\ndog",
+      resourceCost: {
+        wood: 10
+      },
+      hidden: {
+        occupied: ["unit", "tile occupied\nby a unit"]
+      },
+      disabled: {
+        cannotAct: [true, "wait\nnext turn"]
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "dog",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["canine"]
+    },
+    {
+      name: "squirrel",
+      imageSource: "./assets/tiles.png",
+      ...SQUIRREL_ANIMATION,
+      label: "spawn\nsquirrel",
+      resourceCost: {
+        wood: 10
+      },
+      hidden: {
+        occupied: ["unit", "tile occupied\nby a unit"]
+      },
+      disabled: {
+        cannotAct: [true, "wait\nnext turn"]
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "squirrel",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["squirrel"]
+    },
+    {
+      name: "turtle",
+      ...TURTLE_ANIMATION,
+      label: "spawn\nturtle",
+      resourceCost: {
+        wood: 10
+      },
+      hidden: {
+        occupied: ["unit", "tile occupied\nby a unit"]
+      },
+      disabled: {
+        cannotAct: [true, "wait\nnext turn"]
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "turtle",
+            selfSelect: true
+          }
+        }
+      ],
+      researchNeeded: ["tortoise"]
+    },
+    {
+      name: "spaceship",
+      ...SPACESHIP_ANIMATION,
+      label: "build\nspaceship",
+      disabled: {
+        levelBelowEqual: [15, "You need to level up\nyour village to level 16"]
+      },
+      resourceCost: {
+        wood: 200,
+        gold: 200
+      },
+      researchNeeded: ["spaceship"],
+      actions: [
+        {
+          spaceship: true
+        }
+      ]
+    }
+  ]
+};
+
+// src/content/research/spaceship.ts
+var SPACESHIP_RESEARCH = {
+  name: "spaceship",
+  description: "Build a spaceship to leave this planet.",
+  icon: SPACESHIP_ANIMATION,
+  dependency: ["exploration"],
+  cost: 200,
+  recommended: 20,
   forceInDebug: true
 };
 
@@ -9203,6 +9837,7 @@ var worldData = {
     house: 4,
     unit: 4,
     decor: 4,
+    goodies: 5,
     cloud: 6,
     cursor: 7
   },
@@ -9222,7 +9857,13 @@ var worldData = {
     SQUIRREL_DEFINITION,
     SOLDIER_DEFINITION,
     BEAVER_DEFINITION,
-    BULL_DEFINITION
+    BULL_DEFINITION,
+    TREE_DEFINITION,
+    TURTLE_DEFINITION,
+    FRUIT_DEFINITION,
+    POTGOLD_DEFINITION,
+    CORAL_DEFINITION,
+    VILLAGE_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -9273,7 +9914,16 @@ var worldData = {
     BEAVER_JUMP_ANIMATION,
     BULL_ANIMATION,
     BULL_WAIT_ANIMATION,
-    BULL_JUMP_ANIMATION
+    BULL_JUMP_ANIMATION,
+    TURTLE_ANIMATION,
+    TURTLE_WAIT_ANIMATION,
+    TURTLE_JUMP_ANIMATION,
+    FRUIT_ANIMATION,
+    POTGOLD_ANIMATION,
+    CORAL_ANIMATION,
+    HOUSE_EXPAND_ANIMATION,
+    VILLAGE_ANIMATION,
+    SPACESHIP_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -9285,13 +9935,18 @@ var worldData = {
     TREE,
     MOUNTAIN,
     CABANA,
+    FRUIT,
+    POTGOLD,
+    CORAL,
     ...TEST_UNITS
   ],
   menu: [
     SHEEP_MENU,
     HOUSE_MENU,
     COW_MENU,
-    SQUIRREL_MENU
+    SQUIRREL_MENU,
+    BEAVER_MENU,
+    VILLAGE_MENU
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -9304,23 +9959,16 @@ var worldData = {
     CANINE_RESEARCH,
     WOLVES_RESEARCH,
     BOVINE_RESEARCH,
-    TORTOISE_RESEARCH,
-    GOAT_RESEARCH,
     SQUIRREL_RESEARCH,
-    SKUNK_RESEARCH,
-    HORSE_RESEARCH,
-    MONKEY_RESEARCH,
-    PANDA_RESEARCH,
-    PIG_RESEARCH,
-    ELEPHANT_RESEARCH,
-    BEAVER_RESEARCH,
-    OWL_RESEARCH,
-    LAMA_RESEARCH,
-    EAGLE_RESEARCH,
-    RABBIT_RESEARCH,
-    CROCODILE_RESEARCH,
     OVICULTURE_RESEARCH,
-    TAUROLOGY_RESEARCH
+    TAUROLOGY_RESEARCH,
+    BEAVER_RESEARCH,
+    TORTOISE_RESEARCH,
+    EXPLORATION,
+    PRODUCTIVITY_RESEARCH,
+    EXPANSION_RESEARCH,
+    VILLAGE_RESEARCH,
+    SPACESHIP_RESEARCH
   ]
 };
 window.worldData = worldData;
@@ -9341,4 +9989,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=70AD7C544CD63E8364756e2164756e21
+//# debugId=0D6A4DDAC138BB8164756e2164756e21

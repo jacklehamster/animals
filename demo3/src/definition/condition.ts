@@ -9,4 +9,6 @@ export interface Condition {
   notHarvesting?: boolean;
   cannotAct?: [boolean, string];
   unitLimit?: [string, string];
+  onTile?: [string, string];
+  notOnTile?: [string, string];
 }

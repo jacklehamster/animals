@@ -12,6 +12,7 @@ import { Thinker } from '../ai/thinker';
 import { DEBUG, READY } from '../content/constant';
 import type { Research } from '../definition/research';
 import type { QuickAction } from '../definition/quick-actions';
+import type { Action } from '../definition/action';
 
 
 interface Entry {
@@ -152,8 +153,9 @@ export class Manager {
     const entries = Object.entries(this.grid);
     for (const [tag, gameObject] of entries) {
       if (gameObject.elem?.condition) {
-        let conditionMet = false;
+        let conditionMet = true;
         if (gameObject.elem.condition.tile) {
+          conditionMet = false;
           const tiles = Array.isArray(gameObject.elem.condition.tile) ? gameObject.elem.condition.tile : [gameObject.elem.condition.tile];
           for (const tile of tiles) {
             await this.iterateGridCell(gameObject.px, gameObject.py, async (target) => {
@@ -195,7 +197,7 @@ export class Manager {
     if (this.inUI) {
       // return;
     }
-    if (!this.hud.onTaxKnob) {
+    if (!this.hud.onKnob) {
       if (!this.mousePosDown && mouseWasPressed(0)) {
         this.mousePosDown = vec2(mousePos.x, mousePos.y);
       }
@@ -344,8 +346,13 @@ export class Manager {
         resources.brain = (resources.brain ?? 0) + (gameObject.elem?.resourcesProduced?.brain ?? 0);
         resources.gold = (resources.gold ?? 0) + (gameObject.elem?.resourcesProduced?.gold ?? 0);
         resources.trade = (resources.trade ?? 0) + (gameObject.elem?.resourcesProduced?.trade ?? 0);
+
+        if (gameObject.elem?.type === "house" && this.isResearched("productivity", this.getPlayer())) {
+          resources.wood = (resources.wood ?? 0) + 1;
+        }
       }
     });
+
     return Math.max(resources.wheat ?? 0, 0)
       + Math.max(resources.wood ?? 0, 0)
       + Math.max(resources.brain ?? 0, 0)
@@ -478,7 +485,7 @@ export class Manager {
     //  de-select previous
     const previousSelected = this.selected;
     this.selected = undefined;
-    previousSelected?.onSelectChange();
+    await previousSelected?.onSelectChange();
     await this.hud.showSelected(undefined);
     if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
       this.advise.add(previousSelected.elem.adviseOnDeselect.name);
@@ -491,7 +498,7 @@ export class Manager {
       await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
     this.selected = gameObject;
-    this.selected?.onSelectChange();
+    await this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
       this.makeWithinView(this.selected);
@@ -768,6 +775,10 @@ export class Manager {
     this.updateResource("brain", brains => Math.max(0, brains - invention.cost), this.getPlayer());
     await this.hud.showResearchDialog(invention);
 
+    if (invention.action) {
+      console.log(player, invention.name, playerInfo.research, playerInfo.research[invention.name]);
+      await this.performAction(invention.action);
+    }
     await this.findNextResearch(player);
   }
 
@@ -931,7 +942,7 @@ export class Manager {
     } else {
       // rotate cells
       let nextIndex = (currentIndex + 1) % cellsRotation.length;
-      this.setSelection(this.selected === cellsRotation[nextIndex] ? undefined : cellsRotation[nextIndex]);
+      this.setSelection(cellsRotation[nextIndex]);
     }
   }
 
@@ -1025,7 +1036,7 @@ export class Manager {
               owner: obj?.elem?.owner
             });
             newElem.gameObject.lastDx = Math.sign(obj.px - spot.x) || 1;
-            await this.hud.showDialog(`You have found a ${reward.unit.name}!`);
+            await this.hud.showDialog(`A ${reward.unit.name ?? reward.unit.definition} has joined your flock!`);
           }
         }
         gameObject.doom(true);
@@ -1084,6 +1095,7 @@ export class Manager {
         this.selected.elem.waiting = true;
         this.selected.refreshAlpha();
         this.selected.updated = false;
+        this.setSelection(undefined);
         await this.selectNext();
         this.hud.updated = false;
         break;
@@ -1092,6 +1104,54 @@ export class Manager {
         await this.selectNext();
         this.hud.updated = false;
         break;
+    }
+  }
+
+  async performAction(action: Action, obj?: GameObject) {
+    if (action.selfDestroy) {
+      obj?.doom(true);
+    }
+    if (action.destroy && obj) {
+      await this.iterateGridCell(obj.px, obj.py, async (cell: GameObject) => {
+        if (cell.elem?.name === action.destroy) {
+          cell.doom();
+        }
+      });
+    }
+    if (action.create && obj) {
+      const elem: Elem = JSON.parse(JSON.stringify(action.create));
+      this.addSceneElemAt(elem, obj.px, obj.py, {
+        owner: obj?.elem?.owner,
+        home: [obj.px, obj.py],
+      });
+    }
+    if (action.deselect) {
+      this.setSelection(undefined);
+    }
+    if (action.level && obj?.elem) {
+      obj.updateLevel((obj.elem.level ?? 0) + action.level)
+      obj.refreshLabel();
+    }
+    if (action.harvest && obj?.elem) {
+      obj.setHarvesting(true);
+    }
+    if (action.stopHarvest && obj?.elem) {
+      obj.setHarvesting(false);
+    }
+    if (action.clearFogOfWar) {
+      this.scene.clearFogOfWar = true;
+      this.worldChanged = true;
+    }
+    if (action.updateHouseCloud) {
+      await this.iterateRevealedCells(async (gameObject) => {
+        if (gameObject.elem?.type === "house" && gameObject.elem?.owner === this.getPlayer()) {
+          gameObject.clearedCloud = false;
+          gameObject.updated = false;
+        }
+      });
+    }
+    if (action.spaceship) {
+      await this.hud.showSpaceshipDialog();
     }
   }
 }

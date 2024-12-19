@@ -6,6 +6,11 @@ export type Action = {
   create?: Elem;
   harvest?: boolean;
   stopHarvest?: boolean;
-  destroy?: boolean;
-  [key: string]: any;
+  selfDestroy?: boolean;
+  destroy?: string;
+  level?: number;
+  clearMoves?: boolean;
+  clearFogOfWar?: boolean;
+  updateHouseCloud?: boolean;
+  spaceship?: boolean;
 };

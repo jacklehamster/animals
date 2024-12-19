@@ -46,5 +46,9 @@ export const DOG_DEFINITION: Elem = {
     defense: 1,
     moveAfterAttack: true,
     attackAfterMove: true,
-  }
+  },
+  advise: {
+    name: "dog",
+    message: "Dogs move 2 tiles each turn, and they can move after attacks.\nUse them to explore the world.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do.",
+  },
 };

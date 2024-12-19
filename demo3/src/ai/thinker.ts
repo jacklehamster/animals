@@ -81,8 +81,8 @@ export class Thinker {
         }
       });
       if (target.obj) {
-        const dx = Math.sign(target.obj?.px - gameObject.px) || Math.floor(Math.random() * 3) - 1;
-        const dy = Math.sign(target.obj?.py - gameObject.py) || Math.floor(Math.random() * 3) - 1;
+        const dx = Math.sign(target.obj.px - gameObject.px) || Math.floor(Math.random() * 3) - 1;
+        const dy = Math.sign(target.obj.py - gameObject.py) || Math.floor(Math.random() * 3) - 1;
         if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 || this.manager.isEmptySpot(gameObject.px + dx, gameObject.py + dy)) {
           actions.push({
             time: nextActionTime,

@@ -9,5 +9,5 @@ export const TAUROLOGY_RESEARCH: Research = {
   dependency: ["bovine"],
   cost: 40,
   recommended: 7,
-  forceInDebug: true,
+  // forceInDebug: true,
 };

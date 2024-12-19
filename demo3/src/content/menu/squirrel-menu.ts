@@ -24,7 +24,7 @@ export const SQUIRREL_MENU: Menu = {
           },
         },
         {
-          destroy: true,
+          selfDestroy: true,
         },
       ],
     },

@@ -1,9 +1,10 @@
 import { GameObject } from "../core/objects/game-object";
 import type { Manager } from "../core/manager";
 import type { Resources } from "../definition/resources";
-import type { Elem } from "../definition/elem";
 import { DEBUG, READY } from "../content/constant";
 import type { Research } from "../definition/research";
+import { setCameraScale } from "../lib/littlejs";
+import type { Elem } from "../definition/elem";
 
 const SPRITESHEET_COLS = 30;
 
@@ -24,9 +25,10 @@ export class Hud {
   researchList: HTMLDivElement = document.createElement("div");
   researchInfoDiv: HTMLDivElement = document.createElement("div");
   researchPopup: HTMLDivElement = document.createElement("div");
+  spaceshipPopup: HTMLDivElement = document.createElement("div");
   music: HTMLAudioElement = document.createElement("audio");
   updated = false;
-  onTaxKnob = false;
+  onKnob = false;
 
   constructor(readonly manager: Manager) {
   }
@@ -172,6 +174,21 @@ export class Hud {
     this.researchPopup.style.pointerEvents = "none";
     this.researchPopup.style.opacity = "0";
     this.researchPopup.style.transition = "opacity .2s";
+    this.researchPopup.style.display = "none";
+
+    this.spaceshipPopup.style.position = "absolute";
+    this.spaceshipPopup.style.zIndex = "100";
+    this.spaceshipPopup.style.top = "50%";
+    this.spaceshipPopup.style.left = "50%";
+    this.spaceshipPopup.style.transform = "translate(-50%, -50%)";
+    this.spaceshipPopup.style.width = "800px";
+    this.spaceshipPopup.style.height = "600px";
+    this.spaceshipPopup.style.backgroundImage = "url(./assets/spaceship.png)";
+    this.spaceshipPopup.style.backgroundSize = "cover";
+    this.spaceshipPopup.style.pointerEvents = "none";
+    this.spaceshipPopup.style.opacity = "0";
+    this.spaceshipPopup.style.transition = "opacity .2s";
+    this.spaceshipPopup.style.display = "none";
 
     const researchImage = this.researchPopup.appendChild(document.createElement("div"));
     researchImage.id = "researchImage";
@@ -200,6 +217,26 @@ export class Hud {
     researchText.style.textTransform = "uppercase";
     researchText.style.display = "flex";
     researchText.style.pointerEvents = "none";
+
+    const spaceshipText = this.spaceshipPopup.appendChild(document.createElement("div"));
+    spaceshipText.id = "spaceshipText";
+    spaceshipText.style.position = "absolute";
+    spaceshipText.style.bottom = "10px";
+    spaceshipText.style.left = "50%";
+    spaceshipText.style.transform = "translate(-50%, 0)";
+    spaceshipText.style.width = "80%";
+    spaceshipText.style.height = "100px";
+    spaceshipText.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    spaceshipText.style.color = "snow";
+    spaceshipText.style.flexDirection = "column";
+    spaceshipText.style.justifyContent = "center";
+    spaceshipText.style.alignItems = "center";
+    spaceshipText.style.textAlign = "center";
+    spaceshipText.style.textTransform = "uppercase";
+    spaceshipText.style.display = "flex";
+    spaceshipText.style.pointerEvents = "none";
+    spaceshipText.style.whiteSpace = "pre-wrap";
+    this.ui.appendChild(this.spaceshipPopup);
 
     this.setupShortcutKeys();
     this.initializeErrorBanner();
@@ -231,13 +268,15 @@ export class Hud {
     if (this.updated) {
       return;
     }
-    this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
-    this.refreshResources();
-    this.refreshTax();
-    this.refreshButtons();
-    this.refreshResearchInfo();
-    this.ui.style.display = "block";
-    this.updated = true;
+    if (this.manager.getPlayer()) {
+      this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
+      this.refreshResources();
+      this.refreshTax();
+      this.refreshButtons();
+      this.refreshResearchInfo();
+      this.ui.style.display = "block";
+      this.updated = true;
+    }
   }
 
   refreshButtons() {
@@ -282,10 +321,10 @@ export class Hud {
         this.refreshResearchInfo();
       });
       taxKnob.addEventListener("mouseover", e => {
-        this.onTaxKnob = true;
+        this.onKnob = true;
       });
       taxKnob.addEventListener("mouseout", e => {
-        this.onTaxKnob = false;
+        this.onKnob = false;
       });
     }
     taxKnob.style.display = hasRevenue ? "block" : "none";
@@ -339,9 +378,7 @@ export class Hud {
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
     const hasResource = RESOURCES.some(resource => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
-    if (hasRevenue || hasResource) {
-      this.resourceOverlay.style.display = "block";
-    }
+    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
 
   flashEndTurn(temp = false) {
@@ -368,7 +405,6 @@ export class Hud {
       icon.style.backgroundImage = `url(${imageSource})`;
       icon.style.width = `${spriteSize[0]}px`;
       icon.style.height = `${spriteSize[1]}px`;
-      icon.style.transform = "scale(.5)";
       icon.title = action.description;
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
       const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
@@ -430,6 +466,36 @@ export class Hud {
         this.manager.checkForAnyMove();
       }
     });
+
+    const zoomGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
+    zoomGroup.style.display = "flex";
+    zoomGroup.style.flexDirection = "row";
+    zoomGroup.style.justifyContent = "center";
+    zoomGroup.style.alignItems = "center";
+    zoomGroup.style.gap = "10px";
+
+    const zoomLabel = zoomGroup.appendChild(document.createElement("label"));
+    zoomLabel.textContent = "zoom";
+    zoomLabel.htmlFor = "zoom";
+
+    const zoomKnob = zoomGroup.appendChild(document.createElement("input"));
+    zoomKnob.id = "zoom";
+    zoomKnob.type = "range";
+    zoomKnob.min = "40";
+    zoomKnob.max = "200";
+    zoomKnob.step = "5";
+    zoomKnob.value = "80";
+    zoomKnob.style.width = "100px";
+    zoomKnob.style.marginTop = "20px";
+    zoomKnob.addEventListener("input", e => {
+      setCameraScale(parseInt(zoomKnob.value));
+    });
+    zoomKnob.addEventListener("mouseover", e => {
+      this.onKnob = true;
+    });
+    zoomKnob.addEventListener("mouseout", e => {
+      this.onKnob = false;
+    });
   }
 
   clear() {
@@ -476,6 +542,7 @@ export class Hud {
       label.style.textAlign = "center";
       label.style.fontSize = "10pt";
       label.style.color = "silver";
+      label.style.pointerEvents = "none";
 
       const descDiv = this.bg.appendChild(document.createElement("div"));
       const desc = descDiv.appendChild(document.createElement("div"));
@@ -485,6 +552,7 @@ export class Hud {
       const descContent = desc.appendChild(document.createElement("div"));
       descContent.style.position = "absolute";
       descContent.style.maxWidth = "200px";
+      descContent.style.pointerEvents = "none";
       descContent.textContent = menu.description ?? "";
 
       const healthDiv = descDiv.appendChild(document.createElement("div"));
@@ -690,39 +758,17 @@ export class Hud {
             e.preventDefault();
             e.stopPropagation();
           });
-          menuItemDiv.addEventListener("mouseup", e => {
+          menuItemDiv.addEventListener("click", async (e) => {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             if (disabled) {
               return;
             }
-            const actions = item.actions ?? [];
             obj.spend(item.resourceCost);
-            actions.forEach(action => {
-              if (action.destroy) {
-                obj.doom(true);
-              }
-              if (action.create) {
-                const elem: Elem = JSON.parse(JSON.stringify(action.create));
-                this.manager.addSceneElemAt(elem, obj.px, obj.py, {
-                  owner: obj?.elem?.owner,
-                  home: [obj.px, obj.py],
-                });
-              }
-              if (action.deselect) {
-                this.manager.setSelection(undefined);
-              }
-              if (action.level && obj.elem) {
-                obj.updateLevel((obj.elem.level ?? 0) + action.level)
-                obj.refreshLabel();
-              }
-              if (action.harvest && obj.elem) {
-                obj.setHarvesting(true);
-              }
-              if (action.stopHarvest && obj.elem) {
-                obj.setHarvesting(false);
-              }
-              obj.refreshLabel();
-            });
+            const actions = item.actions ?? [];
+            for (const action of actions) {
+              await this.manager.performAction(action, obj);
+            }
+            obj.refreshLabel();
             this.updated = false;
             obj.refreshBars();
 
@@ -752,7 +798,119 @@ export class Hud {
     this.blocker.style.display = "none";
   }
 
+  async showSpaceshipDialog() {
+    this.spaceshipPopup.style.display = "flex";
+    await new Promise<void>(resolve => setTimeout(resolve, 100));
+    return new Promise<void>(async resolve => {
+      this.spaceshipPopup.style.opacity = "1";
+      this.showBlocker(true);
+      const spaceshipText = this.spaceshipPopup.querySelector("#spaceshipText") as HTMLDivElement;
+      spaceshipText.textContent = `Good news, great leader! We have built the spaceship!\nWe can now travel accross the galaxy,\nand leave those poor humans behind!\nTHE END`;
+
+      const animalsSaved: Elem[] = [];
+      await this.manager.iterateRevealedCells(async (cell: GameObject) => {
+        if (cell.elem?.owner === this.manager.getPlayer() && cell.elem?.type === "unit") {
+          animalsSaved.push(cell.elem);
+        }
+      });
+      //  create div overlay for each animal saved
+      const overlay = this.spaceshipPopup.appendChild(document.createElement("div"));
+      overlay.style.position = "absolute";
+      overlay.style.top = "50%";
+      overlay.style.left = "50%";
+      overlay.style.transform = `translate(-50%, -50%)`;
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+      overlay.style.pointerEvents = "none";
+      overlay.style.display = "flex";
+      overlay.style.flexDirection = "row";
+      overlay.style.justifyContent = "center";
+      overlay.style.alignItems = "center";
+      overlay.style.gap = "10px";
+      overlay.style.flexWrap = "wrap";
+      overlay.style.overflow = "auto";
+      overlay.style.maxHeight = "80%";
+
+      // for (let i = 0; i < 5; i++) {
+      //   animalsSaved.push(...animalsSaved);
+      // }
+
+      //  show icon for all animals saved
+      for (const animal of animalsSaved) {
+        const anim = animal.selected?.animation ?? animal.animation;
+        if (!anim) {
+          continue;
+        }
+        const animObj = this.manager.scene.animations.find(animObj => animObj.name === anim);
+        if (!animObj) {
+          continue;
+        }
+        const { imageSource, spriteSize, frames, padding } = animObj;
+        const icon = this.spaceshipPopup.appendChild(document.createElement("div"));
+        icon.style.backgroundImage = `url(${imageSource})`;
+        icon.style.width = `${spriteSize[0]}px`;
+        icon.style.height = `${spriteSize[1]}px`;
+        icon.style.position = "absolute";
+        icon.style.top = "50%";
+        icon.style.left = "50%";
+        icon.style.transform = `translate(-50%, -50%)`;
+        icon.style.pointerEvents = "none";
+        const cols = 30;
+        const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
+        const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
+        //  place icon at random position on the screen
+        const x = 50 + (Math.random() - .5) * 50;
+        const y = 50 + (Math.random() - .5) * 30;
+        icon.style.left = `${x}%`;
+        icon.style.top = `${y}%`;
+        let animationFrame: number;
+        const animateIcon = () => {
+          animationFrame = requestAnimationFrame(animateIcon);
+          const frame = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame % cols)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
+        };
+        animateIcon();
+        this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
+
+      }
+
+
+
+      //  play music
+      this.playMusic();
+
+      //  Speak the text
+      const utterance = new SpeechSynthesisUtterance(spaceshipText.textContent);
+      const voices = speechSynthesis.getVoices();
+      const voice = voices.find(voice => voice.name.indexOf("Daniel") >= 0);
+      if (voice) {
+        utterance.voice = voice;
+      }
+      speechSynthesis.speak(utterance);
+
+      setTimeout(() => {
+        this.blocker.addEventListener("click", () => {
+          overlay.parentNode?.removeChild(overlay);
+          speechSynthesis.cancel();
+          this.fadeMusicOut();
+          this.clear();
+          this.spaceshipPopup.style.opacity = "0";
+          // this.researchPopup.style.display = "none";
+          this.hideBlocker();
+          resolve();
+          setTimeout(() => {
+            this.spaceshipPopup.style.display = "none";
+          }, 300);
+
+        }, { once: true });
+      }, 1000);
+    });
+  }
+
   async showResearchDialog(research: Research) {
+    this.researchPopup.style.display = "flex";
+    await new Promise<void>(resolve => setTimeout(resolve, 100));
+
     return new Promise<void>(resolve => {
       this.showBlocker(true);
       // this.researchPopup.style.display = "flex";
@@ -799,6 +957,9 @@ export class Hud {
           this.hideBlocker();
           resolve();
           researchImage.style.opacity = "0";
+          setTimeout(() => {
+            this.researchPopup.style.display = "none";
+          }, 300);
         }, { once: true });
       }, 1000);
     });
@@ -940,6 +1101,9 @@ export class Hud {
   }
 
   async promptForResearch(inventions: Research[], brainsPerTurn: number, currentBrains: number) {
+    if (!inventions.length) {
+      return;
+    }
     return new Promise<void>(resolve => {
       this.showBlocker();
       const inv = [...inventions];
@@ -1034,7 +1198,7 @@ export class Hud {
         costDiv.style.right = "10px";
         costDiv.style.marginTop = "-40px";
         costDiv.style.color = "silver";
-        const numTurns = Math.ceil((invention.cost - currentBrains) / brainsPerTurn);
+        const numTurns = Math.max(0, Math.ceil((invention.cost - currentBrains) / brainsPerTurn));
         costDiv.textContent = `${numTurns} turns`;
 
         researchDiv.style.cursor = "pointer";
@@ -1104,7 +1268,7 @@ export class Hud {
     turnDiv.style.fontSize = "8pt";
 
     const currentBrains = this.manager.getPlayerResource("brain", this.manager.getPlayer());
-    const numTurns = Math.ceil((research.cost - currentBrains) / brainsPerTurn);
+    const numTurns = Math.max(0, Math.ceil((research.cost - currentBrains) / brainsPerTurn));
     turnDiv.textContent = researched ? `researched` : !brainsPerTurn ? "research halted" : `${numTurns} turns`;
   }
 }

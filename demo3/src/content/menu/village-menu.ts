@@ -1,16 +1,16 @@
 import type { Menu } from "../../definition/menu";
 import { COW_ANIMATION } from "../animations/cow";
 import { DOG_ANIMATION } from "../animations/dog";
-import { HOUSE_ANIMATION, VILLAGE_ANIMATION } from "../animations/house";
+import { VILLAGE_ANIMATION } from "../animations/house";
 import { SHEEP_ANIMATION } from "../animations/sheep";
+import { SPACESHIP_ANIMATION } from "../animations/spaceship";
 import { SQUIRREL_ANIMATION } from "../animations/squirrel";
 import { TURTLE_ANIMATION } from "../animations/turtle";
-import { HOUSE_MENU_DEBUG } from "./house-menu-debug";
 
-export const HOUSE_MENU: Menu = {
-  name: "house",
-  description: "Use settlements to grow your animal kingdom.",
-  icon: HOUSE_ANIMATION,
+export const VILLAGE_MENU: Menu = {
+  name: "village",
+  description: "Villages hold a larger population.",
+  icon: VILLAGE_ANIMATION,
   items: [
     {
       name: "sheep",
@@ -139,28 +139,22 @@ export const HOUSE_MENU: Menu = {
       researchNeeded: ["tortoise"],
     },
     {
-      name: "village",
-      ...VILLAGE_ANIMATION,
-      label: "upgrade to\nvillage",
+      name: "spaceship",
+      ...SPACESHIP_ANIMATION,
+      label: "build\nspaceship",
       disabled: {
-        levelBelowEqual: [5, "You need to level up\nyour settlement first"],
+        levelBelowEqual: [15, "You need to level up\nyour village to level 16"],
       },
       resourceCost: {
-        wood: 60,
+        wood: 200,
+        gold: 200,
       },
-      researchNeeded: ["village"],
+      researchNeeded: ["spaceship"],
       actions: [
         {
-          selfDestroy: true,
-        },
-        {
-          create: {
-            definition: "village",
-            selfSelect: true,
-          },
+          spaceship: true,
         },
       ]
     },
-    ...HOUSE_MENU_DEBUG,
   ],
 };

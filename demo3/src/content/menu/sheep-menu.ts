@@ -29,7 +29,7 @@ export const SHEEP_MENU: Menu = {
           },
         },
         {
-          destroy: true,
+          selfDestroy: true,
         },
       ],
     },

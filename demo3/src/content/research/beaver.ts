@@ -9,5 +9,5 @@ export const BEAVER_RESEARCH: Research = {
   dependency: ["squirrel"],
   cost: 30,
   recommended: 5,
-  forceInDebug: true,
+  // forceInDebug: true,
 };
