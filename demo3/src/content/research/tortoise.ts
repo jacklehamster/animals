@@ -11,4 +11,5 @@ export const TORTOISE_RESEARCH: Research = {
   },
   dependency: [],
   cost: 20,
+  recommended: 5,
 };

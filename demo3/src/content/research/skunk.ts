@@ -11,4 +11,5 @@ export const SKUNK_RESEARCH: Research = {
   },
   dependency: ["squirrel"],
   cost: 40,
+  recommended: 7,
 };

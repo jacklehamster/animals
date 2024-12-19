@@ -11,6 +11,7 @@ import type { ResourceType } from '../definition/resource-type';
 import { Thinker } from '../ai/thinker';
 import { DEBUG, READY } from '../content/constant';
 import type { Research } from '../definition/research';
+import type { QuickAction } from '../definition/quick-actions';
 
 
 interface Entry {
@@ -192,10 +193,12 @@ export class Manager {
 
   private shiftCamera() {
     if (this.inUI) {
-      return;
+      // return;
     }
-    if (!this.mousePosDown && mouseWasPressed(0)) {
-      this.mousePosDown = vec2(mousePos.x, mousePos.y);
+    if (!this.hud.onTaxKnob) {
+      if (!this.mousePosDown && mouseWasPressed(0)) {
+        this.mousePosDown = vec2(mousePos.x, mousePos.y);
+      }
     }
     if (this.mousePosDown && mouseWasReleased(0)) {
       this.mousePosDown = undefined;
@@ -468,13 +471,26 @@ export class Manager {
     if (this.selected === gameObject) {
       return;
     }
+    if (gameObject?.elem?.waiting) {
+      gameObject.elem.waiting = false;
+      gameObject.refreshAlpha();
+    }
+    //  de-select previous
+    const previousSelected = this.selected;
+    this.selected = undefined;
+    previousSelected?.onSelectChange();
+    await this.hud.showSelected(undefined);
+    if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
+      this.advise.add(previousSelected.elem.adviseOnDeselect.name);
+      await this.hud.showDialog(previousSelected.elem.adviseOnDeselect.message, previousSelected.elem.adviseOnDeselect.music, previousSelected.elem.adviseOnDeselect.voice);
+    }
+
+    //  select new
     if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
       this.advise.add(gameObject.elem.advise.name);
       await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
-    const previousSelected = this.selected;
     this.selected = gameObject;
-    previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
@@ -687,7 +703,7 @@ export class Manager {
     });
 
     //  check researched resources
-    this.checkResearch(this.getPlayer());
+    await this.checkResearch(this.getPlayer());
   }
 
   availableInventionsToDiscover(player: number) {
@@ -697,9 +713,11 @@ export class Manager {
       if (playerResearch?.[invention.name]) {
         return false;
       }
-      const dependency = invention.dependency;
-      if (dependency && dependency.some(dep => !playerResearch?.[dep])) {
-        return false;
+      if (!invention.forceInDebug && !DEBUG) {
+        const dependency = invention.dependency;
+        if (dependency && dependency.some(dep => !playerResearch?.[dep])) {
+          return false;
+        }
       }
       return true;
     });
@@ -717,19 +735,19 @@ export class Manager {
     }
   }
 
-  checkResearch(player: number) {
-    const researchPoints = this.scene.players[this.getPlayer() - 1]?.resources.brain ?? 0;
-    const currentResearchName = this.scene.players[this.getPlayer() - 1]?.currentResearch;
+  async checkResearch(player: number) {
+    const researchPoints = this.scene.players[player - 1]?.resources.brain ?? 0;
+    const currentResearchName = this.scene.players[player - 1]?.currentResearch;
     const currentResearch = this.scene.research.find(research => research.name === currentResearchName);
     if (researchPoints) {
       if (currentResearch) {
         if (researchPoints >= currentResearch.cost) {
           if (researchPoints >= currentResearch.cost) {
-            this.discover(this.getPlayer(), currentResearch);
+            await this.discover(player, currentResearch);
           }
         }
       } else {
-        this.findNextResearch(this.getPlayer());
+        await this.findNextResearch(player);
       }
     }
   }
@@ -878,7 +896,7 @@ export class Manager {
         include = true;
       } else if (await gameObject.canAct()) {
         if (gameObject.elem?.type === "unit"
-          && !gameObject.elem?.harvesting) {
+          && !gameObject.elem?.harvesting && !gameObject.elem?.waiting) {
           include = true;
         }
         //  else if (gameObject?.elem?.type === "house"
@@ -1051,5 +1069,29 @@ export class Manager {
   getResearchInfo(player: number) {
     const current = this.scene.players[player - 1]?.currentResearch;
     return this.scene.research.find(research => research.name === current);
+  }
+
+  quickActions() {
+    return this.scene.quickActions ?? [];
+  }
+
+  async performQuickAction(action: QuickAction) {
+    if (!this.selected?.elem) {
+      return;
+    }
+    switch (action.name) {
+      case "wait":
+        this.selected.elem.waiting = true;
+        this.selected.refreshAlpha();
+        this.selected.updated = false;
+        await this.selectNext();
+        this.hud.updated = false;
+        break;
+      case "abandon":
+        this.selected.doom(true);
+        await this.selectNext();
+        this.hud.updated = false;
+        break;
+    }
   }
 }

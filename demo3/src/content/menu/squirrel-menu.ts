@@ -1,23 +1,20 @@
 import type { Menu } from "../../definition/menu";
+import { BEAVER_ANIMATION } from "../animations/beaver";
+import { SQUIRREL_ANIMATION } from "../animations/squirrel";
 
 export const SQUIRREL_MENU: Menu = {
   name: "squirrel",
   description: "Squirrels can climb on trees and throw nuts.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [6, 7],
-  },
+  icon: SQUIRREL_ANIMATION,
   items: [
     {
       name: "beaver",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      padding: [2, 2],
-      frames: [27, 28, 29],
+      ...BEAVER_ANIMATION,
       label: "evolve into\nbeaver",
       researchNeeded: ["beaver"],
+      resourceCost: {
+        gold: 10,
+      },
       actions: [
         {
           deselect: true,

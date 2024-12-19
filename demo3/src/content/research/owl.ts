@@ -11,4 +11,5 @@ export const OWL_RESEARCH: Research = {
   },
   dependency: ["squirrel"],
   cost: 40,
+  recommended: 6,
 };

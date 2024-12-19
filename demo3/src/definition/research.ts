@@ -7,4 +7,6 @@ export interface Research {
   waitIcon?: Anim;
   dependency: string[];
   cost: number;
+  recommended?: number;
+  forceInDebug?: boolean;
 }

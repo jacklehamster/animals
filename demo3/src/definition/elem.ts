@@ -25,6 +25,7 @@ export interface Elem {
     actions?: number;
   };
   owner?: number;
+  team?: number;
   home?: [number, number];
   group?: {
     grid?: [number, number];
@@ -108,6 +109,7 @@ export interface Elem {
   clearCloud?: boolean;
   water?: boolean;
   harvesting?: boolean;
+  waiting?: boolean;
   building?: boolean;
   closeToHome?: boolean;
   endlessMove?: boolean;
@@ -119,4 +121,6 @@ export interface Elem {
   debug?: boolean;
   copy?: boolean;
   advise?: Advise;
+  adviseOnDeselect?: Advise;
+  disableQuickActions?: boolean;
 }

@@ -51,3 +51,21 @@ export const BLUE_SELECTED_ANIMATION: Anim = {
     22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
   ],
 };
+
+export const WAIT_ICON: Anim = {
+  name: "wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    110,
+  ],
+}
+
+export const WAVE_ICON: Anim = {
+  name: "wave",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    111,
+  ],
+}

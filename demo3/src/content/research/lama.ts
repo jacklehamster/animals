@@ -11,4 +11,5 @@ export const LAMA_RESEARCH: Research = {
   },
   dependency: ["oviculture"],
   cost: 20,
+  recommended: 5,
 };

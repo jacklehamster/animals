@@ -10,5 +10,6 @@ export const RABBIT_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["beaver"],
-  cost: 30,
+  cost: 40,
+  recommended: 7,
 };

@@ -11,4 +11,5 @@ export const PIG_RESEARCH: Research = {
   },
   dependency: ["bovine"],
   cost: 20,
+  recommended: 5,
 };

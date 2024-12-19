@@ -478,7 +478,7 @@ export class GameObject extends EngineObject {
   spendAttack() {
     const elem = this.elem;
     if (elem && elem.turn?.attacks) {
-      elem.turn.attacks = 0;
+      elem.turn.attacks = this.elem?.attack?.attackAfterAttack ? 1 : 0;
       elem.turn.moves = this.elem?.attack?.moveAfterAttack ? 1 : 0;
     }
   }
@@ -510,7 +510,7 @@ export class GameObject extends EngineObject {
 
     if (this.manager.isAiPlayer(this.elem?.owner)) {
       await this.manager.selectNext();
-    } else if (!this.canAct() || this.elem?.harvesting) {
+    } else if (!this.canAct() || this.elem?.harvesting || this.elem?.waiting) {
       await this.manager.selectNext();
     } else if (this.manager.selected === this) {
       if (this.elem?.settler || this.elem?.worker) {
@@ -535,7 +535,7 @@ export class GameObject extends EngineObject {
 
   refreshAlpha() {
     if (this.elem?.turn && this.elem?.type === "unit") {
-      if (!this.canAct()) {
+      if (!this.canAct() || this.elem?.waiting) {
         this.color = new Color(1, 1, 1, .5);
       } else {
         this.color = new Color(1, 1, 1, 1);
@@ -550,11 +550,12 @@ export class GameObject extends EngineObject {
       if (elem.worker) {
         elem.turn.actions = 1;
       }
-      if (this.elem?.harvesting) {
+      if (this.elem?.harvesting || this.elem?.waiting) {
         //  check nearby foes
         const foes = await this.findNearbyFoe();
         if (foes.size) {
           this.elem.harvesting = false;
+          this.elem.waiting = false;
           this.updated = false;
         }
       }
@@ -745,8 +746,13 @@ export class GameObject extends EngineObject {
     if (elem.type !== "unit") {
       return false;
     }
-    if (!this.manager.isAiPlayer(this.elem.owner) && !this.manager.isRevealed(px, py)) {
+    if (!this.manager.grid[`tile_${px}_${py}`]) {
       return false;
+    }
+    if (!this.manager.isRevealed(px, py)) {
+      if (!this.manager.isAiPlayer(this.elem.owner) && !this.elem.team) {
+        return false;
+      }
     }
     const decor = this.manager.grid[`decor_${px}_${py}`];
     if (decor) {
@@ -754,8 +760,11 @@ export class GameObject extends EngineObject {
         return false;
       }
     }
-    if (this.manager.grid[`tile_overlay_${px}_${py}`]?.elem?.water) {
-      return false
+    const tile_overlay = this.manager.grid[`tile_overlay_${px}_${py}`];
+    if (tile_overlay?.elem?.water) {
+      if (!elem?.canCrossTerrains?.includes(tile_overlay?.elem?.name ?? "")) {
+        return false
+      }
     }
     if (this.elem?.closeToHome && this.home) {
       const home = this.home;
@@ -1489,6 +1498,12 @@ export class GameObject extends EngineObject {
       return true;
     }
     return Object.entries(resources).every(([key, value]) => {
+      const res = this.manager.getResourceType(key as keyof Resources);
+      if (res?.global) {
+
+      } else {
+
+      }
       return (this.elem?.resourcesAccumulated?.[key as keyof Resources] ?? 0) >= value;
     });
   }

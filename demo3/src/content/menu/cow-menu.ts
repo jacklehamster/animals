@@ -1,4 +1,5 @@
 import type { Menu } from "../../definition/menu";
+import { BULL_ANIMATION } from "../animations/bull";
 
 export const COW_MENU: Menu = {
   name: "cow",
@@ -50,6 +51,27 @@ export const COW_MENU: Menu = {
         },
         {
           stopHarvest: true,
+        },
+      ],
+    },
+    {
+      name: "bull",
+      ...BULL_ANIMATION,
+      label: "evolve into\nbull",
+      researchNeeded: ["taurology"],
+      resourceCost: {
+        gold: 30,
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "bull",
+            selfSelect: true,
+          },
+        },
+        {
+          destroy: true,
         },
       ],
     },

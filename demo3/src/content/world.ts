@@ -30,7 +30,7 @@ import { TRADE_RESOURCE } from "./resources/trade";
 import { WHEAT_RESOURCE } from "./resources/wheat";
 import { WOOD_RESOURCE } from "./resources/wood";
 import { RABBIT_RESEARCH } from "./research/rabbit";
-import { BLUE_ANIMATION, BLUE_SELECTED_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION } from "./animations/indicators";
+import { BLUE_ANIMATION, BLUE_SELECTED_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION, WAIT_ICON, WAVE_ICON } from "./animations/indicators";
 import { SHEEP_ANIMATION, SHEEP_JUMP_ANIMATION, SHEEP_WAIT_ANIMATION } from "./animations/sheep";
 import { GRASS_ANIMATION, GRASSLAND_ANIMATION, LAKE_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION, WAVE_ANIMATION } from "./animations/terrain";
 import { CLOUD_ANIMATION } from "./animations/cloud";
@@ -62,10 +62,25 @@ import { OVICULTURE_RESEARCH } from "./research/oviculture";
 import { BEAVER_ANIMATION, BEAVER_JUMP_ANIMATION, BEAVER_WAIT_ANIMATION } from "./animations/beaver";
 import { BEAVER_DEFINITION } from "./definitions/beaver";
 import { SQUIRREL_MENU } from "./menu/squirrel-menu";
+import { BULL_ANIMATION, BULL_JUMP_ANIMATION, BULL_WAIT_ANIMATION } from "./animations/bull";
+import { BULL_DEFINITION } from "./definitions/bull";
+import { TAUROLOGY_RESEARCH } from "./research/taurology";
 
 export const worldData: Scene = {
   scale: 80,
   // clearFogOfWar: true,
+  quickActions: [
+    {
+      name: "wait",
+      icon: WAIT_ICON,
+      description: "Leave the animal idle until it encounters a human.",
+    },
+    {
+      name: "abandon",
+      icon: WAVE_ICON,
+      description: "Release the animal into the wild.",
+    },
+  ],
   turn: {
     player: 1,
     turn: 1,
@@ -105,6 +120,7 @@ export const worldData: Scene = {
     SQUIRREL_DEFINITION,
     SOLDIER_DEFINITION,
     BEAVER_DEFINITION,
+    BULL_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -153,6 +169,9 @@ export const worldData: Scene = {
     BEAVER_ANIMATION,
     BEAVER_WAIT_ANIMATION,
     BEAVER_JUMP_ANIMATION,
+    BULL_ANIMATION,
+    BULL_WAIT_ANIMATION,
+    BULL_JUMP_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -198,7 +217,8 @@ export const worldData: Scene = {
     EAGLE_RESEARCH,
     RABBIT_RESEARCH,
     CROCODILE_RESEARCH,
-    OVICULTURE_RESEARCH
+    OVICULTURE_RESEARCH,
+    TAUROLOGY_RESEARCH,
   ],
 };
 (window as any).worldData = worldData;

@@ -41,4 +41,8 @@ export const HOUSE_DEFINITION: Elem = {
     name: "house",
     message: "Nice house! In this house, you collect resources.\nYou can also spawn new animals once they are researched.",
   },
+  adviseOnDeselect: {
+    name: "house-deselect",
+    message: "You can move on to the next turn and collect resources.",
+  },
 };

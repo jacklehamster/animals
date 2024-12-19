@@ -8,4 +8,6 @@ export const BEAVER_RESEARCH: Research = {
   waitIcon: BEAVER_WAIT_ANIMATION,
   dependency: ["squirrel"],
   cost: 30,
+  recommended: 5,
+  forceInDebug: true,
 };

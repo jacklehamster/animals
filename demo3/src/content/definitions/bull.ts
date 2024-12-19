@@ -1,16 +1,16 @@
 import type { Elem } from "../../definition/elem";
 
-export const BEAVER_DEFINITION: Elem = {
-  name: "beaver",
+export const BULL_DEFINITION: Elem = {
+  name: "bull",
   type: "unit",
-  hitpoints: 10,
-  maxHitPoints: 10,
+  hitpoints: 15,
+  maxHitPoints: 15,
   gameObject: {
-    size: [1.5, 1.5] as [number, number],
+    size: [1.8, 1.8] as [number, number],
     speed: 0.08,
   },
   animation: {
-    name: "beaver",
+    name: "bull",
   },
   onHover: {
     hideCursor: true,
@@ -19,7 +19,7 @@ export const BEAVER_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "beaver_wait",
+    animation: "bull_wait",
     indic: {
       animation: "indic",
     },
@@ -29,7 +29,8 @@ export const BEAVER_DEFINITION: Elem = {
     },
   },
   move: {
-    animation: "beaver_jump",
+    animation: "bull_jump",
+    distance: 2,
   },
   shadow: {
     animation: "shadow",
@@ -41,9 +42,9 @@ export const BEAVER_DEFINITION: Elem = {
     attacks: 1,
   },
   attack: {
-    animation: "beaver_attack",
-    damage: 1,
-    defense: 2,
-  },
-  canCrossTerrains: ["tree", "lake"],
+    damage: 3.5,
+    defense: 1,
+    attackAfterMove: true,
+    attackAfterAttack: true,
+  }
 };

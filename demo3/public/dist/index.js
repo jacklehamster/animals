@@ -3831,7 +3831,7 @@ class GameObject extends EngineObject {
   spendAttack() {
     const elem = this.elem;
     if (elem && elem.turn?.attacks) {
-      elem.turn.attacks = 0;
+      elem.turn.attacks = this.elem?.attack?.attackAfterAttack ? 1 : 0;
       elem.turn.moves = this.elem?.attack?.moveAfterAttack ? 1 : 0;
     }
   }
@@ -3859,7 +3859,7 @@ class GameObject extends EngineObject {
     this.manager.checkForAnyMove();
     if (this.manager.isAiPlayer(this.elem?.owner)) {
       await this.manager.selectNext();
-    } else if (!this.canAct() || this.elem?.harvesting) {
+    } else if (!this.canAct() || this.elem?.harvesting || this.elem?.waiting) {
       await this.manager.selectNext();
     } else if (this.manager.selected === this) {
       if (this.elem?.settler || this.elem?.worker) {
@@ -3881,7 +3881,7 @@ class GameObject extends EngineObject {
   }
   refreshAlpha() {
     if (this.elem?.turn && this.elem?.type === "unit") {
-      if (!this.canAct()) {
+      if (!this.canAct() || this.elem?.waiting) {
         this.color = new Color(1, 1, 1, 0.5);
       } else {
         this.color = new Color(1, 1, 1, 1);
@@ -3895,10 +3895,11 @@ class GameObject extends EngineObject {
       if (elem.worker) {
         elem.turn.actions = 1;
       }
-      if (this.elem?.harvesting) {
+      if (this.elem?.harvesting || this.elem?.waiting) {
         const foes = await this.findNearbyFoe();
         if (foes.size) {
           this.elem.harvesting = false;
+          this.elem.waiting = false;
           this.updated = false;
         }
       }
@@ -4063,8 +4064,13 @@ class GameObject extends EngineObject {
     if (elem.type !== "unit") {
       return false;
     }
-    if (!this.manager.isAiPlayer(this.elem.owner) && !this.manager.isRevealed(px, py)) {
+    if (!this.manager.grid[`tile_${px}_${py}`]) {
       return false;
+    }
+    if (!this.manager.isRevealed(px, py)) {
+      if (!this.manager.isAiPlayer(this.elem.owner) && !this.elem.team) {
+        return false;
+      }
     }
     const decor2 = this.manager.grid[`decor_${px}_${py}`];
     if (decor2) {
@@ -4072,8 +4078,11 @@ class GameObject extends EngineObject {
         return false;
       }
     }
-    if (this.manager.grid[`tile_overlay_${px}_${py}`]?.elem?.water) {
-      return false;
+    const tile_overlay = this.manager.grid[`tile_overlay_${px}_${py}`];
+    if (tile_overlay?.elem?.water) {
+      if (!elem?.canCrossTerrains?.includes(tile_overlay?.elem?.name ?? "")) {
+        return false;
+      }
     }
     if (this.elem?.closeToHome && this.home) {
       const home = this.home;
@@ -4720,6 +4729,10 @@ class GameObject extends EngineObject {
       return true;
     }
     return Object.entries(resources).every(([key, value]) => {
+      const res = this.manager.getResourceType(key);
+      if (res?.global) {
+      } else {
+      }
       return (this.elem?.resourcesAccumulated?.[key] ?? 0) >= value;
     });
   }
@@ -4868,7 +4881,7 @@ class GameObject extends EngineObject {
 // src/content/constant.ts
 var SIZE = 30;
 var DEBUG = window.location.search.includes("debug");
-var READY = false;
+var READY = true;
 
 // src/ui/hud.ts
 var SPRITESHEET_COLS = 30;
@@ -4878,8 +4891,8 @@ class Hud {
   manager;
   ui = document.createElement("div");
   bg = document.createElement("div");
-  topBg = document.createElement("div");
   buttonsOverlay = document.createElement("div");
+  quickActionOverlay = document.createElement("div");
   resourceOverlay = document.createElement("div");
   blocker = document.createElement("div");
   dialog = document.createElement("div");
@@ -4892,6 +4905,7 @@ class Hud {
   researchPopup = document.createElement("div");
   music = document.createElement("audio");
   updated = false;
+  onTaxKnob = false;
   constructor(manager) {
     this.manager = manager;
   }
@@ -4920,6 +4934,14 @@ class Hud {
     this.bg.style.color = "snow";
     this.bg.style.flexDirection = "row";
     this.ui.appendChild(this.bg);
+    this.quickActionOverlay.style.position = "absolute";
+    this.quickActionOverlay.style.zIndex = "100";
+    this.quickActionOverlay.style.left = "0";
+    this.quickActionOverlay.style.bottom = "-100px";
+    this.quickActionOverlay.style.display = "flex";
+    this.quickActionOverlay.style.flexDirection = "row";
+    this.quickActionOverlay.style.transition = "bottom 0.2s";
+    this.ui.appendChild(this.quickActionOverlay);
     this.buttonsOverlay.style.bottom = "0";
     this.buttonsOverlay.style.right = "0";
     this.buttonsOverlay.style.zIndex = "100";
@@ -4937,6 +4959,7 @@ class Hud {
     this.resourceOverlay.style.top = "0";
     this.resourceOverlay.style.left = "0";
     this.resourceOverlay.style.zIndex = "100";
+    this.resourceOverlay.style.display = "none";
     this.ui.appendChild(this.resourceOverlay);
     this.blocker.style.width = "100%";
     this.blocker.style.height = "100%";
@@ -4945,7 +4968,6 @@ class Hud {
     this.blocker.style.top = "0";
     this.blocker.style.left = "0";
     this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    this.blocker.style.cursor = "pointer";
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
     this.dialog.style.position = "absolute";
@@ -4987,6 +5009,7 @@ class Hud {
     this.researchList.style.alignItems = "center";
     this.researchList.style.textAlign = "center";
     this.researchList.style.textTransform = "uppercase";
+    this.researchList.style.cursor = "pointer";
     this.researchList.style.display = "none";
     this.ui.appendChild(this.researchList);
     this.researchInfoDiv.style.position = "absolute";
@@ -5013,14 +5036,17 @@ class Hud {
     this.researchPopup.style.height = "600px";
     this.researchPopup.style.backgroundImage = "url(./assets/researched.png)";
     this.researchPopup.style.backgroundSize = "cover";
-    this.researchPopup.style.display = "none";
     this.researchPopup.style.pointerEvents = "none";
+    this.researchPopup.style.opacity = "0";
+    this.researchPopup.style.transition = "opacity .2s";
     const researchImage = this.researchPopup.appendChild(document.createElement("div"));
     researchImage.id = "researchImage";
     researchImage.style.position = "absolute";
     researchImage.style.top = "30%";
     researchImage.style.left = "50%";
     researchImage.style.transform = "translate(-50%, -50%) scale(3)";
+    researchImage.style.transition = "opacity 3s";
+    researchImage.style.opacity = "0";
     this.ui.appendChild(this.researchPopup);
     const researchText = this.researchPopup.appendChild(document.createElement("div"));
     researchText.id = "researchText";
@@ -5042,6 +5068,7 @@ class Hud {
     this.setupShortcutKeys();
     this.initializeErrorBanner();
     this.setupMusic();
+    this.setupQuickActions();
   }
   setupMusic() {
     this.music.src = "./assets/animal-anthem.mp3";
@@ -5109,6 +5136,12 @@ class Hud {
         this.refreshTax();
         this.refreshResearchInfo();
       });
+      taxKnob.addEventListener("mouseover", (e) => {
+        this.onTaxKnob = true;
+      });
+      taxKnob.addEventListener("mouseout", (e) => {
+        this.onTaxKnob = false;
+      });
     }
     taxKnob.style.display = hasRevenue ? "block" : "none";
   }
@@ -5157,7 +5190,9 @@ class Hud {
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
     const hasResource = RESOURCES.some((resource) => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
-    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
+    if (hasRevenue || hasResource) {
+      this.resourceOverlay.style.display = "block";
+    }
   }
   flashEndTurn(temp = false) {
     this.buttonsOverlay.style.display = "block";
@@ -5171,6 +5206,32 @@ class Hud {
   }
   stopFlashEndTurn() {
     document.getElementById("endButton")?.classList.remove("flash");
+  }
+  setupQuickActions() {
+    const quickActions = this.manager.quickActions();
+    quickActions.forEach((action) => {
+      const { imageSource, spriteSize, frames, padding } = action.icon;
+      const icon = this.quickActionOverlay.appendChild(document.createElement("div"));
+      icon.style.backgroundImage = `url(${imageSource})`;
+      icon.style.width = `${spriteSize[0]}px`;
+      icon.style.height = `${spriteSize[1]}px`;
+      icon.style.transform = "scale(.5)";
+      icon.title = action.description;
+      const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
+      const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
+      icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frames[0] / SPRITESHEET_COLS)}px`;
+      icon.style.cursor = "pointer";
+      icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
+      icon.addEventListener("mouseover", (e) => {
+        icon.style.backgroundColor = "rgb(200, 200, 0, .7)";
+      });
+      icon.addEventListener("mouseout", (e) => {
+        icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
+      });
+      icon.addEventListener("click", (e) => {
+        this.manager.performQuickAction(action);
+      });
+    });
   }
   setHudButtons() {
     const nextButton = this.buttonsOverlay.appendChild(this.nextButton);
@@ -5220,9 +5281,9 @@ class Hud {
   async showSelected(obj) {
     const menu = this.manager.getMenu(obj?.elem?.name);
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
+    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions ? "-100px" : menu?.items.length ? "100px" : "0";
     this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
-    this.topBg.style.top = obj ? "0" : "-400px";
     this.clear();
     if (!menu?.items.length) {
       return;
@@ -5357,7 +5418,6 @@ class Hud {
       menuDiv.style.marginLeft = "-100px";
       menuDiv.style.gap = "10px";
       for (const item of menu.items) {
-        console.log(item, DEBUG);
         if (item.debug && !DEBUG) {
           continue;
         }
@@ -5498,21 +5558,23 @@ class Hud {
       }
     }
   }
-  showBlocker() {
+  showBlocker(clickable) {
     this.blocker.style.display = "block";
+    this.blocker.style.cursor = clickable ? "pointer" : "default";
   }
   hideBlocker() {
     this.blocker.style.display = "none";
   }
   async showResearchDialog(research) {
     return new Promise((resolve) => {
-      this.showBlocker();
-      this.researchPopup.style.display = "flex";
+      this.showBlocker(true);
+      this.researchPopup.style.opacity = "1";
       const { imageSource, spriteSize, frames, padding } = research.waitIcon ?? research.icon;
       const researchImage = this.researchPopup.querySelector("#researchImage");
       researchImage.style.backgroundImage = `url(${imageSource})`;
       researchImage.style.width = `${spriteSize[0]}px`;
       researchImage.style.height = `${spriteSize[1]}px`;
+      researchImage.style.opacity = "1";
       const cols = 30;
       const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
       const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
@@ -5534,14 +5596,17 @@ class Hud {
         utterance.voice = voice;
       }
       speechSynthesis.speak(utterance);
-      this.blocker.addEventListener("click", () => {
-        speechSynthesis.cancel();
-        this.fadeMusicOut();
-        this.clear();
-        this.researchPopup.style.display = "none";
-        this.hideBlocker();
-        resolve();
-      }, { once: true });
+      setTimeout(() => {
+        this.blocker.addEventListener("click", () => {
+          speechSynthesis.cancel();
+          this.fadeMusicOut();
+          this.clear();
+          this.researchPopup.style.opacity = "0";
+          this.hideBlocker();
+          resolve();
+          researchImage.style.opacity = "0";
+        }, { once: true });
+      }, 1000);
     });
   }
   musicFader = 0;
@@ -5565,7 +5630,7 @@ class Hud {
     this.music.currentTime = 0;
   }
   async showDialog(text, music = false, voiceName) {
-    this.showBlocker();
+    this.showBlocker(true);
     this.dialog.style.display = "flex";
     this.cat.style.display = "block";
     this.dialog.textContent = text;
@@ -5581,6 +5646,7 @@ class Hud {
     }
     return new Promise((resolve) => {
       this.blocker.addEventListener("click", () => {
+        speechSynthesis.cancel();
         if (!READY) {
           window.index = window.index ?? 0;
           const NOTREADYS = [
@@ -5641,7 +5707,6 @@ class Hud {
         this.dialog.style.display = "none";
         this.cat.style.display = "none";
         this.hideBlocker();
-        speechSynthesis.cancel();
         this.clear();
         setTimeout(() => {
           resolve();
@@ -5677,15 +5742,31 @@ class Hud {
       this.showBlocker();
       const inv = [...inventions];
       inv.sort((a, b) => {
+        if (DEBUG) {
+          if (a.forceInDebug !== b.forceInDebug) {
+            return a.forceInDebug ? -1 : 1;
+          }
+        }
+        if (a.cost !== b.cost) {
+          return a.cost - b.cost;
+        }
         return Math.random() - 0.5;
       });
-      while (inv.length > 3) {
+      while (inv.length > 4) {
         inv.pop();
       }
+      inv.sort((a, b) => {
+        const recA = a.recommended ?? 1e4;
+        const recB = b.recommended ?? 1e4;
+        if (recA !== recB) {
+          return recA - recB;
+        }
+        return Math.random() - 0.5;
+      });
       this.researchList.style.display = "flex";
       this.researchList.style.height = `${inv.length * 100}px`;
       this.researchList.innerHTML = "";
-      inv.forEach((invention) => {
+      inv.forEach((invention, index) => {
         const researchDiv = this.researchList.appendChild(document.createElement("div"));
         researchDiv.style.display = "flex";
         researchDiv.style.flexDirection = "row";
@@ -5718,10 +5799,22 @@ class Hud {
         midGroup.style.flexGrow = "1";
         midGroup.style.margin = "0 10px";
         midGroup.style.gap = "5px";
-        const label = midGroup.appendChild(document.createElement("div"));
+        const labelGroup = midGroup.appendChild(document.createElement("div"));
+        labelGroup.style.display = "flex";
+        labelGroup.style.flexDirection = "row";
+        const label = labelGroup.appendChild(document.createElement("div"));
         label.innerText = invention.name;
         label.style.textAlign = "left";
         label.style.fontSize = "10pt";
+        if (index === 0) {
+          const rec = labelGroup.appendChild(document.createElement("div"));
+          rec.innerText = "recommended";
+          rec.style.textAlign = "left";
+          rec.style.fontSize = "8pt";
+          rec.style.color = "gold";
+          rec.style.marginLeft = "10px";
+          researchDiv.style.backgroundColor = "rgba(70, 60, 0, 1)";
+        }
         const desc = midGroup.appendChild(document.createElement("div"));
         desc.innerText = invention.description ?? "";
         desc.style.textAlign = "left";
@@ -5741,10 +5834,10 @@ class Hud {
         researchDiv.style.cursor = "pointer";
         researchDiv.style.width = "100%";
         researchDiv.addEventListener("mouseover", () => {
-          researchDiv.style.backgroundColor = "rgba(100, 100, 100, 1)";
+          researchDiv.style.backgroundColor = index === 0 ? "rgba(120, 100, 0, 1)" : "rgba(100, 100, 100, 1)";
         });
         researchDiv.addEventListener("mouseout", () => {
-          researchDiv.style.backgroundColor = "";
+          researchDiv.style.backgroundColor = index === 0 ? "rgba(70, 60, 0, 1)" : "";
         });
         researchDiv.addEventListener("click", () => {
           this.manager.research(invention.name, this.manager.getPlayer());
@@ -6106,10 +6199,11 @@ class Manager {
   }
   shiftCamera() {
     if (this.inUI) {
-      return;
     }
-    if (!this.mousePosDown && mouseWasPressed(0)) {
-      this.mousePosDown = vec2(mousePos.x, mousePos.y);
+    if (!this.hud.onTaxKnob) {
+      if (!this.mousePosDown && mouseWasPressed(0)) {
+        this.mousePosDown = vec2(mousePos.x, mousePos.y);
+      }
     }
     if (this.mousePosDown && mouseWasReleased(0)) {
       this.mousePosDown = undefined;
@@ -6357,13 +6451,23 @@ class Manager {
     if (this.selected === gameObject) {
       return;
     }
+    if (gameObject?.elem?.waiting) {
+      gameObject.elem.waiting = false;
+      gameObject.refreshAlpha();
+    }
+    const previousSelected = this.selected;
+    this.selected = undefined;
+    previousSelected?.onSelectChange();
+    await this.hud.showSelected(undefined);
+    if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
+      this.advise.add(previousSelected.elem.adviseOnDeselect.name);
+      await this.hud.showDialog(previousSelected.elem.adviseOnDeselect.message, previousSelected.elem.adviseOnDeselect.music, previousSelected.elem.adviseOnDeselect.voice);
+    }
     if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
       this.advise.add(gameObject.elem.advise.name);
       await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
     }
-    const previousSelected = this.selected;
     this.selected = gameObject;
-    previousSelected?.onSelectChange();
     this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
     if (!this.shifting && this.selected) {
@@ -6558,7 +6662,7 @@ class Manager {
       const r = resource;
       playerResources[r] = (playerResources[r] ?? 0) + value;
     });
-    this.checkResearch(this.getPlayer());
+    await this.checkResearch(this.getPlayer());
   }
   availableInventionsToDiscover(player) {
     const allInventions = this.scene.research;
@@ -6567,9 +6671,11 @@ class Manager {
       if (playerResearch?.[invention.name]) {
         return false;
       }
-      const dependency = invention.dependency;
-      if (dependency && dependency.some((dep) => !playerResearch?.[dep])) {
-        return false;
+      if (!invention.forceInDebug && !DEBUG) {
+        const dependency = invention.dependency;
+        if (dependency && dependency.some((dep) => !playerResearch?.[dep])) {
+          return false;
+        }
       }
       return true;
     });
@@ -6585,19 +6691,19 @@ class Manager {
       }
     }
   }
-  checkResearch(player) {
-    const researchPoints = this.scene.players[this.getPlayer() - 1]?.resources.brain ?? 0;
-    const currentResearchName = this.scene.players[this.getPlayer() - 1]?.currentResearch;
+  async checkResearch(player) {
+    const researchPoints = this.scene.players[player - 1]?.resources.brain ?? 0;
+    const currentResearchName = this.scene.players[player - 1]?.currentResearch;
     const currentResearch = this.scene.research.find((research) => research.name === currentResearchName);
     if (researchPoints) {
       if (currentResearch) {
         if (researchPoints >= currentResearch.cost) {
           if (researchPoints >= currentResearch.cost) {
-            this.discover(this.getPlayer(), currentResearch);
+            await this.discover(player, currentResearch);
           }
         }
       } else {
-        this.findNextResearch(this.getPlayer());
+        await this.findNextResearch(player);
       }
     }
   }
@@ -6720,7 +6826,7 @@ class Manager {
       if (this.selected === gameObject) {
         include = true;
       } else if (await gameObject.canAct()) {
-        if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting) {
+        if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting && !gameObject.elem?.waiting) {
           include = true;
         }
       }
@@ -6867,6 +6973,28 @@ class Manager {
   getResearchInfo(player) {
     const current = this.scene.players[player - 1]?.currentResearch;
     return this.scene.research.find((research) => research.name === current);
+  }
+  quickActions() {
+    return this.scene.quickActions ?? [];
+  }
+  async performQuickAction(action) {
+    if (!this.selected?.elem) {
+      return;
+    }
+    switch (action.name) {
+      case "wait":
+        this.selected.elem.waiting = true;
+        this.selected.refreshAlpha();
+        this.selected.updated = false;
+        await this.selectNext();
+        this.hud.updated = false;
+        break;
+      case "abandon":
+        this.selected.doom(true);
+        await this.selectNext();
+        this.hud.updated = false;
+        break;
+    }
   }
 }
 
@@ -7057,6 +7185,10 @@ var HOUSE_DEFINITION = {
   advise: {
     name: "house",
     message: "Nice house! In this house, you collect resources.\nYou can also spawn new animals once they are researched."
+  },
+  adviseOnDeselect: {
+    name: "house-deselect",
+    message: "You can move on to the next turn and collect resources."
   }
 };
 
@@ -7129,6 +7261,36 @@ var SHEEP_DEFINITION = {
   }
 };
 
+// src/content/animations/bull.ts
+var BULL_ANIMATION = {
+  name: "bull",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    112
+  ]
+};
+var BULL_WAIT_ANIMATION = {
+  name: "bull_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    112,
+    113
+  ]
+};
+var BULL_JUMP_ANIMATION = {
+  name: "bull_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    112,
+    113
+  ]
+};
+
 // src/content/menu/cow-menu.ts
 var COW_MENU = {
   name: "cow",
@@ -7182,8 +7344,62 @@ var COW_MENU = {
           stopHarvest: true
         }
       ]
+    },
+    {
+      name: "bull",
+      ...BULL_ANIMATION,
+      label: "evolve into\nbull",
+      researchNeeded: ["taurology"],
+      resourceCost: {
+        gold: 30
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "bull",
+            selfSelect: true
+          }
+        },
+        {
+          destroy: true
+        }
+      ]
     }
   ]
+};
+
+// src/content/animations/beaver.ts
+var BEAVER_ANIMATION = {
+  name: "beaver",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    106
+  ]
+};
+var BEAVER_WAIT_ANIMATION = {
+  name: "beaver_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    106,
+    107
+  ]
+};
+var BEAVER_JUMP_ANIMATION = {
+  name: "beaver_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 3,
+  frames: [
+    106,
+    108,
+    109,
+    106
+  ],
+  airFrames: [108, 109]
 };
 
 // src/content/menu/house-menu-debug.ts
@@ -7244,6 +7460,27 @@ var HOUSE_MENU_DEBUG = [
         deselect: true,
         create: {
           definition: "squirrel",
+          selfSelect: true
+        }
+      }
+    ],
+    debug: true
+  },
+  {
+    name: "beaver",
+    ...BEAVER_ANIMATION,
+    label: "spawn\nbeaver",
+    hidden: {
+      occupied: ["unit", "tile occupied\nby a unit"]
+    },
+    disabled: {
+      cannotAct: [true, "wait\nnext turn"]
+    },
+    actions: [
+      {
+        deselect: true,
+        create: {
+          definition: "beaver",
           selfSelect: true
         }
       }
@@ -7414,39 +7651,6 @@ var SHEEP_MENU = {
   ]
 };
 
-// src/content/animations/beaver.ts
-var BEAVER_ANIMATION = {
-  name: "beaver",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    106
-  ]
-};
-var BEAVER_WAIT_ANIMATION = {
-  name: "beaver_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    106,
-    107
-  ]
-};
-var BEAVER_JUMP_ANIMATION = {
-  name: "beaver_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 3,
-  frames: [
-    106,
-    108,
-    109,
-    106
-  ],
-  airFrames: [108, 109]
-};
-
 // src/content/research/beaver.ts
 var BEAVER_RESEARCH = {
   name: "beaver",
@@ -7454,7 +7658,9 @@ var BEAVER_RESEARCH = {
   icon: BEAVER_ANIMATION,
   waitIcon: BEAVER_WAIT_ANIMATION,
   dependency: ["squirrel"],
-  cost: 30
+  cost: 30,
+  recommended: 5,
+  forceInDebug: true
 };
 
 // src/content/animations/cow.ts
@@ -7506,7 +7712,8 @@ var BOVINE_RESEARCH = {
   icon: COW_ANIMATION,
   waitIcon: COW_WAIT_ANIMATION,
   dependency: [],
-  cost: 10
+  cost: 10,
+  recommended: 1
 };
 
 // src/content/animations/dog.ts
@@ -7550,7 +7757,8 @@ var CANINE_RESEARCH = {
   icon: DOG_ANIMATION,
   waitIcon: DOG_WAIT_ANIMATION,
   dependency: [],
-  cost: 10
+  cost: 10,
+  recommended: 2
 };
 
 // src/content/research/elephant.ts
@@ -7564,7 +7772,8 @@ var ELEPHANT_RESEARCH = {
     frames: [51]
   },
   dependency: ["pig"],
-  cost: 40
+  cost: 80,
+  recommended: 8
 };
 
 // src/content/research/eagle.ts
@@ -7578,7 +7787,8 @@ var EAGLE_RESEARCH = {
     frames: [51]
   },
   dependency: ["owl"],
-  cost: 20
+  cost: 80,
+  recommended: 8
 };
 
 // src/content/research/goat.ts
@@ -7592,7 +7802,8 @@ var GOAT_RESEARCH = {
     frames: [51]
   },
   dependency: ["oviculture"],
-  cost: 20
+  cost: 20,
+  recommended: 5
 };
 
 // src/content/research/horse.ts
@@ -7606,7 +7817,8 @@ var HORSE_RESEARCH = {
     frames: [51]
   },
   dependency: ["oviculture"],
-  cost: 20
+  cost: 20,
+  recommended: 5
 };
 
 // src/content/research/lama.ts
@@ -7620,7 +7832,8 @@ var LAMA_RESEARCH = {
     frames: [51]
   },
   dependency: ["oviculture"],
-  cost: 20
+  cost: 20,
+  recommended: 5
 };
 
 // src/content/research/monkey.ts
@@ -7634,7 +7847,8 @@ var MONKEY_RESEARCH = {
     frames: [51]
   },
   dependency: ["squirrel"],
-  cost: 40
+  cost: 40,
+  recommended: 6
 };
 
 // src/content/research/owl.ts
@@ -7648,7 +7862,8 @@ var OWL_RESEARCH = {
     frames: [51]
   },
   dependency: ["squirrel"],
-  cost: 40
+  cost: 40,
+  recommended: 6
 };
 
 // src/content/research/panda.ts
@@ -7662,7 +7877,8 @@ var PANDA_RESEARCH = {
     frames: [51]
   },
   dependency: ["squirrel"],
-  cost: 20
+  cost: 40,
+  recommended: 6
 };
 
 // src/content/research/pig.ts
@@ -7676,7 +7892,8 @@ var PIG_RESEARCH = {
     frames: [51]
   },
   dependency: ["bovine"],
-  cost: 20
+  cost: 20,
+  recommended: 5
 };
 
 // src/content/research/skunk.ts
@@ -7690,7 +7907,8 @@ var SKUNK_RESEARCH = {
     frames: [51]
   },
   dependency: ["squirrel"],
-  cost: 40
+  cost: 40,
+  recommended: 7
 };
 
 // src/content/animations/squirrel.ts
@@ -7739,12 +7957,13 @@ var SQUIRREL_ATTACK_ANIMATION = {
 
 // src/content/research/squirrel.ts
 var SQUIRREL_RESEARCH = {
-  name: "squirrel",
+  name: "nutology",
   description: "Squirrels can climb trees and throw nuts.",
   icon: SQUIRREL_ANIMATION,
   waitIcon: SQUIRREL_WAIT_ANIMATION,
   dependency: [],
-  cost: 20
+  cost: 20,
+  recommended: 4
 };
 
 // src/content/research/tortoise.ts
@@ -7758,7 +7977,8 @@ var TORTOISE_RESEARCH = {
     frames: [51]
   },
   dependency: [],
-  cost: 20
+  cost: 20,
+  recommended: 5
 };
 
 // src/content/research/wolves.ts
@@ -7772,7 +7992,8 @@ var WOLVES_RESEARCH = {
     frames: [46]
   },
   dependency: ["canine"],
-  cost: 30
+  cost: 40,
+  recommended: 7
 };
 
 // src/content/resources/brain.ts
@@ -7841,7 +8062,8 @@ var RABBIT_RESEARCH = {
     frames: [51]
   },
   dependency: ["beaver"],
-  cost: 30
+  cost: 40,
+  recommended: 7
 };
 
 // src/content/animations/indicators.ts
@@ -7951,6 +8173,22 @@ var BLUE_SELECTED_ANIMATION = {
     22,
     22,
     22
+  ]
+};
+var WAIT_ICON = {
+  name: "wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    110
+  ]
+};
+var WAVE_ICON = {
+  name: "wave",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    111
   ]
 };
 
@@ -8387,7 +8625,8 @@ var HOBO_DEFINITION = {
 // src/content/elems/sheep.ts
 var SHEEP = {
   definition: "sheep",
-  owner: 1
+  owner: 1,
+  disableQuickActions: true
 };
 
 // src/content/elems/cabana.ts
@@ -8773,7 +9012,8 @@ var CROCODILE_RESEARCH = {
     frames: [51]
   },
   dependency: ["tortoise"],
-  cost: 30
+  cost: 40,
+  recommended: 6
 };
 
 // src/content/research/oviculture.ts
@@ -8783,7 +9023,8 @@ var OVICULTURE_RESEARCH = {
   icon: SHEEP_ANIMATION,
   waitIcon: SHEEP_WAIT_ANIMATION,
   dependency: [],
-  cost: 10
+  cost: 10,
+  recommended: 3
 };
 
 // src/content/definitions/beaver.ts
@@ -8793,7 +9034,7 @@ var BEAVER_DEFINITION = {
   hitpoints: 10,
   maxHitPoints: 10,
   gameObject: {
-    size: [1.8, 1.8],
+    size: [1.5, 1.5],
     speed: 0.08
   },
   animation: {
@@ -8832,28 +9073,23 @@ var BEAVER_DEFINITION = {
     damage: 1,
     defense: 2
   },
-  canCrossTerrains: ["tree", "water"]
+  canCrossTerrains: ["tree", "lake"]
 };
 
 // src/content/menu/squirrel-menu.ts
 var SQUIRREL_MENU = {
   name: "squirrel",
   description: "Squirrels can climb on trees and throw nuts.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [6, 7]
-  },
+  icon: SQUIRREL_ANIMATION,
   items: [
     {
       name: "beaver",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [27, 28, 29],
+      ...BEAVER_ANIMATION,
       label: "evolve into\nbeaver",
       researchNeeded: ["beaver"],
+      resourceCost: {
+        gold: 10
+      },
       actions: [
         {
           deselect: true,
@@ -8870,9 +9106,83 @@ var SQUIRREL_MENU = {
   ]
 };
 
+// src/content/definitions/bull.ts
+var BULL_DEFINITION = {
+  name: "bull",
+  type: "unit",
+  hitpoints: 15,
+  maxHitPoints: 15,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.08
+  },
+  animation: {
+    name: "bull"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "bull_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "bull_jump",
+    distance: 2
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 3.5,
+    defense: 1,
+    attackAfterMove: true,
+    attackAfterAttack: true
+  }
+};
+
+// src/content/research/taurology.ts
+var TAUROLOGY_RESEARCH = {
+  name: "taurology",
+  description: "Bulls are strong fighters.",
+  icon: BULL_ANIMATION,
+  waitIcon: BULL_WAIT_ANIMATION,
+  dependency: ["bovine"],
+  cost: 40,
+  recommended: 7,
+  forceInDebug: true
+};
+
 // src/content/world.ts
 var worldData = {
   scale: 80,
+  quickActions: [
+    {
+      name: "wait",
+      icon: WAIT_ICON,
+      description: "Leave the animal idle until it encounters a human."
+    },
+    {
+      name: "abandon",
+      icon: WAVE_ICON,
+      description: "Release the animal into the wild."
+    }
+  ],
   turn: {
     player: 1,
     turn: 1
@@ -8911,7 +9221,8 @@ var worldData = {
     CABANA_DEFINITION,
     SQUIRREL_DEFINITION,
     SOLDIER_DEFINITION,
-    BEAVER_DEFINITION
+    BEAVER_DEFINITION,
+    BULL_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -8959,7 +9270,10 @@ var worldData = {
     NUT_ANIMATION,
     BEAVER_ANIMATION,
     BEAVER_WAIT_ANIMATION,
-    BEAVER_JUMP_ANIMATION
+    BEAVER_JUMP_ANIMATION,
+    BULL_ANIMATION,
+    BULL_WAIT_ANIMATION,
+    BULL_JUMP_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -9005,7 +9319,8 @@ var worldData = {
     EAGLE_RESEARCH,
     RABBIT_RESEARCH,
     CROCODILE_RESEARCH,
-    OVICULTURE_RESEARCH
+    OVICULTURE_RESEARCH,
+    TAUROLOGY_RESEARCH
   ]
 };
 window.worldData = worldData;
@@ -9026,4 +9341,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=CCF5CC6F0173C97364756e2164756e21
+//# debugId=70AD7C544CD63E8364756e2164756e21

@@ -1,4 +1,5 @@
 import type { MenuItem } from "../../definition/menu";
+import { BEAVER_ANIMATION } from "../animations/beaver";
 
 export const HOUSE_MENU_DEBUG: MenuItem[] = [
   {
@@ -59,6 +60,27 @@ export const HOUSE_MENU_DEBUG: MenuItem[] = [
         deselect: true,
         create: {
           definition: "squirrel",
+          selfSelect: true,
+        },
+      },
+    ],
+    debug: true,
+  },
+  {
+    name: "beaver",
+    ...BEAVER_ANIMATION,
+    label: "spawn\nbeaver",
+    hidden: {
+      occupied: ["unit", "tile occupied\nby a unit"],
+    },
+    disabled: {
+      cannotAct: [true, "wait\nnext turn"],
+    },
+    actions: [
+      {
+        deselect: true,
+        create: {
+          definition: "beaver",
           selfSelect: true,
         },
       },

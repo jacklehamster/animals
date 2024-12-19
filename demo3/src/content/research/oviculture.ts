@@ -8,4 +8,5 @@ export const OVICULTURE_RESEARCH: Research = {
   waitIcon: SHEEP_WAIT_ANIMATION,
   dependency: [],
   cost: 10,
+  recommended: 3,
 };

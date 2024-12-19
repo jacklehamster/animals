@@ -1,7 +1,8 @@
 import type { Anim } from "./animation";
 import type { Elem } from "./elem";
-import type { Menu } from "./menu";
+import type { Menu, MenuItem } from "./menu";
 import type { PlayerInfo } from "./player-info";
+import type { QuickAction } from "./quick-actions";
 import type { Research } from "./research";
 import type { ResourceType } from "./resource-type";
 import type { Resources } from "./resources";
@@ -15,6 +16,7 @@ export interface Scene {
   layers: Record<string, number>;
   colayers?: Record<string, number>;
   menu?: Menu[];
+  quickActions?: QuickAction[];
   turn: {
     player: number;
     turn: number;

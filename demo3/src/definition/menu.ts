@@ -1,13 +1,9 @@
 import type { Action } from "./action";
+import type { Anim } from "./animation";
 import type { Condition } from "./condition";
 import type { Resources } from "./resources";
 
-export interface MenuIcon {
-  imageSource: string;
-  spriteSize: [number, number];
-  padding?: [number, number];
-  frames: number[];
-}
+export type MenuIcon = Anim;
 
 export interface MenuItem {
   name: string;
@@ -27,11 +23,6 @@ export interface MenuItem {
 export interface Menu {
   name: string;
   description?: string;
-  icon: {
-    imageSource: string;
-    spriteSize: [number, number];
-    padding?: [number, number];
-    frames: number[];
-  };
+  icon: Anim;
   items: MenuItem[];
 }

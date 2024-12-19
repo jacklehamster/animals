@@ -10,5 +10,6 @@ export const CROCODILE_RESEARCH: Research = {
     frames: [51],
   },
   dependency: ["tortoise"],
-  cost: 30,
+  cost: 40,
+  recommended: 6,
 };

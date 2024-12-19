@@ -12,8 +12,8 @@ speechSynthesis.getVoices();
 export class Hud {
   ui: HTMLDivElement = document.createElement("div");
   bg: HTMLDivElement = document.createElement("div");
-  topBg: HTMLDivElement = document.createElement("div");
   buttonsOverlay: HTMLDivElement = document.createElement("div");
+  quickActionOverlay: HTMLDivElement = document.createElement("div");
   resourceOverlay: HTMLDivElement = document.createElement("div");
   blocker: HTMLDivElement = document.createElement("div");
   dialog: HTMLDivElement = document.createElement("div");
@@ -26,6 +26,7 @@ export class Hud {
   researchPopup: HTMLDivElement = document.createElement("div");
   music: HTMLAudioElement = document.createElement("audio");
   updated = false;
+  onTaxKnob = false;
 
   constructor(readonly manager: Manager) {
   }
@@ -57,6 +58,15 @@ export class Hud {
     this.bg.style.flexDirection = "row";
     this.ui.appendChild(this.bg);
 
+    this.quickActionOverlay.style.position = "absolute";
+    this.quickActionOverlay.style.zIndex = "100";
+    this.quickActionOverlay.style.left = "0";
+    this.quickActionOverlay.style.bottom = "-100px";
+    this.quickActionOverlay.style.display = "flex";
+    this.quickActionOverlay.style.flexDirection = "row";
+    this.quickActionOverlay.style.transition = "bottom 0.2s";
+    this.ui.appendChild(this.quickActionOverlay);
+
     this.buttonsOverlay.style.bottom = "0";
     this.buttonsOverlay.style.right = "0";
     this.buttonsOverlay.style.zIndex = "100";
@@ -75,6 +85,7 @@ export class Hud {
     this.resourceOverlay.style.top = "0";
     this.resourceOverlay.style.left = "0";
     this.resourceOverlay.style.zIndex = "100";
+    this.resourceOverlay.style.display = "none";
     this.ui.appendChild(this.resourceOverlay);
 
     this.blocker.style.width = "100%";
@@ -84,7 +95,6 @@ export class Hud {
     this.blocker.style.top = "0";
     this.blocker.style.left = "0";
     this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    this.blocker.style.cursor = "pointer";
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
 
@@ -129,6 +139,7 @@ export class Hud {
     this.researchList.style.alignItems = "center";
     this.researchList.style.textAlign = "center";
     this.researchList.style.textTransform = "uppercase";
+    this.researchList.style.cursor = "pointer";
     this.researchList.style.display = "none";
     this.ui.appendChild(this.researchList);
 
@@ -157,8 +168,10 @@ export class Hud {
     this.researchPopup.style.height = "600px";
     this.researchPopup.style.backgroundImage = "url(./assets/researched.png)";
     this.researchPopup.style.backgroundSize = "cover";
-    this.researchPopup.style.display = "none";
+    // this.researchPopup.style.display = "none";
     this.researchPopup.style.pointerEvents = "none";
+    this.researchPopup.style.opacity = "0";
+    this.researchPopup.style.transition = "opacity .2s";
 
     const researchImage = this.researchPopup.appendChild(document.createElement("div"));
     researchImage.id = "researchImage";
@@ -166,6 +179,8 @@ export class Hud {
     researchImage.style.top = "30%";
     researchImage.style.left = "50%";
     researchImage.style.transform = "translate(-50%, -50%) scale(3)";
+    researchImage.style.transition = "opacity 3s";
+    researchImage.style.opacity = "0";
     this.ui.appendChild(this.researchPopup);
 
     const researchText = this.researchPopup.appendChild(document.createElement("div"));
@@ -189,6 +204,7 @@ export class Hud {
     this.setupShortcutKeys();
     this.initializeErrorBanner();
     this.setupMusic();
+    this.setupQuickActions();
   }
 
   setupMusic() {
@@ -265,6 +281,12 @@ export class Hud {
         this.refreshTax();
         this.refreshResearchInfo();
       });
+      taxKnob.addEventListener("mouseover", e => {
+        this.onTaxKnob = true;
+      });
+      taxKnob.addEventListener("mouseout", e => {
+        this.onTaxKnob = false;
+      });
     }
     taxKnob.style.display = hasRevenue ? "block" : "none";
   }
@@ -317,7 +339,9 @@ export class Hud {
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
     const hasResource = RESOURCES.some(resource => this.manager.getPlayerResource(resource, this.manager.getPlayer()) > 0);
-    this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
+    if (hasRevenue || hasResource) {
+      this.resourceOverlay.style.display = "block";
+    }
   }
 
   flashEndTurn(temp = false) {
@@ -333,6 +357,35 @@ export class Hud {
 
   stopFlashEndTurn() {
     document.getElementById("endButton")?.classList.remove("flash");
+  }
+
+  setupQuickActions() {
+    const quickActions = this.manager.quickActions();
+    quickActions.forEach(action => {
+      const { imageSource, spriteSize, frames, padding } = action.icon;
+      const icon = this.quickActionOverlay.appendChild(document.createElement("div"));
+      //  setup icon
+      icon.style.backgroundImage = `url(${imageSource})`;
+      icon.style.width = `${spriteSize[0]}px`;
+      icon.style.height = `${spriteSize[1]}px`;
+      icon.style.transform = "scale(.5)";
+      icon.title = action.description;
+      const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
+      const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
+      icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frames[0] / SPRITESHEET_COLS)}px`;
+      icon.style.cursor = "pointer";
+      icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
+
+      icon.addEventListener("mouseover", e => {
+        icon.style.backgroundColor = "rgb(200, 200, 0, .7)";
+      });
+      icon.addEventListener("mouseout", e => {
+        icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
+      });
+      icon.addEventListener("click", e => {
+        this.manager.performQuickAction(action);
+      });
+    });
   }
 
   setHudButtons() {
@@ -387,9 +440,9 @@ export class Hud {
   async showSelected(obj?: GameObject) {
     const menu = this.manager.getMenu(obj?.elem?.name);
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
+    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions ? "-100px" : menu?.items.length ? "100px" : "0";
     this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
-    this.topBg.style.top = obj ? "0" : "-400px";
 
     this.clear();
 
@@ -541,7 +594,6 @@ export class Hud {
       menuDiv.style.gap = "10px";
 
       for (const item of menu.items) {
-        console.log(item, DEBUG);
         if (item.debug && !DEBUG) {
           continue;
         }
@@ -691,8 +743,9 @@ export class Hud {
     }
   }
 
-  showBlocker() {
+  showBlocker(clickable?: boolean) {
     this.blocker.style.display = "block";
+    this.blocker.style.cursor = clickable ? "pointer" : "default";
   }
 
   hideBlocker() {
@@ -701,13 +754,15 @@ export class Hud {
 
   async showResearchDialog(research: Research) {
     return new Promise<void>(resolve => {
-      this.showBlocker();
-      this.researchPopup.style.display = "flex";
+      this.showBlocker(true);
+      // this.researchPopup.style.display = "flex";
+      this.researchPopup.style.opacity = "1";
       const { imageSource, spriteSize, frames, padding } = research.waitIcon ?? research.icon;
       const researchImage = this.researchPopup.querySelector("#researchImage") as HTMLDivElement;
       researchImage.style.backgroundImage = `url(${imageSource})`;
       researchImage.style.width = `${spriteSize[0]}px`;
       researchImage.style.height = `${spriteSize[1]}px`;
+      researchImage.style.opacity = "1";
       const cols = 30;
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
       const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
@@ -734,14 +789,18 @@ export class Hud {
       }
       speechSynthesis.speak(utterance);
 
-      this.blocker.addEventListener("click", () => {
-        speechSynthesis.cancel();
-        this.fadeMusicOut();
-        this.clear();
-        this.researchPopup.style.display = "none";
-        this.hideBlocker();
-        resolve();
-      }, { once: true });
+      setTimeout(() => {
+        this.blocker.addEventListener("click", () => {
+          speechSynthesis.cancel();
+          this.fadeMusicOut();
+          this.clear();
+          this.researchPopup.style.opacity = "0";
+          // this.researchPopup.style.display = "none";
+          this.hideBlocker();
+          resolve();
+          researchImage.style.opacity = "0";
+        }, { once: true });
+      }, 1000);
     });
   }
 
@@ -768,7 +827,7 @@ export class Hud {
   }
 
   async showDialog(text: string, music: boolean = false, voiceName?: string): Promise<void> {
-    this.showBlocker();
+    this.showBlocker(true);
     this.dialog.style.display = "flex";
     this.cat.style.display = "block";
     this.dialog.textContent = text;
@@ -885,18 +944,31 @@ export class Hud {
       this.showBlocker();
       const inv = [...inventions];
       inv.sort((a, b) => {
-        // if (a.cost !== b.cost) {
-        //   return a.cost - b.cost;
-        // }
+        if (DEBUG) {
+          if (a.forceInDebug !== b.forceInDebug) {
+            return a.forceInDebug ? -1 : 1;
+          }
+        }
+        if (a.cost !== b.cost) {
+          return a.cost - b.cost;
+        }
         return Math.random() - 0.5;
       });
-      while (inv.length > 3) {
+      while (inv.length > 4) {
         inv.pop();
       }
+      inv.sort((a, b): number => {
+        const recA = a.recommended ?? 10000;
+        const recB = b.recommended ?? 10000;
+        if (recA !== recB) {
+          return recA - recB;
+        }
+        return Math.random() - .5;
+      })
       this.researchList.style.display = "flex";
       this.researchList.style.height = `${inv.length * 100}px`;
       this.researchList.innerHTML = "";
-      inv.forEach(invention => {
+      inv.forEach((invention, index) => {
         const researchDiv = this.researchList.appendChild(document.createElement("div"));
         researchDiv.style.display = "flex";
         researchDiv.style.flexDirection = "row";
@@ -930,10 +1002,22 @@ export class Hud {
         midGroup.style.margin = "0 10px";
         midGroup.style.gap = "5px";
 
-        const label = midGroup.appendChild(document.createElement("div"));
+        const labelGroup = midGroup.appendChild(document.createElement("div"));
+        labelGroup.style.display = "flex";
+        labelGroup.style.flexDirection = "row";
+        const label = labelGroup.appendChild(document.createElement("div"));
         label.innerText = invention.name;
         label.style.textAlign = "left";
         label.style.fontSize = "10pt";
+        if (index === 0) {  //recommended
+          const rec = labelGroup.appendChild(document.createElement("div"));
+          rec.innerText = "recommended";
+          rec.style.textAlign = "left";
+          rec.style.fontSize = "8pt";
+          rec.style.color = "gold";
+          rec.style.marginLeft = "10px";
+          researchDiv.style.backgroundColor = "rgba(70, 60, 0, 1)";
+        }
 
         const desc = midGroup.appendChild(document.createElement("div"));
         desc.innerText = invention.description ?? "";
@@ -956,10 +1040,10 @@ export class Hud {
         researchDiv.style.cursor = "pointer";
         researchDiv.style.width = "100%";
         researchDiv.addEventListener("mouseover", () => {
-          researchDiv.style.backgroundColor = "rgba(100, 100, 100, 1)";
+          researchDiv.style.backgroundColor = index === 0 ? "rgba(120, 100, 0, 1)" : "rgba(100, 100, 100, 1)";
         });
         researchDiv.addEventListener("mouseout", () => {
-          researchDiv.style.backgroundColor = "";
+          researchDiv.style.backgroundColor = index === 0 ? "rgba(70, 60, 0, 1)" : "";
         });
         researchDiv.addEventListener("click", () => {
           this.manager.research(invention.name, this.manager.getPlayer());
