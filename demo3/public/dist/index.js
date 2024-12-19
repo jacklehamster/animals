@@ -6991,7 +6991,7 @@ class Manager {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (await gameObject.canAct()) {
+      } else if (await gameObject.canAct() && this.isRevealed(gameObject.px, gameObject.py)) {
         if (gameObject.elem?.type === "unit" && !gameObject.elem?.harvesting && !gameObject.elem?.waiting) {
           include = true;
         }
@@ -7781,7 +7781,7 @@ var SQUIRREL_ATTACK_ANIMATION = {
   once: true
 };
 var SQUIRREL_SLEEP_ANIMATION = {
-  name: "squirrel_jump",
+  name: "squirrel_sleep",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64],
   frames: [
@@ -8250,6 +8250,49 @@ var GOAT_RESEARCH = {
   forceInDebug: true
 };
 
+// src/content/animations/panda.ts
+var PANDA_ANIMATION = {
+  name: "panda",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    133
+  ]
+};
+var PANDA_WAIT_ANIMATION = {
+  name: "panda_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    133,
+    133,
+    134
+  ]
+};
+var PANDA_JUMP_ANIMATION = {
+  name: "panda_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    133,
+    135
+  ],
+  airFrames: [135]
+};
+
+// src/content/research/panda.ts
+var PANDA_RESEARCH = {
+  name: "panda",
+  description: "Pandas are strong fighters.",
+  icon: PANDA_ANIMATION,
+  waitIcon: PANDA_WAIT_ANIMATION,
+  dependency: ["squirrel"],
+  cost: 40,
+  recommended: 6
+};
+
 // src/content/research/squirrel.ts
 var SQUIRREL_RESEARCH = {
   name: "nutology",
@@ -8270,21 +8313,6 @@ var TORTOISE_RESEARCH = {
   dependency: [],
   cost: 20,
   recommended: 5
-};
-
-// src/content/research/wolves.ts
-var WOLVES_RESEARCH = {
-  name: "wolves",
-  description: "Wolves are ferocious fighters.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [46]
-  },
-  dependency: ["canine"],
-  cost: 40,
-  recommended: 7
 };
 
 // src/content/resources/brain.ts
@@ -8340,6 +8368,50 @@ var WOOD_RESOURCE = {
     padding: [2, 2],
     frames: [57]
   }
+};
+
+// src/content/animations/rabbit.ts
+var RABBIT_ANIMATION = {
+  name: "rabbit",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    136
+  ]
+};
+var RABBIT_WAIT_ANIMATION = {
+  name: "rabbit_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    136,
+    137
+  ]
+};
+var RABBIT_JUMP_ANIMATION = {
+  name: "rabbit_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 3,
+  frames: [
+    136,
+    137,
+    138,
+    137
+  ],
+  airFrames: [137, 138]
+};
+
+// src/content/research/rabbit.ts
+var RABBIT_RESEARCH = {
+  name: "rabbit",
+  description: "Rabbits cast magic spells to heal.",
+  icon: RABBIT_ANIMATION,
+  waitIcon: RABBIT_WAIT_ANIMATION,
+  dependency: ["beaver"],
+  cost: 40,
+  recommended: 7
 };
 
 // src/content/animations/indicators.ts
@@ -8902,6 +8974,9 @@ var SQUIRREL_DEFINITION = {
       selectedAnimation: "blue_selected"
     }
   },
+  harvest: {
+    animation: "squirrel_sleep"
+  },
   move: {
     animation: "squirrel_jump",
     disabled: {
@@ -9327,6 +9402,27 @@ var SQUIRREL_MENU = {
           selfDestroy: true
         }
       ]
+    },
+    {
+      name: "panda",
+      ...PANDA_ANIMATION,
+      label: "evolve into\npanda",
+      researchNeeded: ["panda"],
+      resourceCost: {
+        gold: 20
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "panda",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
     }
   ]
 };
@@ -9463,6 +9559,27 @@ var BEAVER_MENU = {
         },
         {
           clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "rabbit",
+      ...RABBIT_ANIMATION,
+      label: "evolve into\nrabbit",
+      researchNeeded: ["rabbit"],
+      resourceCost: {
+        gold: 20
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "rabbit",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
         }
       ]
     }
@@ -10049,6 +10166,202 @@ var GOAT_DEFINITION = {
   canCrossTerrains: ["mountain"]
 };
 
+// src/content/definitions/panda.ts
+var PANDA_DEFINITION = {
+  name: "panda",
+  type: "unit",
+  hitpoints: 20,
+  maxHitPoints: 20,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.08
+  },
+  animation: {
+    name: "panda"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "panda_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "panda_jump",
+    distance: 1
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 3,
+    defense: 2
+  }
+};
+
+// src/content/definitions/rabbit.ts
+var RABBIT_DEFINITION = {
+  name: "rabbit",
+  type: "unit",
+  hitpoints: 5,
+  maxHitPoints: 5,
+  gameObject: {
+    size: [1.5, 1.5],
+    speed: 0.08
+  },
+  animation: {
+    name: "rabbit"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "rabbit_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "rabbit_jump",
+    distance: 1
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 1,
+    defense: 1
+  },
+  canCrossTerrains: ["tree"]
+};
+
+// src/content/animations/pig.ts
+var PIG_ANIMATION = {
+  name: "pig",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    139
+  ]
+};
+var PIG_WAIT_ANIMATION = {
+  name: "pig_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    139,
+    140
+  ]
+};
+var PIG_JUMP_ANIMATION = {
+  name: "pig_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 3,
+  frames: [
+    139,
+    141,
+    142
+  ],
+  airFrames: [141, 142]
+};
+var PIG_SLEEP_ANIMATION = {
+  name: "pig_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    143
+  ]
+};
+
+// src/content/definitions/pig.ts
+var PIG_DEFINITION = {
+  name: "pig",
+  type: "unit",
+  hitpoints: 15,
+  maxHitPoints: 15,
+  worker: true,
+  resourcesProduced: {
+    wheat: 2
+  },
+  gameObject: {
+    size: [1.5, 1.5],
+    speed: 0.08
+  },
+  animation: {
+    name: "pig"
+  },
+  harvest: {
+    animation: "pig_sleep"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "pig_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "pig_jump",
+    distance: 1,
+    disabled: {
+      harvesting: true
+    }
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 1,
+    defense: 1
+  }
+};
+
 // src/content/world.ts
 var worldData = {
   scale: 80,
@@ -10111,7 +10424,10 @@ var worldData = {
     POTGOLD_DEFINITION,
     CORAL_DEFINITION,
     VILLAGE_DEFINITION,
-    GOAT_DEFINITION
+    GOAT_DEFINITION,
+    PANDA_DEFINITION,
+    RABBIT_DEFINITION,
+    PIG_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -10175,7 +10491,17 @@ var worldData = {
     GOAT_ANIMATION,
     GOAT_JUMP_ANIMATION,
     GOAT_WAIT_ANIMATION,
-    GOAT_SLEEP_ANIMATION
+    GOAT_SLEEP_ANIMATION,
+    PANDA_ANIMATION,
+    PANDA_JUMP_ANIMATION,
+    PANDA_WAIT_ANIMATION,
+    RABBIT_ANIMATION,
+    RABBIT_WAIT_ANIMATION,
+    RABBIT_JUMP_ANIMATION,
+    PIG_ANIMATION,
+    PIG_WAIT_ANIMATION,
+    PIG_JUMP_ANIMATION,
+    PIG_SLEEP_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -10211,7 +10537,6 @@ var worldData = {
   },
   research: [
     CANINE_RESEARCH,
-    WOLVES_RESEARCH,
     BOVINE_RESEARCH,
     SQUIRREL_RESEARCH,
     OVICULTURE_RESEARCH,
@@ -10223,7 +10548,9 @@ var worldData = {
     EXPANSION_RESEARCH,
     VILLAGE_RESEARCH,
     SPACESHIP_RESEARCH,
-    GOAT_RESEARCH
+    GOAT_RESEARCH,
+    PANDA_RESEARCH,
+    RABBIT_RESEARCH
   ]
 };
 window.worldData = worldData;
@@ -10244,4 +10571,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=5EA152C6C030389464756e2164756e21
+//# debugId=D9F9ECFE965CBF0C64756e2164756e21

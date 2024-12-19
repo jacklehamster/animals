@@ -905,7 +905,7 @@ export class Manager {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (await gameObject.canAct()) {
+      } else if (await gameObject.canAct() && this.isRevealed(gameObject.px, gameObject.py)) {
         if (gameObject.elem?.type === "unit"
           && !gameObject.elem?.harvesting && !gameObject.elem?.waiting) {
           include = true;
