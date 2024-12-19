@@ -4868,6 +4868,7 @@ class GameObject extends EngineObject {
 // src/content/constant.ts
 var SIZE = 30;
 var DEBUG = window.location.search.includes("debug");
+var READY = false;
 
 // src/ui/hud.ts
 var SPRITESHEET_COLS = 30;
@@ -5580,6 +5581,60 @@ class Hud {
     }
     return new Promise((resolve) => {
       this.blocker.addEventListener("click", () => {
+        if (!READY) {
+          window.index = window.index ?? 0;
+          const NOTREADYS = [
+            "Not ready yet, please be patient",
+            "I'm not ready yet, please wait",
+            "I'm still working on it, please wait",
+            "Can you wait a little longer? Jesus!",
+            "Hold your horses, we're almost there!",
+            "Patience is a virtue... that you clearly lack!",
+            "Good things come to those who wait. Great things take a bit longer.",
+            "Rome wasn't built in a day, and neither is this!",
+            "Keep calm and wait a moment.",
+            "Loading... just like your patience.",
+            "If you keep clicking, it won't go any faster!",
+            "Almost there... just kidding, still working on it!",
+            "Why the rush? Enjoy the moment!",
+            "Your impatience is noted. Still not ready.",
+            "Take a deep breath, we're almost there.",
+            "You can't rush perfection!",
+            "Good things take time. Great things take even longer.",
+            "Patience, young grasshopper.",
+            "We're on it! Just a few more seconds.",
+            "Loading... because magic takes time.",
+            "Hang tight, we're almost there!",
+            "If you wait a bit longer, you might get a cookie!",
+            "Almost done... just kidding, still working on it!",
+            "Your impatience is adorable. Still not ready.",
+            "Hold on, we're making it awesome!",
+            "Good things come to those who wait. Great things take a bit longer.",
+            "Keep calm and wait a moment.",
+            "Loading... just like your patience.",
+            "If you keep clicking, it won't go any faster!",
+            "Almost there... just kidding, still working on it!",
+            "Why the rush? Enjoy the moment!",
+            "Your impatience is noted. Still not ready.",
+            "Take a deep breath, we're almost there.",
+            "You can't rush perfection!",
+            "Good things take time. Great things take even longer.",
+            "Patience, young grasshopper.",
+            "We're on it! Just a few more seconds.",
+            "Loading... because magic takes time.",
+            "Hang tight, we're almost there!",
+            "If you wait a bit longer, you might get a cookie!",
+            "Almost done... just kidding, still working on it!",
+            "Your impatience is adorable. Still not ready.",
+            "Hold on, we're making it awesome!"
+          ];
+          const msg = NOTREADYS[window.index];
+          window.index = (window.index + 1) % NOTREADYS.length;
+          this.clear();
+          resolve();
+          this.showDialog(msg);
+          return;
+        }
         if (music) {
           this.fadeMusicOut();
         }
@@ -5942,6 +5997,9 @@ class Manager {
       this.updateLabels();
       exports_littlejs_esm_min.overlayCanvas.style.cursor = "";
     });
+    if (!READY) {
+      this.hud.showDialog("This game is almost ready!.");
+    }
   }
   updateLabels() {
     this.getAllUnitsOrHouses().forEach((gameObject) => {
@@ -8968,4 +9026,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=99B8C851AEE5930564756e2164756e21
+//# debugId=CCF5CC6F0173C97364756e2164756e21

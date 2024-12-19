@@ -9,7 +9,7 @@ import type { Condition } from "../definition/condition";
 import type { Resources } from "../definition/resources";
 import type { ResourceType } from '../definition/resource-type';
 import { Thinker } from '../ai/thinker';
-import { DEBUG } from '../content/constant';
+import { DEBUG, READY } from '../content/constant';
 import type { Research } from '../definition/research';
 
 
@@ -74,6 +74,9 @@ export class Manager {
       this.updateLabels();
       LittleJS.overlayCanvas.style.cursor = "";
     });
+    if (!READY) {
+      this.hud.showDialog("This game is almost ready!.");
+    }
   }
 
   updateLabels() {
