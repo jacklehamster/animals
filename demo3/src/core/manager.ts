@@ -514,6 +514,9 @@ export class Manager {
 
   makeWithinView(gameObject: GameObject) {
     const finalDestination = gameObject.finalDestination();
+    if (!this.isRevealed(finalDestination.x, finalDestination.y)) {
+      return;
+    }
     const dx = finalDestination.x - this.camShift.x;
     const dy = finalDestination.y - this.camShift.y;
     const diffX = 4, diffY = 2;

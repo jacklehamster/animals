@@ -7,5 +7,5 @@ export const PRODUCTIVITY_RESEARCH: Research = {
   icon: WOOD_ANIMATION,
   dependency: [],
   cost: 5,
-  recommended: 0,
+  recommended: 1.5,
 };

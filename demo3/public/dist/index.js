@@ -6745,6 +6745,9 @@ class Manager {
   }
   makeWithinView(gameObject) {
     const finalDestination = gameObject.finalDestination();
+    if (!this.isRevealed(finalDestination.x, finalDestination.y)) {
+      return;
+    }
     const dx = finalDestination.x - this.camShift.x;
     const dy = finalDestination.y - this.camShift.y;
     const diffX = 4, diffY = 2;
@@ -9985,7 +9988,7 @@ var PRODUCTIVITY_RESEARCH = {
   icon: WOOD_ANIMATION,
   dependency: [],
   cost: 5,
-  recommended: 0
+  recommended: 1.5
 };
 
 // src/content/research/expansion.ts
@@ -10714,4 +10717,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=CE034887982E726E64756e2164756e21
+//# debugId=56306FA71D9B5F0A64756e2164756e21
