@@ -28,8 +28,14 @@ export const SQUIRREL_DEFINITION: Elem = {
       selectedAnimation: "blue_selected",
     },
   },
+  harvest: {
+    animation: "squirrel_sleep",
+  },
   move: {
     animation: "squirrel_jump",
+    disabled: {
+      harvesting: true,
+    },
   },
   shadow: {
     animation: "shadow",
@@ -48,6 +54,7 @@ export const SQUIRREL_DEFINITION: Elem = {
     attackAfterMove: true,
     projectile: "nut",
   },
+  worker: true,
   canCrossTerrains: ["tree"],
   advise: {
     name: "squirrel",

@@ -29,3 +29,12 @@ export const BEAVER_JUMP_ANIMATION: Anim = {
   ],
   airFrames: [108, 109],
 };
+
+export const BEAVER_HARVEST_ANIMATION: Anim = {
+  name: "beaver_harvest",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    107
+  ],
+};

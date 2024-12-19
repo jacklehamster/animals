@@ -1,18 +1,17 @@
 import type { Elem } from "../../definition/elem";
 
-export const TURTLE_DEFINITION: Elem = {
-  name: "turtle",
+export const RABBIT_DEFINITION: Elem = {
+  name: "rabbit",
   type: "unit",
-  hitpoints: 10,
-  maxHitPoints: 10,
+  hitpoints: 5,
+  maxHitPoints: 5,
   gameObject: {
-    size: [1.8, 1.8] as [number, number],
-    speed: 0.03,
+    size: [1.5, 1.5] as [number, number],
+    speed: 0.08,
   },
   animation: {
-    name: "turtle",
+    name: "rabbit",
   },
-  worker: true,
   onHover: {
     hideCursor: true,
     indic: {
@@ -20,7 +19,7 @@ export const TURTLE_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "turtle_wait",
+    animation: "rabbit_wait",
     indic: {
       animation: "indic",
     },
@@ -30,10 +29,8 @@ export const TURTLE_DEFINITION: Elem = {
     },
   },
   move: {
-    animation: "turtle_jump",
-    disabled: {
-      harvesting: true,
-    },
+    animation: "rabbit_jump",
+    distance: 1,
   },
   shadow: {
     animation: "shadow",
@@ -46,7 +43,7 @@ export const TURTLE_DEFINITION: Elem = {
   },
   attack: {
     damage: 1,
-    defense: 4,
+    defense: 1,
   },
-  canCrossTerrains: ["lake"],
+  canCrossTerrains: ["tree"],
 };

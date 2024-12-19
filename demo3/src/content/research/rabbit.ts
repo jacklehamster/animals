@@ -1,14 +1,11 @@
 import type { Research } from "../../definition/research";
+import { RABBIT_ANIMATION, RABBIT_WAIT_ANIMATION } from "../animations/rabbit";
 
 export const RABBIT_RESEARCH: Research = {
   name: "rabbit",
   description: "Rabbits cast magic spells to heal.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  icon: RABBIT_ANIMATION,
+  waitIcon: RABBIT_WAIT_ANIMATION,
   dependency: ["beaver"],
   cost: 40,
   recommended: 7,

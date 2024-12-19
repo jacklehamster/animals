@@ -1,11 +1,11 @@
 import type { Elem } from "../../definition/elem";
 import { SIZE } from "../constant";
 
-export const FRUIT: Elem = {
-  definition: "fruit",
+export const HOBO: Elem = {
+  definition: "hobo",
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.03,
-    farFromCenter: 1
+    chance: 0.05,
+    farFromCenter: 7,
   },
 };

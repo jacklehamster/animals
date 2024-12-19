@@ -1,4 +1,5 @@
 import type { Menu } from "../../definition/menu";
+import { RABBIT_ANIMATION } from "../animations/rabbit";
 import { LAKE_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION } from "../animations/terrain";
 
 export const BEAVER_MENU: Menu = {
@@ -73,6 +74,30 @@ export const BEAVER_MENU: Menu = {
           clearMoves: true,
         },
       ],
-    }
+    },
+
+    {
+      name: "rabbit",
+      ...RABBIT_ANIMATION,
+      label: "evolve into\nrabbit",
+      researchNeeded: ["rabbit"],
+      resourceCost: {
+        gold: 20,
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "rabbit",
+            selfSelect: true,
+          },
+        },
+        {
+          selfDestroy: true,
+        },
+      ],
+    },
+
+
   ],
 };

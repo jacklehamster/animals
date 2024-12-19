@@ -1,14 +1,11 @@
 import type { Research } from "../../definition/research";
+import { PIG_ANIMATION, PIG_WAIT_ANIMATION } from "../animations/pig";
 
 export const PIG_RESEARCH: Research = {
   name: "pig",
-  description: "Pigs can harvest resources faster.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  description: "Pigs are just pigs.",
+  icon: PIG_ANIMATION,
+  waitIcon: PIG_WAIT_ANIMATION,
   dependency: ["bovine"],
   cost: 20,
   recommended: 5,

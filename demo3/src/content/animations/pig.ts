@@ -1,40 +1,41 @@
 import type { Anim } from "../../definition/animation";
 
-export const TURTLE_ANIMATION: Anim = {
-  name: "turtle",
+export const PIG_ANIMATION: Anim = {
+  name: "pig",
   imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
+  spriteSize: [64, 64] as [number, number],
   frames: [
-    114,
+    139,
   ],
 };
 
-export const TURTLE_WAIT_ANIMATION: Anim = {
-  name: "turtle_wait",
+export const PIG_WAIT_ANIMATION: Anim = {
+  name: "pig_wait",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   mul: 20,
   frames: [
-    114, 115,
+    139, 140,
   ],
 };
 
-export const TURTLE_JUMP_ANIMATION: Anim = {
-  name: "turtle_jump",
+export const PIG_JUMP_ANIMATION: Anim = {
+  name: "pig_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  mul: 3,
+  frames: [
+    139, 141, 142,
+  ],
+  airFrames: [141, 142],
+};
+
+export const PIG_SLEEP_ANIMATION: Anim = {
+  name: "pig_sleep",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   mul: 10,
   frames: [
-    114, 115,
-  ],
-  airFrames: [114],
-};
-
-export const TURTLE_SLEEP_ANIMATION: Anim = {
-  name: "turtle_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64] as [number, number],
-  frames: [
-    127
+    143,
   ],
 };

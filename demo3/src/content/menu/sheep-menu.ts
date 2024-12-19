@@ -1,4 +1,5 @@
 import type { Menu } from "../../definition/menu";
+import { GOAT_ANIMATION } from "../animations/goat";
 
 export const SHEEP_MENU: Menu = {
   name: "sheep",
@@ -25,6 +26,27 @@ export const SHEEP_MENU: Menu = {
           deselect: true,
           create: {
             definition: "house",
+            selfSelect: true,
+          },
+        },
+        {
+          selfDestroy: true,
+        },
+      ],
+    },
+    {
+      name: "goat",
+      ...GOAT_ANIMATION,
+      label: "evolve into\ngoat",
+      researchNeeded: ["goat"],
+      resourceCost: {
+        gold: 10,
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "goat",
             selfSelect: true,
           },
         },

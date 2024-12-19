@@ -1,5 +1,6 @@
 import type { Menu } from "../../definition/menu";
 import { BULL_ANIMATION } from "../animations/bull";
+import { COW_ANIMATION, COW_SLEEP_ANIMATION } from "../animations/cow";
 
 export const COW_MENU: Menu = {
   name: "cow",
@@ -13,10 +14,7 @@ export const COW_MENU: Menu = {
   items: [
     {
       name: "harvest",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      padding: [2, 2],
-      frames: [55],
+      ...COW_SLEEP_ANIMATION,
       label: "harvest",
       hidden: {
         occupied: ["house", "No harvest on house"],
@@ -40,10 +38,7 @@ export const COW_MENU: Menu = {
     },
     {
       name: "stopHarvest",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64] as [number, number],
-      padding: [2, 2],
-      frames: [51],
+      ...COW_ANIMATION,
       label: "stop harvest",
       hidden: {
         notHarvesting: true,

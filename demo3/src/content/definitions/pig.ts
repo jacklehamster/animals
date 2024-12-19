@@ -1,18 +1,24 @@
 import type { Elem } from "../../definition/elem";
 
-export const TURTLE_DEFINITION: Elem = {
-  name: "turtle",
+export const PIG_DEFINITION: Elem = {
+  name: "pig",
   type: "unit",
-  hitpoints: 10,
-  maxHitPoints: 10,
+  hitpoints: 15,
+  maxHitPoints: 15,
+  worker: true,
+  resourcesProduced: {
+    wheat: 2,
+  },
   gameObject: {
-    size: [1.8, 1.8] as [number, number],
-    speed: 0.03,
+    size: [1.5, 1.5] as [number, number],
+    speed: 0.08,
   },
   animation: {
-    name: "turtle",
+    name: "pig",
   },
-  worker: true,
+  harvest: {
+    animation: "pig_sleep",
+  },
   onHover: {
     hideCursor: true,
     indic: {
@@ -20,7 +26,7 @@ export const TURTLE_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "turtle_wait",
+    animation: "pig_wait",
     indic: {
       animation: "indic",
     },
@@ -30,7 +36,8 @@ export const TURTLE_DEFINITION: Elem = {
     },
   },
   move: {
-    animation: "turtle_jump",
+    animation: "pig_jump",
+    distance: 1,
     disabled: {
       harvesting: true,
     },
@@ -46,7 +53,6 @@ export const TURTLE_DEFINITION: Elem = {
   },
   attack: {
     damage: 1,
-    defense: 4,
+    defense: 1,
   },
-  canCrossTerrains: ["lake"],
 };

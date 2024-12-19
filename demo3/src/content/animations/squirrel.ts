@@ -40,3 +40,12 @@ export const SQUIRREL_ATTACK_ANIMATION: Anim = {
   ],
   once: true,
 };
+
+export const SQUIRREL_SLEEP_ANIMATION: Anim = {
+  name: "squirrel_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    101,
+  ],
+};

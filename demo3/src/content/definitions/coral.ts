@@ -5,6 +5,7 @@ export const CORAL_DEFINITION: Elem = {
   type: "goodies",
   resourcesProduced: {
     wheat: 2,
+    brain: 2
   },
   condition: {
     tile: "lake",

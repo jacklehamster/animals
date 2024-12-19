@@ -5656,9 +5656,6 @@ class Hud {
       overlay.style.flexWrap = "wrap";
       overlay.style.overflow = "auto";
       overlay.style.maxHeight = "80%";
-      for (let i = 0;i < 5; i++) {
-        animalsSaved.push(...animalsSaved);
-      }
       for (const animal of animalsSaved) {
         const anim = animal.selected?.animation ?? animal.animation;
         if (!anim) {
@@ -7517,86 +7514,6 @@ var BULL_JUMP_ANIMATION = {
   ]
 };
 
-// src/content/menu/cow-menu.ts
-var COW_MENU = {
-  name: "cow",
-  description: "Cows are your workers.\nUse them to harvest resources.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
-  items: [
-    {
-      name: "harvest",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [55],
-      label: "harvest",
-      hidden: {
-        occupied: ["house", "No harvest on house"],
-        harvesting: true
-      },
-      disabled: {
-        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
-      },
-      actions: [
-        {
-          deselect: true
-        },
-        {
-          harvest: true
-        },
-        {
-          clearMoves: true
-        }
-      ]
-    },
-    {
-      name: "stopHarvest",
-      imageSource: "./assets/tiles.png",
-      spriteSize: [64, 64],
-      padding: [2, 2],
-      frames: [51],
-      label: "stop harvest",
-      hidden: {
-        notHarvesting: true
-      },
-      actions: [
-        {
-          deselect: true
-        },
-        {
-          stopHarvest: true
-        }
-      ]
-    },
-    {
-      name: "bull",
-      ...BULL_ANIMATION,
-      label: "evolve into\nbull",
-      researchNeeded: ["taurology"],
-      resourceCost: {
-        gold: 30
-      },
-      actions: [
-        {
-          deselect: true,
-          create: {
-            definition: "bull",
-            selfSelect: true
-          }
-        },
-        {
-          selfDestroy: true
-        }
-      ]
-    }
-  ]
-};
-
 // src/content/animations/cow.ts
 var COW_ANIMATION = {
   name: "cow",
@@ -7636,6 +7553,80 @@ var COW_SLEEP_ANIMATION = {
   mul: 10,
   frames: [
     55
+  ]
+};
+
+// src/content/menu/cow-menu.ts
+var COW_MENU = {
+  name: "cow",
+  description: "Cows are your workers.\nUse them to harvest resources.",
+  icon: {
+    imageSource: "./assets/tiles.png",
+    spriteSize: [64, 64],
+    padding: [2, 2],
+    frames: [51]
+  },
+  items: [
+    {
+      name: "harvest",
+      ...COW_SLEEP_ANIMATION,
+      label: "harvest",
+      hidden: {
+        occupied: ["house", "No harvest on house"],
+        harvesting: true
+      },
+      disabled: {
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          harvest: true
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "stopHarvest",
+      ...COW_ANIMATION,
+      label: "stop harvest",
+      hidden: {
+        notHarvesting: true
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          stopHarvest: true
+        }
+      ]
+    },
+    {
+      name: "bull",
+      ...BULL_ANIMATION,
+      label: "evolve into\nbull",
+      researchNeeded: ["taurology"],
+      resourceCost: {
+        gold: 30
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "bull",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    }
   ]
 };
 
@@ -7789,6 +7780,14 @@ var SQUIRREL_ATTACK_ANIMATION = {
   ],
   once: true
 };
+var SQUIRREL_SLEEP_ANIMATION = {
+  name: "squirrel_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    101
+  ]
+};
 
 // src/content/animations/turtle.ts
 var TURTLE_ANIMATION = {
@@ -7819,6 +7818,14 @@ var TURTLE_JUMP_ANIMATION = {
     115
   ],
   airFrames: [114]
+};
+var TURTLE_SLEEP_ANIMATION = {
+  name: "turtle_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    127
+  ]
 };
 
 // src/content/animations/beaver.ts
@@ -8100,6 +8107,47 @@ var HOUSE_MENU = {
   ]
 };
 
+// src/content/animations/goat.ts
+var GOAT_ANIMATION = {
+  name: "goat",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    128
+  ]
+};
+var GOAT_WAIT_ANIMATION = {
+  name: "goat_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    128,
+    129
+  ]
+};
+var GOAT_JUMP_ANIMATION = {
+  name: "goat_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    128,
+    130,
+    131,
+    132
+  ],
+  airFrames: [130, 131, 132]
+};
+var GOAT_SLEEP_ANIMATION = {
+  name: "goat_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    129
+  ]
+};
+
 // src/content/menu/sheep-menu.ts
 var SHEEP_MENU = {
   name: "sheep",
@@ -8126,6 +8174,27 @@ var SHEEP_MENU = {
           deselect: true,
           create: {
             definition: "house",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    },
+    {
+      name: "goat",
+      ...GOAT_ANIMATION,
+      label: "evolve into\ngoat",
+      researchNeeded: ["goat"],
+      resourceCost: {
+        gold: 10
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "goat",
             selfSelect: true
           }
         },
@@ -8168,6 +8237,17 @@ var CANINE_RESEARCH = {
   dependency: [],
   cost: 10,
   recommended: 2
+};
+
+// src/content/research/goat.ts
+var GOAT_RESEARCH = {
+  name: "goat",
+  description: "Goats can climb mountains.",
+  icon: GOAT_ANIMATION,
+  dependency: ["oviculture"],
+  cost: 20,
+  recommended: 5,
+  forceInDebug: true
 };
 
 // src/content/research/squirrel.ts
@@ -8823,7 +8903,10 @@ var SQUIRREL_DEFINITION = {
     }
   },
   move: {
-    animation: "squirrel_jump"
+    animation: "squirrel_jump",
+    disabled: {
+      harvesting: true
+    }
   },
   shadow: {
     animation: "shadow"
@@ -8842,6 +8925,7 @@ var SQUIRREL_DEFINITION = {
     attackAfterMove: true,
     projectile: "nut"
   },
+  worker: true,
   canCrossTerrains: ["tree"],
   advise: {
     name: "squirrel",
@@ -9181,9 +9265,48 @@ var BEAVER_DEFINITION = {
 // src/content/menu/squirrel-menu.ts
 var SQUIRREL_MENU = {
   name: "squirrel",
-  description: "Squirrels can climb on trees and throw nuts.",
+  description: "Squirrels can climb on trees to harvest, and throw nuts.",
   icon: SQUIRREL_ANIMATION,
   items: [
+    {
+      name: "harvest",
+      ...SQUIRREL_SLEEP_ANIMATION,
+      label: "harvest",
+      hidden: {
+        occupied: ["house", "No harvest on house"],
+        harvesting: true
+      },
+      disabled: {
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          harvest: true
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "stopHarvest",
+      ...SQUIRREL_ANIMATION,
+      label: "stop harvest",
+      hidden: {
+        notHarvesting: true
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          stopHarvest: true
+        }
+      ]
+    },
     {
       name: "beaver",
       ...BEAVER_ANIMATION,
@@ -9383,6 +9506,7 @@ var TURTLE_DEFINITION = {
   animation: {
     name: "turtle"
   },
+  worker: true,
   onHover: {
     hideCursor: true,
     indic: {
@@ -9400,7 +9524,10 @@ var TURTLE_DEFINITION = {
     }
   },
   move: {
-    animation: "turtle_jump"
+    animation: "turtle_jump",
+    disabled: {
+      harvesting: true
+    }
   },
   shadow: {
     animation: "shadow"
@@ -9467,7 +9594,8 @@ var FRUIT = {
   definition: "fruit",
   group: {
     grid: [SIZE + 1, SIZE + 1],
-    chance: 0.03
+    chance: 0.03,
+    farFromCenter: 1
   }
 };
 
@@ -9494,7 +9622,8 @@ var CORAL_DEFINITION = {
   name: "coral",
   type: "goodies",
   resourcesProduced: {
-    wheat: 2
+    wheat: 2,
+    brain: 2
   },
   condition: {
     tile: "lake"
@@ -9802,6 +9931,124 @@ var SPACESHIP_RESEARCH = {
   forceInDebug: true
 };
 
+// src/content/menu/turtle-menu.ts
+var TURTLE_MENU = {
+  name: "turtle",
+  description: "Turtle can swim in the lake.",
+  icon: TURTLE_ANIMATION,
+  items: [
+    {
+      name: "harvest",
+      ...TURTLE_SLEEP_ANIMATION,
+      label: "harvest",
+      hidden: {
+        occupied: ["house", "No harvest on house"],
+        harvesting: true
+      },
+      disabled: {
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          harvest: true
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "stopHarvest",
+      ...TURTLE_ANIMATION,
+      label: "stop harvest",
+      hidden: {
+        notHarvesting: true
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          stopHarvest: true
+        }
+      ]
+    }
+  ]
+};
+
+// src/content/elems/barbarian.ts
+var HOBO = {
+  definition: "hobo",
+  group: {
+    grid: [SIZE + 1, SIZE + 1],
+    chance: 0.05,
+    farFromCenter: 7
+  }
+};
+
+// src/content/definitions/goat.ts
+var GOAT_DEFINITION = {
+  name: "goat",
+  type: "unit",
+  hitpoints: 15,
+  maxHitPoints: 15,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.06
+  },
+  animation: {
+    name: "goat"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "goat_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  clearCloud: true,
+  move: {
+    animation: "goat_jump",
+    distance: 1,
+    disabled: {
+      harvesting: true
+    }
+  },
+  harvest: {
+    animation: "goat_sleep"
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  worker: true,
+  turn: {
+    moves: 1,
+    attacks: 1,
+    actions: 1
+  },
+  attack: {
+    damage: 2,
+    defense: 1
+  },
+  advise: {
+    name: "goat",
+    message: "Goats can climb on mountains."
+  },
+  canCrossTerrains: ["mountain"]
+};
+
 // src/content/world.ts
 var worldData = {
   scale: 80,
@@ -9863,7 +10110,8 @@ var worldData = {
     FRUIT_DEFINITION,
     POTGOLD_DEFINITION,
     CORAL_DEFINITION,
-    VILLAGE_DEFINITION
+    VILLAGE_DEFINITION,
+    GOAT_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -9923,7 +10171,11 @@ var worldData = {
     CORAL_ANIMATION,
     HOUSE_EXPAND_ANIMATION,
     VILLAGE_ANIMATION,
-    SPACESHIP_ANIMATION
+    SPACESHIP_ANIMATION,
+    GOAT_ANIMATION,
+    GOAT_JUMP_ANIMATION,
+    GOAT_WAIT_ANIMATION,
+    GOAT_SLEEP_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -9938,6 +10190,7 @@ var worldData = {
     FRUIT,
     POTGOLD,
     CORAL,
+    HOBO,
     ...TEST_UNITS
   ],
   menu: [
@@ -9946,7 +10199,8 @@ var worldData = {
     COW_MENU,
     SQUIRREL_MENU,
     BEAVER_MENU,
-    VILLAGE_MENU
+    VILLAGE_MENU,
+    TURTLE_MENU
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -9968,7 +10222,8 @@ var worldData = {
     PRODUCTIVITY_RESEARCH,
     EXPANSION_RESEARCH,
     VILLAGE_RESEARCH,
-    SPACESHIP_RESEARCH
+    SPACESHIP_RESEARCH,
+    GOAT_RESEARCH
   ]
 };
 window.worldData = worldData;
@@ -9989,4 +10244,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=0D6A4DDAC138BB8164756e2164756e21
+//# debugId=5EA152C6C030389464756e2164756e21

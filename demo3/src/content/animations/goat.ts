@@ -1,40 +1,40 @@
 import type { Anim } from "../../definition/animation";
 
-export const TURTLE_ANIMATION: Anim = {
-  name: "turtle",
+export const GOAT_ANIMATION: Anim = {
+  name: "goat",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64],
   frames: [
-    114,
+    128,
   ],
 };
 
-export const TURTLE_WAIT_ANIMATION: Anim = {
-  name: "turtle_wait",
+export const GOAT_WAIT_ANIMATION: Anim = {
+  name: "goat_wait",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   mul: 20,
   frames: [
-    114, 115,
+    128, 129,
   ],
 };
 
-export const TURTLE_JUMP_ANIMATION: Anim = {
-  name: "turtle_jump",
+export const GOAT_JUMP_ANIMATION: Anim = {
+  name: "goat_jump",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
-  mul: 10,
+  mul: 2,
   frames: [
-    114, 115,
+    128, 130, 131, 132,
   ],
-  airFrames: [114],
+  airFrames: [130, 131, 132],
 };
 
-export const TURTLE_SLEEP_ANIMATION: Anim = {
-  name: "turtle_wait",
+export const GOAT_SLEEP_ANIMATION: Anim = {
+  name: "goat_sleep",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [
-    127
+    129
   ],
 };

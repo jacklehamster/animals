@@ -1,18 +1,17 @@
 import type { Elem } from "../../definition/elem";
 
-export const TURTLE_DEFINITION: Elem = {
-  name: "turtle",
+export const GOAT_DEFINITION: Elem = {
+  name: "goat",
   type: "unit",
-  hitpoints: 10,
-  maxHitPoints: 10,
+  hitpoints: 15,
+  maxHitPoints: 15,
   gameObject: {
     size: [1.8, 1.8] as [number, number],
-    speed: 0.03,
+    speed: 0.06,
   },
   animation: {
-    name: "turtle",
+    name: "goat",
   },
-  worker: true,
   onHover: {
     hideCursor: true,
     indic: {
@@ -20,7 +19,7 @@ export const TURTLE_DEFINITION: Elem = {
     },
   },
   selected: {
-    animation: "turtle_wait",
+    animation: "goat_wait",
     indic: {
       animation: "indic",
     },
@@ -29,24 +28,33 @@ export const TURTLE_DEFINITION: Elem = {
       selectedAnimation: "blue_selected",
     },
   },
+  clearCloud: true,
   move: {
-    animation: "turtle_jump",
+    animation: "goat_jump",
+    distance: 1,
     disabled: {
       harvesting: true,
     },
   },
+  harvest: {
+    animation: "goat_sleep",
+  },
   shadow: {
     animation: "shadow",
   },
-  clearCloud: true,
-  dynamic: true,
+  worker: true,
   turn: {
     moves: 1,
     attacks: 1,
+    actions: 1,
   },
   attack: {
-    damage: 1,
-    defense: 4,
+    damage: 2,
+    defense: 1,
   },
-  canCrossTerrains: ["lake"],
+  advise: {
+    name: "goat",
+    message: "Goats can climb on mountains."
+  },
+  canCrossTerrains: ["mountain"],
 };

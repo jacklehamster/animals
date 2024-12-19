@@ -84,6 +84,16 @@ import { VILLAGE_RESEARCH } from "./research/village";
 import { VILLAGE_MENU } from "./menu/village-menu";
 import { SPACESHIP_RESEARCH } from "./research/spaceship";
 import { SPACESHIP_ANIMATION } from "./animations/spaceship";
+import { TURTLE_MENU } from "./menu/turtle-menu";
+import { HOBO } from "./elems/barbarian";
+import { GOAT_ANIMATION, GOAT_JUMP_ANIMATION, GOAT_SLEEP_ANIMATION, GOAT_WAIT_ANIMATION } from "./animations/goat";
+import { GOAT_DEFINITION } from "./definitions/goat";
+import { PANDA_ANIMATION, PANDA_JUMP_ANIMATION, PANDA_WAIT_ANIMATION } from "./animations/panda";
+import { PANDA_DEFINITION } from "./definitions/panda";
+import { RABBIT_ANIMATION, RABBIT_JUMP_ANIMATION, RABBIT_WAIT_ANIMATION } from "./animations/rabbit";
+import { RABBIT_DEFINITION } from "./definitions/rabbit";
+import { PIG_ANIMATION, PIG_JUMP_ANIMATION, PIG_SLEEP_ANIMATION, PIG_WAIT_ANIMATION } from "./animations/pig";
+import { PIG_DEFINITION } from "./definitions/pig";
 
 export const worldData: Scene = {
   scale: 80,
@@ -147,6 +157,10 @@ export const worldData: Scene = {
     POTGOLD_DEFINITION,
     CORAL_DEFINITION,
     VILLAGE_DEFINITION,
+    GOAT_DEFINITION,
+    PANDA_DEFINITION,
+    RABBIT_DEFINITION,
+    PIG_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -207,6 +221,20 @@ export const worldData: Scene = {
     HOUSE_EXPAND_ANIMATION,
     VILLAGE_ANIMATION,
     SPACESHIP_ANIMATION,
+    GOAT_ANIMATION,
+    GOAT_JUMP_ANIMATION,
+    GOAT_WAIT_ANIMATION,
+    GOAT_SLEEP_ANIMATION,
+    PANDA_ANIMATION,
+    PANDA_JUMP_ANIMATION,
+    PANDA_WAIT_ANIMATION,
+    RABBIT_ANIMATION,
+    RABBIT_WAIT_ANIMATION,
+    RABBIT_JUMP_ANIMATION,
+    PIG_ANIMATION,
+    PIG_WAIT_ANIMATION,
+    PIG_JUMP_ANIMATION,
+    PIG_SLEEP_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -221,6 +249,7 @@ export const worldData: Scene = {
     FRUIT,
     POTGOLD,
     CORAL,
+    HOBO,
     ...TEST_UNITS,
   ],
   menu: [
@@ -230,6 +259,7 @@ export const worldData: Scene = {
     SQUIRREL_MENU,
     BEAVER_MENU,
     VILLAGE_MENU,
+    TURTLE_MENU,
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -240,7 +270,6 @@ export const worldData: Scene = {
   },
   research: [
     CANINE_RESEARCH,
-    WOLVES_RESEARCH,
     BOVINE_RESEARCH,
     SQUIRREL_RESEARCH,
     OVICULTURE_RESEARCH,
@@ -252,18 +281,19 @@ export const worldData: Scene = {
     EXPANSION_RESEARCH,
     VILLAGE_RESEARCH,
     SPACESHIP_RESEARCH,
+    GOAT_RESEARCH,
+    PANDA_RESEARCH,
+    RABBIT_RESEARCH,
 
-    // GOAT_RESEARCH,
+    // WOLVES_RESEARCH,
     // SKUNK_RESEARCH,
     // HORSE_RESEARCH,
     // MONKEY_RESEARCH,
-    // PANDA_RESEARCH,
     // PIG_RESEARCH,
     // ELEPHANT_RESEARCH,
     // OWL_RESEARCH,
     // LAMA_RESEARCH,
     // EAGLE_RESEARCH,
-    // RABBIT_RESEARCH,
     // CROCODILE_RESEARCH,
   ],
 };

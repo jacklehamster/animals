@@ -9,7 +9,7 @@ export const SKUNK_RESEARCH: Research = {
     padding: [2, 2],
     frames: [51],
   },
-  dependency: ["squirrel"],
+  dependency: ["rabbit"],
   cost: 40,
   recommended: 7,
 };
