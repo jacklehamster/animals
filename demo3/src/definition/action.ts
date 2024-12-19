@@ -13,4 +13,5 @@ export type Action = {
   clearFogOfWar?: boolean;
   updateHouseCloud?: boolean;
   spaceship?: boolean;
+  heal?: number;
 };

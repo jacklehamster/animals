@@ -29,6 +29,9 @@ export const TURTLE_DEFINITION: Elem = {
       selectedAnimation: "blue_selected",
     },
   },
+  harvest: {
+    animation: "turtle_sleep",
+  },
   move: {
     animation: "turtle_jump",
     disabled: {

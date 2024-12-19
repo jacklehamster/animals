@@ -1,4 +1,25 @@
 var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __toCommonJS = (from) => {
+  const moduleCache = __toCommonJS.moduleCache ??= new WeakMap;
+  var cached = moduleCache.get(from);
+  if (cached)
+    return cached;
+  var to = __defProp({}, "__esModule", { value: true });
+  var desc = { enumerable: false };
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key))
+        __defProp(to, key, {
+          get: () => from[key],
+          enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable
+        });
+  }
+  moduleCache.set(from, to);
+  return to;
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, {
@@ -8,6 +29,83 @@ var __export = (target, all) => {
       set: (newValue) => all[name] = () => newValue
     });
 };
+var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
+
+// node_modules/zzfx/ZzFX.js
+var exports_ZzFX = {};
+__export(exports_ZzFX, {
+  zzfx: () => {
+    {
+      return zzfx2;
+    }
+  },
+  ZZFX: () => {
+    {
+      return ZZFX;
+    }
+  }
+});
+function zzfx2(...parameters) {
+  return ZZFX.play(...parameters);
+}
+var ZZFX;
+var init_ZzFX = __esm(() => {
+  ZZFX = {
+    volume: 0.3,
+    sampleRate: 44100,
+    x: new AudioContext,
+    play: function(...parameters) {
+      return this.playSamples(this.buildSamples(...parameters));
+    },
+    playSamples: function(...samples) {
+      const buffer = this.x.createBuffer(samples.length, samples[0].length, this.sampleRate), source = this.x.createBufferSource();
+      samples.map((d, i) => buffer.getChannelData(i).set(d));
+      source.buffer = buffer;
+      source.connect(this.x.destination);
+      source.start();
+      return source;
+    },
+    buildSamples: function(volume = 1, randomness = 0.05, frequency = 220, attack = 0, sustain = 0, release = 0.1, shape = 0, shapeCurve = 1, slide = 0, deltaSlide = 0, pitchJump = 0, pitchJumpTime = 0, repeatTime = 0, noise = 0, modulation = 0, bitCrush = 0, delay = 0, sustainVolume = 1, decay = 0, tremolo = 0, filter = 0) {
+      let PI2 = Math.PI * 2, sign2 = (v) => v < 0 ? -1 : 1, sampleRate = this.sampleRate, startSlide = slide *= 500 * PI2 / sampleRate / sampleRate, startFrequency = frequency *= (1 + randomness * 2 * Math.random() - randomness) * PI2 / sampleRate, b = [], t = 0, tm = 0, i = 0, j = 1, r = 0, c = 0, s = 0, f, length, quality = 2, w = PI2 * Math.abs(filter) * 2 / sampleRate, cos = Math.cos(w), alpha = Math.sin(w) / 2 / quality, a0 = 1 + alpha, a1 = -2 * cos / a0, a2 = (1 - alpha) / a0, b0 = (1 + sign2(filter) * cos) / 2 / a0, b1 = -(sign2(filter) + cos) / a0, b2 = b0, x2 = 0, x1 = 0, y2 = 0, y1 = 0;
+      attack = attack * sampleRate + 9;
+      decay *= sampleRate;
+      sustain *= sampleRate;
+      release *= sampleRate;
+      delay *= sampleRate;
+      deltaSlide *= 500 * PI2 / sampleRate ** 3;
+      modulation *= PI2 / sampleRate;
+      pitchJump *= PI2 / sampleRate;
+      pitchJumpTime *= sampleRate;
+      repeatTime = repeatTime * sampleRate | 0;
+      volume *= this.volume;
+      for (length = attack + decay + sustain + release + delay | 0;i < length; b[i++] = s * volume) {
+        if (!(++c % (bitCrush * 100 | 0))) {
+          s = shape ? shape > 1 ? shape > 2 ? shape > 3 ? Math.sin(t * t) : Math.max(Math.min(Math.tan(t), 1), -1) : 1 - (2 * t / PI2 % 2 + 2) % 2 : 1 - 4 * Math.abs(Math.round(t / PI2) - t / PI2) : Math.sin(t);
+          s = (repeatTime ? 1 - tremolo + tremolo * Math.sin(PI2 * i / repeatTime) : 1) * sign2(s) * Math.abs(s) ** shapeCurve * (i < attack ? i / attack : i < attack + decay ? 1 - (i - attack) / decay * (1 - sustainVolume) : i < attack + decay + sustain ? sustainVolume : i < length - delay ? (length - i - delay) / release * sustainVolume : 0);
+          s = delay ? s / 2 + (delay > i ? 0 : (i < length - delay ? 1 : (length - i) / delay) * b[i - delay | 0] / 2 / volume) : s;
+          if (filter)
+            s = y1 = b2 * x2 + b1 * (x2 = x1) + b0 * (x1 = s) - a2 * y2 - a1 * (y2 = y1);
+        }
+        f = (frequency += slide += deltaSlide) * Math.cos(modulation * tm++);
+        t += f + f * noise * Math.sin(i ** 5);
+        if (j && ++j > pitchJumpTime) {
+          frequency += pitchJump;
+          startFrequency += pitchJump;
+          j = 0;
+        }
+        if (repeatTime && !(++r % repeatTime)) {
+          frequency = startFrequency;
+          slide = startSlide;
+          j = j || 1;
+        }
+      }
+      return b;
+    },
+    getNote: function(semitoneOffset = 0, rootNoteFrequency = 440) {
+      return rootNoteFrequency * 2 ** (semitoneOffset / 12);
+    }
+  };
+});
 
 // dist/littlejs.esm.min.js
 var exports_littlejs_esm_min = {};
@@ -6195,6 +6293,8 @@ class Thinker {
 }
 
 // src/core/manager.ts
+var { zzfx: zzfx3 } = (init_ZzFX(), __toCommonJS(exports_ZzFX));
+
 class Manager {
   scene;
   entries = new Map;
@@ -6594,10 +6694,12 @@ class Manager {
       return;
     }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOptionToLandOn(x, y)) {
+      zzfx3(...[, , 310, 0.01, 0.08, 0.06, , 0.5, 17, 3, , , , , , , , 0.65, 0.04, , -1486]);
       this.selected.moveTo(x, y);
       return;
     }
     if (this.selected?.canAttackAt(x, y) && this.selected.hasAttackOptionOn(x, y)) {
+      zzfx3(...[1.9, , 169, , 0.06, 0.19, 3, 1.7, -9, , , , , 0.7, , 0.3, 0.17, 0.69, 0.09]);
       this.selected.attackAt(x, y);
       return;
     }
@@ -6742,10 +6844,12 @@ class Manager {
     if (this.scene.turn) {
       this.setSelection(undefined);
       if (this.scene.turn.player < this.scene.players.length) {
+        zzfx3(...[0.6, , 326, 0.02, 0.01, 0.07, , 1.6, 2, , 179, 0.04, , 0.2, , , , 0.97, 0.01, , 133]);
         this.scene.turn.player++;
       } else {
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
+        zzfx3(...[, , 242, 0.01, 0.07, 0.12, , 1.7, , -49, 283, 0.06, , , , 0.1, , 0.52, 0.05]);
       }
       const player = this.getPlayer();
       if (this.scene.turn && player) {
@@ -7175,6 +7279,7 @@ class Manager {
       });
     }
     if (action.create && obj) {
+      zzfx3(...[1.1, , 153, 0.06, 0.19, 0.12, , 4, -7, , -68, 0.07, 0.09, , , , , 0.77, 0.16, 0.11]);
       const elem = JSON.parse(JSON.stringify(action.create));
       this.addSceneElemAt(elem, obj.px, obj.py, {
         owner: obj?.elem?.owner,
@@ -7185,20 +7290,24 @@ class Manager {
       this.setSelection(undefined);
     }
     if (action.level && obj?.elem) {
+      zzfx3(...[1.4, , 265, 0.08, 0.13, 0.45, , 0.8, , , -193, 0.07, 0.08, , , , 0.02, 0.98, 0.28, 0.43]);
       obj.updateLevel((obj.elem.level ?? 0) + action.level);
       obj.refreshLabel();
     }
     if (action.harvest && obj?.elem) {
+      zzfx3(...[, , 98, 0.03, 0.03, 0.13, , 3.5, 2, 86, , , , , , , , 0.65, 0.03, , -975]);
       obj.setHarvesting(true);
     }
     if (action.stopHarvest && obj?.elem) {
       obj.setHarvesting(false);
     }
     if (action.clearFogOfWar) {
+      zzfx3(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
       this.scene.clearFogOfWar = true;
       this.worldChanged = true;
     }
     if (action.updateHouseCloud) {
+      zzfx3(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
       await this.iterateRevealedCells(async (gameObject) => {
         if (gameObject.elem?.type === "house" && gameObject.elem?.owner === this.getPlayer()) {
           gameObject.clearedCloud = false;
@@ -7208,6 +7317,16 @@ class Manager {
     }
     if (action.spaceship) {
       await this.hud.showSpaceshipDialog();
+    }
+    if (action.heal && obj) {
+      zzfx3(...[, , 537, 0.01, 0.29, 0.21, 1, 0.2, 6, , , , 0.05, 0.2, , , , 0.5, 0.18]);
+      await this.iterateGridCell(obj?.px, obj?.py, async (cell) => {
+        if (cell.elem?.type === "unit" && cell.elem?.owner === this.getPlayer()) {
+          if (cell.elem.maxHitPoints) {
+            cell.elem.hitpoints = Math.min((cell.elem.hitpoints ?? 0) + (action.heal ?? 0), cell.elem.maxHitPoints);
+          }
+        }
+      });
     }
   }
 }
@@ -7556,6 +7675,47 @@ var COW_SLEEP_ANIMATION = {
   ]
 };
 
+// src/content/animations/pig.ts
+var PIG_ANIMATION = {
+  name: "pig",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    139
+  ]
+};
+var PIG_WAIT_ANIMATION = {
+  name: "pig_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    139,
+    140
+  ]
+};
+var PIG_JUMP_ANIMATION = {
+  name: "pig_jump",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 3,
+  frames: [
+    139,
+    141,
+    142
+  ],
+  airFrames: [141, 142]
+};
+var PIG_SLEEP_ANIMATION = {
+  name: "pig_sleep",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 10,
+  frames: [
+    143
+  ]
+};
+
 // src/content/menu/cow-menu.ts
 var COW_MENU = {
   name: "cow",
@@ -7619,6 +7779,27 @@ var COW_MENU = {
           deselect: true,
           create: {
             definition: "bull",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    },
+    {
+      name: "pig",
+      ...PIG_SLEEP_ANIMATION,
+      label: "devolve into\npig",
+      researchNeeded: ["pig"],
+      resourceCost: {
+        gold: 20
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "pig",
             selfSelect: true
           }
         },
@@ -7820,7 +8001,7 @@ var TURTLE_JUMP_ANIMATION = {
   airFrames: [114]
 };
 var TURTLE_SLEEP_ANIMATION = {
-  name: "turtle_wait",
+  name: "turtle_sleep",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64],
   frames: [
@@ -9640,6 +9821,9 @@ var TURTLE_DEFINITION = {
       selectedAnimation: "blue_selected"
     }
   },
+  harvest: {
+    animation: "turtle_sleep"
+  },
   move: {
     animation: "turtle_jump",
     disabled: {
@@ -10263,47 +10447,6 @@ var RABBIT_DEFINITION = {
   canCrossTerrains: ["tree"]
 };
 
-// src/content/animations/pig.ts
-var PIG_ANIMATION = {
-  name: "pig",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  frames: [
-    139
-  ]
-};
-var PIG_WAIT_ANIMATION = {
-  name: "pig_wait",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 20,
-  frames: [
-    139,
-    140
-  ]
-};
-var PIG_JUMP_ANIMATION = {
-  name: "pig_jump",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 3,
-  frames: [
-    139,
-    141,
-    142
-  ],
-  airFrames: [141, 142]
-};
-var PIG_SLEEP_ANIMATION = {
-  name: "pig_sleep",
-  imageSource: "./assets/tiles.png",
-  spriteSize: [64, 64],
-  mul: 10,
-  frames: [
-    143
-  ]
-};
-
 // src/content/definitions/pig.ts
 var PIG_DEFINITION = {
   name: "pig",
@@ -10571,4 +10714,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=D9F9ECFE965CBF0C64756e2164756e21
+//# debugId=CE034887982E726E64756e2164756e21

@@ -31,7 +31,7 @@ export const TURTLE_JUMP_ANIMATION: Anim = {
 };
 
 export const TURTLE_SLEEP_ANIMATION: Anim = {
-  name: "turtle_wait",
+  name: "turtle_sleep",
   imageSource: "./assets/tiles.png",
   spriteSize: [64, 64] as [number, number],
   frames: [

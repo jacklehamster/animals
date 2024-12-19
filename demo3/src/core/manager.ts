@@ -13,7 +13,7 @@ import { DEBUG, READY } from '../content/constant';
 import type { Research } from '../definition/research';
 import type { QuickAction } from '../definition/quick-actions';
 import type { Action } from '../definition/action';
-
+const { zzfx } = require("zzfx");
 
 interface Entry {
   gameObject: Set<GameObject>;
@@ -458,10 +458,12 @@ export class Manager {
       return;
     }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOptionToLandOn(x, y)) {
+      zzfx(...[, , 310, .01, .08, .06, , .5, 17, 3, , , , , , , , .65, .04, , -1486]); // Jump 28
       this.selected.moveTo(x, y);
       return;
     }
     if (this.selected?.canAttackAt(x, y) && this.selected.hasAttackOptionOn(x, y)) {
+      zzfx(...[1.9, , 169, , .06, .19, 3, 1.7, -9, , , , , .7, , .3, .17, .69, .09]); // Hit 30
       this.selected.attackAt(x, y);
       return;
     }
@@ -618,10 +620,12 @@ export class Manager {
       this.setSelection(undefined);
       //  Change player
       if (this.scene.turn.player < this.scene.players.length) {
+        zzfx(...[.6, , 326, .02, .01, .07, , 1.6, 2, , 179, .04, , .2, , , , .97, .01, , 133]); // Pickup 84        
         this.scene.turn.player++;
       } else {
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
+        zzfx(...[, , 242, .01, .07, .12, , 1.7, , -49, 283, .06, , , , .1, , .52, .05]); // Pickup 25
       }
       const player = this.getPlayer();
       if (this.scene.turn && player) {
@@ -1119,6 +1123,7 @@ export class Manager {
       });
     }
     if (action.create && obj) {
+      zzfx(...[1.1, , 153, .06, .19, .12, , 4, -7, , -68, .07, .09, , , , , .77, .16, .11]); // Powerup 47
       const elem: Elem = JSON.parse(JSON.stringify(action.create));
       this.addSceneElemAt(elem, obj.px, obj.py, {
         owner: obj?.elem?.owner,
@@ -1129,20 +1134,24 @@ export class Manager {
       this.setSelection(undefined);
     }
     if (action.level && obj?.elem) {
+      zzfx(...[1.4, , 265, .08, .13, .45, , .8, , , -193, .07, .08, , , , .02, .98, .28, .43]); // Powerup 83
       obj.updateLevel((obj.elem.level ?? 0) + action.level)
       obj.refreshLabel();
     }
     if (action.harvest && obj?.elem) {
+      zzfx(...[, , 98, .03, .03, .13, , 3.5, 2, 86, , , , , , , , .65, .03, , -975]); // Jump 72
       obj.setHarvesting(true);
     }
     if (action.stopHarvest && obj?.elem) {
       obj.setHarvesting(false);
     }
     if (action.clearFogOfWar) {
+      zzfx(...[.7, , 369, , .19, .38, 1, 1.4, , , 208, .07, .06, , , , , .96, .29, , 309]); // Powerup 61
       this.scene.clearFogOfWar = true;
       this.worldChanged = true;
     }
     if (action.updateHouseCloud) {
+      zzfx(...[.7, , 369, , .19, .38, 1, 1.4, , , 208, .07, .06, , , , , .96, .29, , 309]); // Powerup 61
       await this.iterateRevealedCells(async (gameObject) => {
         if (gameObject.elem?.type === "house" && gameObject.elem?.owner === this.getPlayer()) {
           gameObject.clearedCloud = false;
@@ -1152,6 +1161,16 @@ export class Manager {
     }
     if (action.spaceship) {
       await this.hud.showSpaceshipDialog();
+    }
+    if (action.heal && obj) {
+      zzfx(...[, , 537, .01, .29, .21, 1, .2, 6, , , , .05, .2, , , , .5, .18]); // Powerup 65
+      await this.iterateGridCell(obj?.px, obj?.py, async (cell: GameObject) => {
+        if (cell.elem?.type === "unit" && cell.elem?.owner === this.getPlayer()) {
+          if (cell.elem.maxHitPoints) {
+            cell.elem.hitpoints = Math.min((cell.elem.hitpoints ?? 0) + (action.heal ?? 0), (cell.elem.maxHitPoints));
+          }
+        }
+      });
     }
   }
 }
