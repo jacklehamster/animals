@@ -51,7 +51,7 @@ import { HOBO_DEFINITION } from "./definitions/hobo";
 import { SHEEP } from "./elems/sheep";
 import { CABANA } from "./elems/cabana";
 import { HOBO_ANIMATION, HOBO_JUMP_ANIMATION, HOBO_WAIT_ANIMATION } from "./animations/hobo";
-import { SQUIRREL_ANIMATION, SQUIRREL_ATTACK_ANIMATION, SQUIRREL_JUMP_ANIMATION, SQUIRREL_WAIT_ANIMATION } from "./animations/squirrel";
+import { SQUIRREL_ANIMATION, SQUIRREL_ATTACK_ANIMATION, SQUIRREL_JUMP_ANIMATION, SQUIRREL_SLEEP_ANIMATION, SQUIRREL_WAIT_ANIMATION } from "./animations/squirrel";
 import { SQUIRREL_DEFINITION } from "./definitions/squirrel";
 import { TEST_UNITS } from "./elems/test-units";
 import { SOLDIER_ANIMATION } from "./animations/soldier";
@@ -98,6 +98,12 @@ import { PIG_DEFINITION } from "./definitions/pig";
 export const worldData: Scene = {
   scale: 80,
   // clearFogOfWar: true,
+  endTurnAnim: {
+    name: "anim",
+    imageSource: "./assets/bookie.png",
+    spriteSize: [400, 400] as [number, number],
+    frames: [0, 1, 2, 3, 4],
+  },
   quickActions: [
     {
       name: "wait",
@@ -130,14 +136,15 @@ export const worldData: Scene = {
     "house": 4,
     "unit": 4,
     "decor": 4,
-    "goodies": 5,
+    "goodies": 4,
     "cloud": 6,
     "cursor": 7,
   },
   colayers: {
     "house": 1,
     "decor": 2,
-    "unit": 3,
+    "goodies": 3,
+    "unit": 4,
   },
   definitions: [
     HOBO_DEFINITION,
@@ -204,6 +211,7 @@ export const worldData: Scene = {
     SQUIRREL_WAIT_ANIMATION,
     SQUIRREL_JUMP_ANIMATION,
     SQUIRREL_ATTACK_ANIMATION,
+    SQUIRREL_SLEEP_ANIMATION,
     ...Object.values(SOLDIER_ANIMATION),
     NUT_ANIMATION,
     BEAVER_ANIMATION,
@@ -284,12 +292,12 @@ export const worldData: Scene = {
     GOAT_RESEARCH,
     PANDA_RESEARCH,
     RABBIT_RESEARCH,
+    PIG_RESEARCH,
 
     // WOLVES_RESEARCH,
     // SKUNK_RESEARCH,
     // HORSE_RESEARCH,
     // MONKEY_RESEARCH,
-    // PIG_RESEARCH,
     // ELEPHANT_RESEARCH,
     // OWL_RESEARCH,
     // LAMA_RESEARCH,

@@ -17,7 +17,7 @@ export const CABANA_DEFINITION: Elem = {
   },
   rewards: [
     { gold: [20, 40] },
-    // { invention: 1 },
+    { invention: 1 },
     {
       spawnFoes: {
         count: [1, 2],

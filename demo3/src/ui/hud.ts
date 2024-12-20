@@ -73,7 +73,7 @@ export class Hud {
     this.buttonsOverlay.style.right = "0";
     this.buttonsOverlay.style.zIndex = "100";
     this.buttonsOverlay.style.position = "absolute";
-    this.buttonsOverlay.style.display = "flex";
+    // this.buttonsOverlay.style.display = "flex";
     this.buttonsOverlay.style.flexDirection = "column";
     this.buttonsOverlay.style.justifyContent = "right";
     this.buttonsOverlay.style.gap = "10px";
@@ -242,6 +242,7 @@ export class Hud {
     this.initializeErrorBanner();
     this.setupMusic();
     this.setupQuickActions();
+    this.setupZoom();
   }
 
   setupMusic() {
@@ -270,12 +271,14 @@ export class Hud {
     }
     if (this.manager.getPlayer()) {
       this.endButton.innerHTML = `<u style='color: blue'>E</u>nd turn ${this.manager.getTurn()}`;
-      this.refreshResources();
-      this.refreshTax();
+      await this.refreshResources();
+      await this.refreshTax();
       this.refreshButtons();
-      this.refreshResearchInfo();
+      await this.refreshResearchInfo();
       this.ui.style.display = "block";
       this.updated = true;
+      this.endButton.disabled = !!this.manager.isAiPlayer(this.manager.getPlayer())
+        || this.dialog.style.display !== "none";
     }
   }
 
@@ -315,10 +318,11 @@ export class Hud {
       taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
       taxKnob.style.width = "60px";
       taxKnob.style.marginTop = "20px";
-      taxKnob.addEventListener("input", e => {
+      taxKnob.addEventListener("input", async e => {
         this.manager.updateTaxValue(player, parseInt(taxKnob.value));
-        this.refreshTax();
-        this.refreshResearchInfo();
+        const previousBrain = this.manager.getPlayerResource("brain", this.manager.getPlayer());
+        await this.refreshTax();
+        await this.refreshResearchInfo();
       });
       taxKnob.addEventListener("mouseover", e => {
         this.onKnob = true;
@@ -364,7 +368,7 @@ export class Hud {
         icon.style.backgroundColor = "rgba(255, 50, 255, 0.5)";
         setTimeout(() => {
           icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-        }, 1500);
+        }, 500);
       }
       const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement ?? (this.resourceOverlay.appendChild(document.createElement("div")));
       taxText.id = `${resource}-tax`;
@@ -424,20 +428,89 @@ export class Hud {
     });
   }
 
-  setHudButtons() {
-    const nextButton = this.buttonsOverlay.appendChild(this.nextButton);
-    nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
-    nextButton.id = "nextButton";
-    nextButton.style.width = "150px";
-    nextButton.addEventListener("click", e => {
-      this.manager.selectNext();
+  turnPage() {
+  }
+
+  setupZoom() {
+    const zoomGroup = this.ui.appendChild(document.createElement("div"));
+    zoomGroup.style.display = "flex";
+    zoomGroup.style.flexDirection = "column";
+    zoomGroup.style.justifyContent = "center";
+    zoomGroup.style.alignItems = "center";
+    zoomGroup.style.gap = "10px";
+    zoomGroup.style.position = "absolute";
+    zoomGroup.style.top = "50%";
+    zoomGroup.style.right = "0px";
+    zoomGroup.style.zIndex = "100";
+
+    const zoomLabel = zoomGroup.appendChild(document.createElement("label"));
+    zoomLabel.textContent = "zoom";
+    zoomLabel.htmlFor = "zoom";
+    zoomLabel.style.fontWeight = "bold";
+
+    const zoomKnob = zoomGroup.appendChild(document.createElement("input"));
+    zoomKnob.id = "zoom";
+    zoomKnob.type = "range";
+    zoomKnob.min = "40";
+    zoomKnob.max = "200";
+    zoomKnob.step = "5";
+    zoomKnob.value = "80";
+    zoomKnob.style.width = "100px";
+    zoomKnob.style.marginTop = "40px";
+    zoomKnob.style.transform = "rotate(90deg)";
+    zoomKnob.addEventListener("input", e => {
+      setCameraScale(parseInt(zoomKnob.value));
     });
-    nextButton.style.display = "none";
+    zoomKnob.addEventListener("mouseover", e => {
+      this.onKnob = true;
+    });
+    zoomKnob.addEventListener("mouseout", e => {
+      this.onKnob = false;
+    });
+  }
+
+  setHudButtons() {
+    //  add animation above end turn
+    if (this.manager.scene.endTurnAnim) {
+      const animation = this.buttonsOverlay.appendChild(document.createElement("div"));
+      animation.style.position = "absolute";
+      animation.style.marginTop = "-140px";
+      animation.style.pointerEvents = "none";
+      const { imageSource, spriteSize, frames, padding } = this.manager.scene.endTurnAnim;
+      const icon = animation.appendChild(document.createElement("div"));
+      icon.style.backgroundImage = `url(${imageSource})`;
+      icon.style.width = `${spriteSize[0]}px`;
+      icon.style.height = `${spriteSize[1]}px`;
+      icon.style.zIndex = "100";
+      icon.style.pointerEvents = "none";
+      icon.style.transform = "scale(0.3) translate(-100%, -100%)";
+      const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
+      const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
+      let animationFrame: number;
+      let animStart = 0;
+      const animateIcon = () => {
+        let frameIndex = Math.floor((performance.now() - animStart) / 100) % frames.length;
+        if (frameIndex === frames.length - 1) {
+          frameIndex = 0;
+        } else {
+          animationFrame = requestAnimationFrame(animateIcon);
+        }
+        const frame = frames[frameIndex];
+        icon.style.backgroundPosition = `${-spriteWidth * (frame % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
+      };
+      this.turnPage = () => {
+        cancelAnimationFrame(animationFrame);
+        animStart = performance.now();
+        animateIcon();
+      }
+    }
+
 
     const endButton = this.buttonsOverlay.appendChild(this.endButton);
     endButton.style.width = "150px";
     endButton.id = "endButton";
     endButton.addEventListener("click", e => {
+      endButton.disabled = true;
       this.stopFlashEndTurn();
       this.manager.gotoNextTurn();
     });
@@ -449,6 +522,15 @@ export class Hud {
       e.preventDefault();
       e.stopPropagation();
     });
+
+    const nextButton = this.buttonsOverlay.appendChild(this.nextButton);
+    nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
+    nextButton.id = "nextButton";
+    nextButton.style.width = "150px";
+    nextButton.addEventListener("click", e => {
+      this.manager.selectNext();
+    });
+    nextButton.style.display = "none";
 
     const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
     const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
@@ -466,36 +548,6 @@ export class Hud {
         this.manager.checkForAnyMove();
       }
     });
-
-    const zoomGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
-    zoomGroup.style.display = "flex";
-    zoomGroup.style.flexDirection = "row";
-    zoomGroup.style.justifyContent = "center";
-    zoomGroup.style.alignItems = "center";
-    zoomGroup.style.gap = "10px";
-
-    const zoomLabel = zoomGroup.appendChild(document.createElement("label"));
-    zoomLabel.textContent = "zoom";
-    zoomLabel.htmlFor = "zoom";
-
-    const zoomKnob = zoomGroup.appendChild(document.createElement("input"));
-    zoomKnob.id = "zoom";
-    zoomKnob.type = "range";
-    zoomKnob.min = "40";
-    zoomKnob.max = "200";
-    zoomKnob.step = "5";
-    zoomKnob.value = "80";
-    zoomKnob.style.width = "100px";
-    zoomKnob.style.marginTop = "20px";
-    zoomKnob.addEventListener("input", e => {
-      setCameraScale(parseInt(zoomKnob.value));
-    });
-    zoomKnob.addEventListener("mouseover", e => {
-      this.onKnob = true;
-    });
-    zoomKnob.addEventListener("mouseout", e => {
-      this.onKnob = false;
-    });
   }
 
   clear() {
@@ -504,9 +556,10 @@ export class Hud {
   }
 
   async showSelected(obj?: GameObject) {
-    const menu = this.manager.getMenu(obj?.elem?.name);
+    const isAi = obj && this.manager.isAiPlayer(obj.elem?.owner);
+    const menu = isAi ? undefined : this.manager.getMenu(obj?.elem?.name);
     this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
-    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions ? "-100px" : menu?.items.length ? "100px" : "0";
+    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi ? "-100px" : menu?.items.length ? "100px" : "0";
     this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
 
@@ -921,6 +974,7 @@ export class Hud {
       researchImage.style.width = `${spriteSize[0]}px`;
       researchImage.style.height = `${spriteSize[1]}px`;
       researchImage.style.opacity = "1";
+      researchImage.style.imageRendering = "pixelated";
       const cols = 30;
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
       const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
@@ -1002,7 +1056,8 @@ export class Hud {
     if (music) {
       this.playMusic();
     }
-    return new Promise(resolve => {
+    return new Promise(async resolve => {
+      await new Promise<void>(resolve => setTimeout(resolve, 1000));
       this.blocker.addEventListener("click", () => {
         speechSynthesis.cancel();
         if (!READY) {
@@ -1180,6 +1235,7 @@ export class Hud {
           rec.style.fontSize = "8pt";
           rec.style.color = "gold";
           rec.style.marginLeft = "10px";
+          rec.style.marginTop = "3px";
           researchDiv.style.backgroundColor = "rgba(70, 60, 0, 1)";
         }
 
@@ -1223,15 +1279,21 @@ export class Hud {
   async refreshResearchInfo() {
     const player = this.manager.getPlayer();
     const research: Research | undefined = this.manager.getResearchInfo(player);
-    this.researchInfoDiv.innerHTML = "";
+    // this.researchInfoDiv.innerHTML = "";
     if (!research) {
       this.researchInfoDiv.style.display = "none";
       return;
     }
+    this.researchInfoDiv.classList.add("research-flash-temp");
+    setTimeout(() => {
+      this.researchInfoDiv.classList.remove("research-flash-temp");
+    }, 1000);
+
     const researched = this.manager.isResearched(research.name, player);
     this.researchInfoDiv.style.display = "block";
     const { imageSource, spriteSize, frames, padding } = research.icon;
-    const icon = this.researchInfoDiv.appendChild(document.createElement("div"));
+    const icon: HTMLDivElement = this.researchInfoDiv.querySelector("#researchIcon") ?? this.researchInfoDiv.appendChild(document.createElement("div"));
+    icon.id = "researchIcon";
     icon.style.backgroundImage = `url(${imageSource})`;
     icon.style.width = `${spriteSize[0]}px`;
     icon.style.height = `${spriteSize[1]}px`;
@@ -1246,29 +1308,43 @@ export class Hud {
     };
     animateIcon();
     this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
-    const label = this.researchInfoDiv.appendChild(document.createElement("div"));
+    const label: HTMLDivElement = this.researchInfoDiv.querySelector("#researchLabel") ?? this.researchInfoDiv.appendChild(document.createElement("div"));
+    label.id = "researchLabel";
     label.innerText = research.name;
     label.style.marginTop = "-30px";
     label.style.textAlign = "center";
     label.style.fontSize = "10pt";
     label.style.color = "white";
-    // const desc = this.researchInfoDiv.appendChild(document.createElement("div"));
-    // desc.innerText = research.description ?? "";
-    // desc.style.textAlign = "center";
-    // desc.style.fontSize = "8pt";
-    // desc.style.color = "silver";
 
-    const turnDiv = this.researchInfoDiv.appendChild(document.createElement("div"));
+    const turnDiv: HTMLDivElement = this.researchInfoDiv.querySelector("#researchTurns") ?? this.researchInfoDiv.appendChild(document.createElement("div"));
+    turnDiv.id = "researchTurns";
     const globalResources = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const brainsPerTurn = globalResources.brain;
     turnDiv.style.position = "absolute";
     turnDiv.style.top = "10px";
     turnDiv.style.right = "10px";
     turnDiv.style.color = researched ? "#00ffff" : !brainsPerTurn ? "#ff0000" : "silver";
-    turnDiv.style.fontSize = "8pt";
+    turnDiv.style.fontSize = "10pt";
 
     const currentBrains = this.manager.getPlayerResource("brain", this.manager.getPlayer());
     const numTurns = Math.max(0, Math.ceil((research.cost - currentBrains) / brainsPerTurn));
     turnDiv.textContent = researched ? `researched` : !brainsPerTurn ? "research halted" : `${numTurns} turns`;
+
+    const percentage = researched ? 100 : Math.min(100, Math.max(0, Math.floor((currentBrains / research.cost) * 100)));
+    //  use percentage to show progress bar on the researchInfoDiv
+    const progress: HTMLDivElement = this.researchInfoDiv.querySelector("#researchProgress") ?? this.researchInfoDiv.appendChild(document.createElement("div"));
+    progress.id = "researchProgress";
+    progress.style.position = "absolute";
+    progress.style.bottom = "-10px";
+    progress.style.left = "0";
+    progress.style.width = "100%";
+    progress.style.height = "10px";
+    progress.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    const progressBar: HTMLDivElement = this.researchInfoDiv.querySelector("#progressBar") ?? progress.appendChild(document.createElement("div"));
+    progressBar.id = "progressBar";
+    progressBar.style.width = `${percentage}%`;
+    progressBar.style.height = "100%";
+    progressBar.style.transition = "width 0.5s, background-color 0.2s";
+    progressBar.style.backgroundColor = `rgba(0, ${255 * percentage / 100}, 255, 1)`;
   }
 }

@@ -124,4 +124,5 @@ export interface Elem {
   adviseOnDeselect?: Advise;
   disableQuickActions?: boolean;
   maxLevel?: number;
+  medalOnDeselect?: string;
 }

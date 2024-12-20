@@ -13,6 +13,7 @@ import { DEBUG, READY } from '../content/constant';
 import type { Research } from '../definition/research';
 import type { QuickAction } from '../definition/quick-actions';
 import type { Action } from '../definition/action';
+import { Medals } from './medals';
 const { zzfx } = require("zzfx");
 
 interface Entry {
@@ -43,6 +44,7 @@ export class Manager {
   lastUnit: GameObject | undefined;
   lastHovered?: GameObject | undefined;
   advise: Set<string> = new Set();
+  medals = new Medals();
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
@@ -493,6 +495,9 @@ export class Manager {
       this.advise.add(previousSelected.elem.adviseOnDeselect.name);
       await this.hud.showDialog(previousSelected.elem.adviseOnDeselect.message, previousSelected.elem.adviseOnDeselect.music, previousSelected.elem.adviseOnDeselect.voice);
     }
+    if (previousSelected?.elem?.medalOnDeselect) {
+      this.medals.unlock(previousSelected.elem.medalOnDeselect);
+    }
 
     //  select new
     if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
@@ -626,6 +631,7 @@ export class Manager {
         zzfx(...[.6, , 326, .02, .01, .07, , 1.6, 2, , 179, .04, , .2, , , , .97, .01, , 133]); // Pickup 84        
         this.scene.turn.player++;
       } else {
+        this.hud.turnPage();
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
         zzfx(...[, , 242, .01, .07, .12, , 1.7, , -49, 283, .06, , , , .1, , .52, .05]); // Pickup 25
@@ -912,7 +918,7 @@ export class Manager {
       let include = false;
       if (this.selected === gameObject) {
         include = true;
-      } else if (await gameObject.canAct() && this.isRevealed(gameObject.px, gameObject.py)) {
+      } else if (await gameObject.canAct()) {
         if (gameObject.elem?.type === "unit"
           && !gameObject.elem?.harvesting && !gameObject.elem?.waiting) {
           include = true;
@@ -1171,6 +1177,7 @@ export class Manager {
         if (cell.elem?.type === "unit" && cell.elem?.owner === this.getPlayer()) {
           if (cell.elem.maxHitPoints) {
             cell.elem.hitpoints = Math.min((cell.elem.hitpoints ?? 0) + (action.heal ?? 0), (cell.elem.maxHitPoints));
+            cell.updateLabel(this.showLabels);
           }
         }
       });

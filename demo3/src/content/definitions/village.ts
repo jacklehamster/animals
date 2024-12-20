@@ -42,4 +42,5 @@ export const VILLAGE_DEFINITION: Elem = {
     message: "Villages hold more population and can produce more resources.",
   },
   clearCloud: true,
+  medalOnDeselect: "First Village",
 };

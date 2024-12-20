@@ -78,7 +78,7 @@
         cursor: pointer;
       }
       button:hover {
-        background-color: #f1f100;
+        border-color: #f1f100;
       }
       button {
         border: 2px solid #000;
@@ -99,11 +99,26 @@
         }
       }
 
+      @keyframes research-flash {
+        0% {
+          background-color: rgba(0, 0, 0, 0.7);
+        }
+        50% {
+          background-color: rgba(0, 0, 255, 0.7);
+        }
+        100% {
+          background-color: rgba(0, 0, 0, 0.7);
+        }
+      }
+
       .flash {
         animation: flash 1s infinite;
       }
       .flash-temp {
         animation: flash 1s 1;
+      }
+      .research-flash-temp {
+        animation: research-flash 1s 1;
       }
       .hidden {
         opacity: 0;

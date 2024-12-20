@@ -1,6 +1,7 @@
 import type { Anim } from "./animation";
 import type { Elem } from "./elem";
-import type { Menu, MenuItem } from "./menu";
+import type { Medal } from "./medal";
+import type { Menu } from "./menu";
 import type { PlayerInfo } from "./player-info";
 import type { QuickAction } from "./quick-actions";
 import type { Research } from "./research";
@@ -27,4 +28,6 @@ export interface Scene {
   };
   research: Research[];
   clearFogOfWar?: boolean;
+  medals?: Medal[];
+  endTurnAnim?: Anim;
 }

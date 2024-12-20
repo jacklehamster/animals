@@ -886,6 +886,9 @@ export class GameObject extends EngineObject {
         if (this.manager.isAiPlayer(this.elem?.owner)) {
           if (await this.canAct() && this.manager.isRevealed(this.px, this.py)) {
             this.manager.thinker?.think(this);
+          } else {
+            this.clearMoves();
+            this.doneMoving();
           }
           return;
         }

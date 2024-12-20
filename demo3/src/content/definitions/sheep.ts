@@ -47,7 +47,7 @@ export const SHEEP_DEFINITION: Elem = {
   },
   advise: {
     name: "sheep",
-    message: "Your sheep is the foundation of your animal kingdom.\nUse it to build settlements.\nFind a good spot with plenty of resources.",
+    message: "Welcome great leader!\nYou have been chosen to lead the animal kingdom!\n\nYour sheep is the foundation for your civilization.\nUse them to build settlements.\nFind a good spot with plenty of resources.",
     music: true,
   },
 };
