@@ -30110,7 +30110,9 @@ class Manager {
       this.showLabels = false;
       this.cursor?.hide();
       this.updateLabels();
-      exports_littlejs_esm_min.overlayCanvas.style.cursor = "default";
+      if (exports_littlejs_esm_min.overlayCanvas) {
+        exports_littlejs_esm_min.overlayCanvas.style.cursor = "default";
+      }
     });
     window.addEventListener("focus", (e) => {
       this.hud.resourceOverlay.classList.remove("hidden");
@@ -30118,7 +30120,9 @@ class Manager {
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
-      exports_littlejs_esm_min.overlayCanvas.style.cursor = "";
+      if (exports_littlejs_esm_min.overlayCanvas) {
+        exports_littlejs_esm_min.overlayCanvas.style.cursor = "";
+      }
     });
     if (!READY) {
       this.hud.showDialog("This game is almost ready!.");
@@ -34516,4 +34520,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=0F11EB276739C26464756e2164756e21
+//# debugId=91F857C7D0506B2E64756e2164756e21

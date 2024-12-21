@@ -67,7 +67,9 @@ export class Manager {
       this.showLabels = false;
       this.cursor?.hide();
       this.updateLabels();
-      LittleJS.overlayCanvas.style.cursor = "default";
+      if (LittleJS.overlayCanvas) {
+        LittleJS.overlayCanvas.style.cursor = "default";
+      }
     });
     window.addEventListener("focus", (e) => {
       // this.hud.ui.classList.remove("hidden");
@@ -76,7 +78,9 @@ export class Manager {
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
-      LittleJS.overlayCanvas.style.cursor = "";
+      if (LittleJS.overlayCanvas) {
+        LittleJS.overlayCanvas.style.cursor = "";
+      }
     });
     if (!READY) {
       this.hud.showDialog("This game is almost ready!.");
