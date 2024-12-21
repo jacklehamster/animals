@@ -1,5 +1,5 @@
 import { newgroundsInit } from "../lib/external/newgrounds";
-import { NewgroundsMedal } from "../lib/littlejs";
+import { NewgroundsMedal, medals } from "../lib/littlejs";
 // import { Medal, medalsInit } from 'littlejsengine';
 import CryptoJS from 'crypto-js';
 
@@ -15,6 +15,7 @@ export class Medals {
       CryptoJS,
     );
     this.medals['First Village'] = this.villageMedal;
+    console.log(medals);
   }
 
   unlock(medal: string) {

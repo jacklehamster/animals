@@ -28772,7 +28772,7 @@ class Hud {
     this.ui.appendChild(this.blocker);
     this.dialog.style.position = "absolute";
     this.dialog.style.zIndex = "100";
-    this.dialog.style.bottom = "10px";
+    this.dialog.style.top = "10px";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, 0)";
     this.dialog.style.width = "80%";
@@ -30054,6 +30054,7 @@ class Medals {
   constructor() {
     newgroundsInit("59435:yImSBHAv", "CgB6J4i3kfvQGILxQUF39g==", import_crypto_js.default);
     this.medals["First Village"] = this.villageMedal;
+    console.log(medals);
   }
   unlock(medal) {
     if (!this.unlocked[medal]) {
@@ -34520,4 +34521,4 @@ var manager2 = new Manager(worldData);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=91F857C7D0506B2E64756e2164756e21
+//# debugId=E3289C01AA3FDA4A64756e2164756e21

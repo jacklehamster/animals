@@ -102,7 +102,7 @@ export class Hud {
 
     this.dialog.style.position = "absolute";
     this.dialog.style.zIndex = "100";
-    this.dialog.style.bottom = "10px";
+    this.dialog.style.top = "10px";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, 0)";
     this.dialog.style.width = "80%";
