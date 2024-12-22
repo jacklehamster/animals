@@ -33,7 +33,7 @@ export class NewgroundsMedal extends Medal {
 ///////////////////////////////////////////////////////////////////////////////
 
 /** Global Newgrounds object */
-let newgrounds: Newgrounds;
+export let newgrounds: Newgrounds;
 
 /** This can used to enable Newgrounds functionality
  *  @param {String} app_id   - The newgrounds App ID

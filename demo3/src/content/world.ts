@@ -30,7 +30,7 @@ import { TRADE_RESOURCE } from "./resources/trade";
 import { WHEAT_RESOURCE } from "./resources/wheat";
 import { WOOD_RESOURCE } from "./resources/wood";
 import { RABBIT_RESEARCH } from "./research/rabbit";
-import { BLUE_ANIMATION, BLUE_SELECTED_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, TRIANGLE_ANIMATION, WAIT_ICON, WAVE_ICON } from "./animations/indicators";
+import { BLUE_ANIMATION, BLUE_SELECTED_ANIMATION, HOVER_ANIMATION, INDIC_ANIMATION, NUCLEAR_ICON, TRIANGLE_ANIMATION, WAIT_ICON, WAVE_ICON } from "./animations/indicators";
 import { SHEEP_ANIMATION, SHEEP_JUMP_ANIMATION, SHEEP_WAIT_ANIMATION } from "./animations/sheep";
 import { GRASS_ANIMATION, GRASSLAND_ANIMATION, LAKE_ANIMATION, MOUNTAIN_ANIMATION, PLAIN_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION, TREE_LEAF_ANIMATION, WAVE_ANIMATION } from "./animations/terrain";
 import { CLOUD_ANIMATION } from "./animations/cloud";
@@ -94,6 +94,11 @@ import { RABBIT_ANIMATION, RABBIT_JUMP_ANIMATION, RABBIT_WAIT_ANIMATION } from "
 import { RABBIT_DEFINITION } from "./definitions/rabbit";
 import { PIG_ANIMATION, PIG_JUMP_ANIMATION, PIG_SLEEP_ANIMATION, PIG_WAIT_ANIMATION } from "./animations/pig";
 import { PIG_DEFINITION } from "./definitions/pig";
+import { ELEPHANT_ANIMATION, ELEPHANT_WAIT_ANIMATION, ELEPHANT_WALK_ANIMATION } from "./animations/elephant";
+import { PIG_MENU } from "./menu/pig-menu";
+import { RABBIT_MENU } from "./menu/rabbit-menu";
+import { ELEPHANT_DEFINITION } from "./definitions/elephant";
+import { GOAT_MENU } from "./menu/goat-menu";
 
 export const worldData: Scene = {
   scale: 80,
@@ -115,6 +120,11 @@ export const worldData: Scene = {
       icon: WAVE_ICON,
       description: "Release the animal into the wild.",
     },
+    // {
+    //   name: "reset-game",
+    //   icon: NUCLEAR_ICON,
+    //   description: "Reset the game.",
+    // },
   ],
   turn: {
     player: 1,
@@ -168,6 +178,7 @@ export const worldData: Scene = {
     PANDA_DEFINITION,
     RABBIT_DEFINITION,
     PIG_DEFINITION,
+    ELEPHANT_DEFINITION,
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -243,6 +254,9 @@ export const worldData: Scene = {
     PIG_WAIT_ANIMATION,
     PIG_JUMP_ANIMATION,
     PIG_SLEEP_ANIMATION,
+    ELEPHANT_ANIMATION,
+    ELEPHANT_WAIT_ANIMATION,
+    ELEPHANT_WALK_ANIMATION,
   ],
   elems: [
     CURSOR,
@@ -257,7 +271,7 @@ export const worldData: Scene = {
     FRUIT,
     POTGOLD,
     CORAL,
-    HOBO,
+    // HOBO,
     ...TEST_UNITS,
   ],
   menu: [
@@ -268,6 +282,9 @@ export const worldData: Scene = {
     BEAVER_MENU,
     VILLAGE_MENU,
     TURTLE_MENU,
+    PIG_MENU,
+    RABBIT_MENU,
+    GOAT_MENU,
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -293,6 +310,8 @@ export const worldData: Scene = {
     PANDA_RESEARCH,
     RABBIT_RESEARCH,
     PIG_RESEARCH,
+    ELEPHANT_RESEARCH,
+    PANDA_RESEARCH,
 
     // WOLVES_RESEARCH,
     // SKUNK_RESEARCH,
@@ -304,5 +323,82 @@ export const worldData: Scene = {
     // EAGLE_RESEARCH,
     // CROCODILE_RESEARCH,
   ],
+  medals: [
+    {
+      id: 82136,
+      name: "First Village",
+      description: "You build your first village!",
+      icon: "🏠",
+      showInUI: true,
+    }, {
+      id: 82140,
+      name: "Build spaceship",
+      description: "You build the spaceship!",
+      icon: "🚀",
+    }, {
+      id: 82141,
+      name: "25 animals",
+      description: "You have 25 animals!",
+      icon: "🦜",
+    }, {
+      id: 82142,
+      name: "Pandas",
+      description: "You have 2 pandas!",
+      icon: "🐼",
+      showInUI: true,
+    }, {
+      id: 82166,
+      name: "Beavers",
+      description: "You have 2 beavers!",
+      icon: "🦫",
+      showInUI: true,
+    }, {
+      id: 82167,
+      name: "Bulls",
+      description: "You have 2 bulls!",
+      icon: "🐂",
+      showInUI: true,
+    }, {
+      id: 82168,
+      name: "Turtles",
+      description: "You have 2 turtles!",
+      icon: "🐢",
+      showInUI: true,
+    }, {
+      id: 82171,
+      name: "Goats",
+      description: "You have 2 goats!",
+      icon: "🐐",
+      showInUI: true,
+    }, {
+      id: 82170,
+      name: "Pigs",
+      description: "You have 2 pigs!",
+      icon: "🐖",
+      showInUI: true,
+    }, {
+      id: 82169,
+      name: "Rabbits",
+      description: "You have 2 rabbits!",
+      icon: "🐇",
+      showInUI: true,
+    }, {
+      id: 82174,
+      name: "Elephants",
+      description: "You have 2 elephants!",
+      icon: "🐘",
+      showInUI: true,
+    }, {
+      id: 82175,
+      name: "Dogs",
+      description: "You have 2 dogs!",
+      icon: "🐕",
+      showInUI: true,
+    }
+  ],
+  medalOnCount: {
+    count: 25,
+    medal: "25 animals",
+  },
 };
 (window as any).worldData = worldData;

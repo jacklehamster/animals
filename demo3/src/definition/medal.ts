@@ -1,6 +1,7 @@
 export interface Medal {
-  id: number,
+  id?: number,
   name: string,
   description: string,
   icon: string,
+  showInUI?: boolean;
 }

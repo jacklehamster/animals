@@ -7,14 +7,18 @@ import { Manager } from "./core/manager";
 import { worldData } from "./content/world";
 import { engineInit } from "./lib/littlejs";
 
-let manager = new Manager(worldData);
+
+
+const scene = worldData;
+
+let manager = new Manager(scene);
 (window as any).manager = manager;
 
 function gameInit() {
 }
 
 function gameUpdate() {
-  manager.refresh();
+  manager.update();
 }
 
 function postUpdate() {

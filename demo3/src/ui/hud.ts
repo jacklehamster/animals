@@ -1,10 +1,12 @@
 import { GameObject } from "../core/objects/game-object";
 import type { Manager } from "../core/manager";
 import type { Resources } from "../definition/resources";
-import { DEBUG, READY } from "../content/constant";
+import { DEBUG } from "../content/constant";
 import type { Research } from "../definition/research";
-import { setCameraScale } from "../lib/littlejs";
+import { setCameraScale, isTouchDevice, zzfx } from "../lib/littlejs";
 import type { Elem } from "../definition/elem";
+import type { QuickAction } from "../definition/quick-actions";
+import type { Medal } from "../definition/medal";
 
 const SPRITESHEET_COLS = 30;
 
@@ -27,31 +29,58 @@ export class Hud {
   researchPopup: HTMLDivElement = document.createElement("div");
   spaceshipPopup: HTMLDivElement = document.createElement("div");
   music: HTMLAudioElement = document.createElement("audio");
+  confirmDialog: HTMLDivElement = document.createElement("div");
+  medalsView: HTMLDivElement = document.createElement("div");
   updated = false;
   onKnob = false;
 
   constructor(readonly manager: Manager) {
   }
 
+  hookupClick(elem: HTMLElement, callback: () => void, condition?: () => boolean) {
+    elem.style.cursor = "pointer";
+    elem.addEventListener("mousedown", e => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    elem.addEventListener("click", e => {
+      if (condition && !condition()) {
+        return;
+      }
+      zzfx(...[.8, , 788, .02, .03, .04, , 1.1, , -1, , , , .1, 191, , , .83, .01, .01, 125]); // Blip 105
+      e.preventDefault();
+      e.stopPropagation();
+      callback();
+    });
+    elem.addEventListener("touchstart", e => {
+      if (condition && !condition()) {
+        return;
+      }
+      zzfx(...[.8, , 788, .02, .03, .04, , 1.1, , -1, , , , .1, 191, , , .83, .01, .01, 125]); // Blip 105
+      e.preventDefault();
+      e.stopPropagation();
+      callback();
+    }, { passive: false, capture: true });
+  }
+
   initialize() {
     this.ui.id = "hud";
     this.ui.classList.add("hud");
     document.body.appendChild(this.ui);
-    this.ui.addEventListener("mouseover", e => {
+    this.ui.addEventListener("mouseover", () => {
       this.manager.inUI = true;
       this.manager.cursor?.hide();
-    });
-    this.ui.addEventListener("mouseout", e => {
+    }, { capture: true, passive: false });
+    this.ui.addEventListener("mouseout", () => {
       this.manager.inUI = false;
       this.manager.refreshCursor();
-    });
+    }, { capture: true, passive: false });
     this.ui.style.display = "none";
 
+    this.bg.classList.add("bg");
     this.bg.style.width = "100%";
-    this.bg.style.height = "100px";
     this.bg.style.position = "absolute";
     this.bg.style.zIndex = "100";
-    this.bg.style.bottom = "-100px";
     this.bg.style.left = "0";
     this.bg.style.background = "rgba(0, 0, 0, 1)";
     this.bg.style.transition = "bottom 0.2s";
@@ -100,12 +129,17 @@ export class Hud {
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
 
+    this.hookupClick(this.blocker, () => {
+      this.executeTap();
+    }, () => !!this.onTap);
+
     this.dialog.style.position = "absolute";
-    this.dialog.style.zIndex = "100";
+    this.dialog.style.zIndex = "200";
     this.dialog.style.top = "10px";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, 0)";
     this.dialog.style.width = "80%";
+    this.dialog.style.padding = "20px";
     this.dialog.style.height = "200px";
     this.dialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
     this.dialog.style.color = "snow";
@@ -168,9 +202,10 @@ export class Hud {
     this.researchPopup.style.transform = "translate(-50%, -50%)";
     this.researchPopup.style.width = "800px";
     this.researchPopup.style.height = "600px";
+    this.researchPopup.style.maxWidth = "100vw";
+    this.researchPopup.style.maxHeight = "calc(100vw * 6 / 8)";
     this.researchPopup.style.backgroundImage = "url(./assets/researched.png)";
-    this.researchPopup.style.backgroundSize = "cover";
-    // this.researchPopup.style.display = "none";
+    this.researchPopup.style.backgroundSize = "contain";
     this.researchPopup.style.pointerEvents = "none";
     this.researchPopup.style.opacity = "0";
     this.researchPopup.style.transition = "opacity .2s";
@@ -183,8 +218,10 @@ export class Hud {
     this.spaceshipPopup.style.transform = "translate(-50%, -50%)";
     this.spaceshipPopup.style.width = "800px";
     this.spaceshipPopup.style.height = "600px";
+    this.researchPopup.style.maxWidth = "100vw";
+    this.researchPopup.style.maxHeight = "calc(100vw * 6 / 8)";
     this.spaceshipPopup.style.backgroundImage = "url(./assets/spaceship.png)";
-    this.spaceshipPopup.style.backgroundSize = "cover";
+    this.spaceshipPopup.style.backgroundSize = "contain";
     this.spaceshipPopup.style.pointerEvents = "none";
     this.spaceshipPopup.style.opacity = "0";
     this.spaceshipPopup.style.transition = "opacity .2s";
@@ -195,7 +232,7 @@ export class Hud {
     researchImage.style.position = "absolute";
     researchImage.style.top = "30%";
     researchImage.style.left = "50%";
-    researchImage.style.transform = "translate(-50%, -50%) scale(3)";
+    researchImage.style.transform = "translate(-50%, -50%) scale(2)";
     researchImage.style.transition = "opacity 3s";
     researchImage.style.opacity = "0";
     this.ui.appendChild(this.researchPopup);
@@ -238,11 +275,48 @@ export class Hud {
     spaceshipText.style.whiteSpace = "pre-wrap";
     this.ui.appendChild(this.spaceshipPopup);
 
+    this.confirmDialog.style.position = "absolute";
+    this.confirmDialog.style.zIndex = "200";
+    this.confirmDialog.style.top = "50%";
+    this.confirmDialog.style.left = "50%";
+    this.confirmDialog.style.transform = "translate(-50%, -50%)";
+    this.confirmDialog.style.width = "400px";
+    this.confirmDialog.style.height = "200px";
+    this.confirmDialog.style.maxWidth = "100vw";
+    this.confirmDialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    this.confirmDialog.style.color = "snow";
+    this.confirmDialog.style.flexDirection = "column";
+    this.confirmDialog.style.justifyContent = "center";
+    this.confirmDialog.style.alignItems = "center";
+    this.confirmDialog.style.textAlign = "center";
+    this.confirmDialog.style.textTransform = "uppercase";
+    this.confirmDialog.style.padding = "20px";
+    this.confirmDialog.style.display = "none";
+    this.ui.appendChild(this.confirmDialog);
+
+    //  top right, next to resources div
+    this.medalsView.style.position = "absolute";
+    this.medalsView.style.zIndex = "100";
+    this.medalsView.style.top = "5px";
+    this.medalsView.style.left = "100px";
+    this.medalsView.style.display = "flex";
+    this.medalsView.style.flexDirection = "row";
+    this.medalsView.style.justifyContent = "center";
+    this.medalsView.style.alignItems = "center";
+    this.medalsView.style.textAlign = "center";
+    this.medalsView.style.textTransform = "uppercase";
+    this.ui.appendChild(this.medalsView);
+
+
     this.setupShortcutKeys();
     this.initializeErrorBanner();
     this.setupMusic();
     this.setupQuickActions();
-    this.setupZoom();
+    if (!isTouchDevice) {
+      this.setupZoom();
+    } else {
+      setCameraScale(50);
+    }
   }
 
   setupMusic() {
@@ -265,7 +339,7 @@ export class Hud {
     });
   }
 
-  async refresh() {
+  async update() {
     if (this.updated) {
       return;
     }
@@ -279,7 +353,35 @@ export class Hud {
       this.updated = true;
       this.endButton.disabled = !!this.manager.isAiPlayer(this.manager.getPlayer())
         || this.dialog.style.display !== "none";
+      await this.updateMedals();
     }
+  }
+
+  async updateMedals() {
+    const medalsManager = this.manager.medals;
+    if (this.manager.isAiPlayer(this.manager.getPlayer())) {
+      return;
+    }
+    this.medalsView.innerHTML = "";
+
+    const medals = [...(this.manager.scene.medals ?? [])];
+    medals.sort((a: Medal, b: Medal) => {
+      const unlockedA = this.manager.medals.isUnlocked(a.name) ? 1 : 0;
+      const unlockedB = this.manager.medals.isUnlocked(b.name) ? 1 : 0;
+      if (unlockedA !== unlockedB) {
+        return unlockedB - unlockedA;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    medals.forEach(medal => {
+      if (medal.showInUI) {
+        const medalDiv = this.medalsView.appendChild(document.createElement("div"));
+        medalDiv.textContent = `${medal.icon}`;
+        medalDiv.style.opacity = medalsManager.isUnlocked(medal.name) ? "1" : "0.3";
+        medalDiv.title = medalsManager.isUnlocked(medal.name) ? `Medal unlocked: ${medal.name} ${medal.description}` : "";
+      }
+    });
   }
 
   refreshButtons() {
@@ -294,44 +396,44 @@ export class Hud {
     const revenuePerResource = await this.manager.calculateResourceRevenue(player);
     const hasRevenue = Object.values(revenuePerResource).some(value => value > 0);
 
+    const taxValue = this.manager.getTaxValue(this.manager.getPlayer());
     RESOURCES.forEach((resource, index) => {
-      let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
-      if (index === 0) {
-        taxValue = 100 - taxValue;
-      }
-      let revenueValue = revenuePerResource[resource];
+      const resTax = index === 0 ? 100 - taxValue : taxValue;
+      const revenueValue = revenuePerResource[resource];
       const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement;
       if (taxText) {
-        taxText.textContent = `${revenueValue >= 0 ? '+' : ''}${revenueValue} (${taxValue}%)`;
+        taxText.textContent = `${revenueValue >= 0 ? '+' : ''}${revenueValue} (${resTax}%)`;
       }
     });
 
-    //  add knob to adjust tax
-    let taxKnob = document.getElementById("tax") as HTMLInputElement;
-    if (!taxKnob) {
-      taxKnob = (this.resourceOverlay.appendChild(document.createElement("input")));
-      taxKnob.id = "tax";
-      taxKnob.type = "range";
-      taxKnob.min = "0";
-      taxKnob.max = "100";
-      taxKnob.step = "5";
-      taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
-      taxKnob.style.width = "60px";
-      taxKnob.style.marginTop = "20px";
-      taxKnob.addEventListener("input", async e => {
-        this.manager.updateTaxValue(player, parseInt(taxKnob.value));
-        const previousBrain = this.manager.getPlayerResource("brain", this.manager.getPlayer());
-        await this.refreshTax();
-        await this.refreshResearchInfo();
-      });
-      taxKnob.addEventListener("mouseover", e => {
-        this.onKnob = true;
-      });
-      taxKnob.addEventListener("mouseout", e => {
-        this.onKnob = false;
-      });
+    if (!isTouchDevice) {
+      //  add knob to adjust tax
+      let taxKnob = document.getElementById("tax") as HTMLInputElement;
+      if (!taxKnob) {
+        taxKnob = (this.resourceOverlay.appendChild(document.createElement("input")));
+        taxKnob.id = "tax";
+        taxKnob.type = "range";
+        taxKnob.min = "0";
+        taxKnob.max = "100";
+        taxKnob.step = "10";
+        taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
+        taxKnob.style.width = "60px";
+        taxKnob.style.marginTop = "20px";
+        taxKnob.addEventListener("input", async e => {
+          this.manager.updateTaxValue(player, parseInt(taxKnob.value));
+          await this.refreshTax();
+          await this.refreshResearchInfo();
+        });
+        taxKnob.addEventListener("mouseover", e => {
+          this.onKnob = true;
+        });
+        taxKnob.addEventListener("mouseout", e => {
+          this.onKnob = false;
+        });
+      }
+      taxKnob.value = taxValue.toString();
+      taxKnob.style.display = hasRevenue ? "block" : "none";
     }
-    taxKnob.style.display = hasRevenue ? "block" : "none";
   }
 
   async refreshResources() {
@@ -355,6 +457,20 @@ export class Hud {
         icon.classList.add("resource-icon");
         icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % 30) + (padding?.[0] ?? 2) / 2}px ${-spriteHeight * Math.floor(frames[0] / 30) + (padding?.[1] ?? 2) / 2}px`;
         icon.textContent = "0";
+
+        this.hookupClick(icon, async () => {
+          const player = this.manager.getPlayer();
+          let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
+          if (index === 0) {
+            taxValue = Math.min(100, taxValue - 10);
+          } else {
+            taxValue = Math.max(0, taxValue + 10);
+          }
+          this.manager.updateTaxValue(player, taxValue);
+          await this.refreshTax();
+          await this.refreshResearchInfo();
+        });
+
         this.resourceOverlay.appendChild(icon);
       }
       let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
@@ -370,13 +486,17 @@ export class Hud {
           icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
         }, 500);
       }
-      const taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement ?? (this.resourceOverlay.appendChild(document.createElement("div")));
-      taxText.id = `${resource}-tax`;
-      taxText.style.color = "white";
-      taxText.style.width = "100%";
-      taxText.style.marginTop = "-20px";
-      taxText.style.textAlign = "center";
-      taxText.style.fontSize = "8pt";
+      let taxText = document.getElementById(`${resource}-tax`) as HTMLDivElement;
+      if (!taxText) {
+        taxText = this.resourceOverlay.appendChild(document.createElement("div"));
+        taxText.id = `${resource}-tax`;
+        taxText.style.color = "white";
+        taxText.style.width = "100%";
+        taxText.style.marginTop = "-20px";
+        taxText.style.textAlign = "center";
+        taxText.style.fontSize = "8pt";
+        taxText.style.pointerEvents = "none";
+      }
     });
 
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
@@ -386,6 +506,7 @@ export class Hud {
   }
 
   flashEndTurn(temp = false) {
+    this.ui.querySelector("#zoomGroup")?.classList.remove("hidden");
     this.buttonsOverlay.style.display = "block";
     document.getElementById("endButton")?.classList.add(temp ? "flash-temp" : "flash");
     if (temp) {
@@ -422,9 +543,33 @@ export class Hud {
       icon.addEventListener("mouseout", e => {
         icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
       });
-      icon.addEventListener("click", e => {
-        this.manager.performQuickAction(action);
+      this.hookupClick(icon, () => {
+        this.confirmQuickAction(action);
+        // this.manager.performQuickAction(action);
       });
+    });
+  }
+
+  confirmQuickAction(action: QuickAction) {
+    //  show confirmDialog to confirm action or cancel
+    this.confirmDialog.style.display = "flex";
+    this.confirmDialog.innerHTML = `<div>${action.description}</div>`;
+    const confirmButton = this.confirmDialog.appendChild(document.createElement("button"));
+    confirmButton.textContent = "confirm";
+    confirmButton.style.cursor = "pointer";
+    confirmButton.style.margin = "10px";
+    this.hookupClick(confirmButton, async () => {
+      await this.waitABit(100);
+      this.manager.performQuickAction(action);
+      this.confirmDialog.style.display = "none";
+    });
+    const cancelButton = this.confirmDialog.appendChild(document.createElement("button"));
+    cancelButton.textContent = "cancel";
+    cancelButton.style.cursor = "pointer";
+    cancelButton.style.margin = "10px";
+    this.hookupClick(cancelButton, async () => {
+      await this.waitABit(100);
+      this.confirmDialog.style.display = "none";
     });
   }
 
@@ -433,6 +578,8 @@ export class Hud {
 
   setupZoom() {
     const zoomGroup = this.ui.appendChild(document.createElement("div"));
+    zoomGroup.id = "zoomGroup";
+    zoomGroup.classList.add("hidden");
     zoomGroup.style.display = "flex";
     zoomGroup.style.flexDirection = "column";
     zoomGroup.style.justifyContent = "center";
@@ -471,18 +618,19 @@ export class Hud {
 
   setHudButtons() {
     //  add animation above end turn
+    let icon: HTMLDivElement | null = null;
     if (this.manager.scene.endTurnAnim) {
       const animation = this.buttonsOverlay.appendChild(document.createElement("div"));
       animation.style.position = "absolute";
       animation.style.marginTop = "-140px";
       animation.style.pointerEvents = "none";
       const { imageSource, spriteSize, frames, padding } = this.manager.scene.endTurnAnim;
-      const icon = animation.appendChild(document.createElement("div"));
+      icon = animation.appendChild(document.createElement("div"));
       icon.style.backgroundImage = `url(${imageSource})`;
       icon.style.width = `${spriteSize[0]}px`;
       icon.style.height = `${spriteSize[1]}px`;
       icon.style.zIndex = "100";
-      icon.style.pointerEvents = "none";
+      icon.style.pointerEvents = "auto";
       icon.style.transform = "scale(0.3) translate(-100%, -100%)";
       const spriteWidth = (spriteSize[0] + (padding?.[0] ?? 2) * 2);
       const spriteHeight = (spriteSize[1] + (padding?.[1] ?? 2) * 2);
@@ -496,7 +644,9 @@ export class Hud {
           animationFrame = requestAnimationFrame(animateIcon);
         }
         const frame = frames[frameIndex];
-        icon.style.backgroundPosition = `${-spriteWidth * (frame % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
+        if (icon) {
+          icon.style.backgroundPosition = `${-spriteWidth * (frame % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame / SPRITESHEET_COLS)}px`;
+        }
       };
       this.turnPage = () => {
         cancelAnimationFrame(animationFrame);
@@ -509,11 +659,21 @@ export class Hud {
     const endButton = this.buttonsOverlay.appendChild(this.endButton);
     endButton.style.width = "150px";
     endButton.id = "endButton";
-    endButton.addEventListener("click", e => {
+    const endTurnAction = () => {
       endButton.disabled = true;
       this.stopFlashEndTurn();
       this.manager.gotoNextTurn();
-    });
+      const timeout = setTimeout(() => {
+        if (endButton.disabled) {
+          endButton.disabled = false;
+        }
+      }, 2000);
+      this.itemsToDestroy.add(() => clearTimeout(timeout));
+    };
+    if (icon) {
+      this.hookupClick(icon, endTurnAction, () => !endButton.disabled);
+    }
+    this.hookupClick(endButton, endTurnAction, () => !endButton.disabled);
     endButton.addEventListener("mousedown", e => {
       e.preventDefault();
       e.stopPropagation();
@@ -527,27 +687,28 @@ export class Hud {
     nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
     nextButton.id = "nextButton";
     nextButton.style.width = "150px";
-    nextButton.addEventListener("click", e => {
+    this.hookupClick(nextButton, () => {
       this.manager.selectNext();
     });
     nextButton.style.display = "none";
-
-    const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
-    const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
-    autoEndLabel.textContent = "auto-end turn";
-    autoEndLabel.htmlFor = "autoEndCheckbox";
-    autoEndLabel.title = "Automatically end turn when no more moves are available";
-    const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
-    autoEndCheckbox.id = "autoEndCheckbox";
-    autoEndCheckbox.type = "checkbox";
-    autoEndCheckbox.checked = this.manager.autoEndTurn;
-    autoEndCheckbox.addEventListener("change", e => {
-      this.manager.autoEndTurn = autoEndCheckbox.checked;
-      if (this.manager.autoEndTurn) {
-        this.stopFlashEndTurn();
-        this.manager.checkForAnyMove();
-      }
-    });
+    if (!isTouchDevice) {
+      const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
+      const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
+      autoEndLabel.textContent = "auto-end turn";
+      autoEndLabel.htmlFor = "autoEndCheckbox";
+      autoEndLabel.title = "Automatically end turn when no more moves are available";
+      const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
+      autoEndCheckbox.id = "autoEndCheckbox";
+      autoEndCheckbox.type = "checkbox";
+      autoEndCheckbox.checked = this.manager.autoEndTurn;
+      autoEndCheckbox.addEventListener("change", e => {
+        this.manager.autoEndTurn = autoEndCheckbox.checked;
+        if (this.manager.autoEndTurn) {
+          this.stopFlashEndTurn();
+          this.manager.checkForAnyMove();
+        }
+      });
+    }
   }
 
   clear() {
@@ -556,10 +717,22 @@ export class Hud {
   }
 
   async showSelected(obj?: GameObject) {
+
     const isAi = obj && this.manager.isAiPlayer(obj.elem?.owner);
     const menu = isAi ? undefined : this.manager.getMenu(obj?.elem?.name);
-    this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
-    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi ? "-100px" : menu?.items.length ? "100px" : "0";
+    if (menu?.items.length) {
+      this.bg.classList.add("open");
+      this.quickActionOverlay.classList.add("open");
+    } else {
+      this.bg.classList.remove("open");
+      this.quickActionOverlay.classList.remove("open");
+    }
+    if (obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi) {
+      this.quickActionOverlay.classList.add("removed");
+    } else {
+      this.quickActionOverlay.classList.remove("removed");
+    }
+    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi ? `-100px` : menu?.items.length ? `${this.bg.offsetHeight}px` : "0";
     this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
 
@@ -708,12 +881,13 @@ export class Hud {
       menuDiv.style.display = "flex";
       menuDiv.style.flexDirection = "row";
       menuDiv.style.justifyContent = "center";
-      menuDiv.style.alignItems = "center";
+      menuDiv.style.alignItems = "flex-end";
       menuDiv.style.flexGrow = "1";
       menuDiv.style.margin = "0 10px";
       menuDiv.style.marginLeft = "-100px";
       menuDiv.style.gap = "10px";
 
+      let hasMenu = false;
       for (const item of menu.items) {
         if (item.debug && !DEBUG) {
           continue;
@@ -729,6 +903,7 @@ export class Hud {
           || (obj.canAfford(item.resourceCost) ? null : "not enough\nresources");
 
         const menuItemDiv = menuDiv.appendChild(document.createElement("div"));
+        hasMenu = true;
 
         if (item.resourceCost && researched) {
           const resourceDiv = menuItemDiv.appendChild(document.createElement("div"));
@@ -811,7 +986,7 @@ export class Hud {
             e.preventDefault();
             e.stopPropagation();
           });
-          menuItemDiv.addEventListener("click", async (e) => {
+          this.hookupClick(menuItemDiv, async () => {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             if (disabled) {
               return;
@@ -824,9 +999,6 @@ export class Hud {
             obj.refreshLabel();
             this.updated = false;
             obj.refreshBars();
-
-            e.preventDefault();
-            e.stopPropagation();
           });
         }
         if (disabled) {
@@ -839,15 +1011,24 @@ export class Hud {
           menuItemDiv.style.cursor = "pointer";
         }
       }
+      if (hasMenu) {
+        this.bg.classList.remove("nomenu");
+        this.quickActionOverlay.classList.remove("nomenu");
+      } else {
+        this.bg.classList.add("nomenu");
+        this.quickActionOverlay.classList.add("nomenu");
+      }
     }
   }
 
   showBlocker(clickable?: boolean) {
+    this.captureTouch();
     this.blocker.style.display = "block";
     this.blocker.style.cursor = clickable ? "pointer" : "default";
   }
 
   hideBlocker() {
+    this.releaseTouch();
     this.blocker.style.display = "none";
   }
 
@@ -941,30 +1122,36 @@ export class Hud {
       }
       speechSynthesis.speak(utterance);
 
-      setTimeout(() => {
-        this.blocker.addEventListener("click", () => {
-          overlay.parentNode?.removeChild(overlay);
-          speechSynthesis.cancel();
-          this.fadeMusicOut();
-          this.clear();
-          this.spaceshipPopup.style.opacity = "0";
-          // this.researchPopup.style.display = "none";
-          this.hideBlocker();
-          resolve();
-          setTimeout(() => {
-            this.spaceshipPopup.style.display = "none";
-          }, 300);
+      await this.waitABit();
 
-        }, { once: true });
-      }, 1000);
+      this.onTap = async () => {
+        overlay.parentNode?.removeChild(overlay);
+        speechSynthesis.cancel();
+        this.fadeMusicOut();
+        this.clear();
+        this.spaceshipPopup.style.opacity = "0";
+        // this.researchPopup.style.display = "none";
+        this.hideBlocker();
+        resolve();
+        await this.waitABit(300);
+        this.spaceshipPopup.style.display = "none";
+      };
     });
   }
 
+  executeTap() {
+    const onTap = this.onTap;
+    this.onTap = undefined;
+    onTap?.();
+  }
+
+  private onTap?: () => void;
+
   async showResearchDialog(research: Research) {
     this.researchPopup.style.display = "flex";
-    await new Promise<void>(resolve => setTimeout(resolve, 100));
+    await this.waitABit(100);
 
-    return new Promise<void>(resolve => {
+    return new Promise<void>(async (resolve) => {
       this.showBlocker(true);
       // this.researchPopup.style.display = "flex";
       this.researchPopup.style.opacity = "1";
@@ -1001,21 +1188,18 @@ export class Hud {
       }
       speechSynthesis.speak(utterance);
 
-      setTimeout(() => {
-        this.blocker.addEventListener("click", () => {
-          speechSynthesis.cancel();
-          this.fadeMusicOut();
-          this.clear();
-          this.researchPopup.style.opacity = "0";
-          // this.researchPopup.style.display = "none";
-          this.hideBlocker();
-          resolve();
-          researchImage.style.opacity = "0";
-          setTimeout(() => {
-            this.researchPopup.style.display = "none";
-          }, 300);
-        }, { once: true });
-      }, 1000);
+      await this.waitABit();
+      this.onTap = async () => {
+        speechSynthesis.cancel();
+        this.fadeMusicOut();
+        this.clear();
+        this.researchPopup.style.opacity = "0";
+        this.hideBlocker();
+        resolve();
+        researchImage.style.opacity = "0";
+        await this.waitABit(300);
+        this.researchPopup.style.display = "none";
+      };
     });
   }
 
@@ -1041,6 +1225,16 @@ export class Hud {
     this.music.currentTime = 0;
   }
 
+  touchCaptured = false;
+
+  captureTouch() {
+    this.touchCaptured = true;
+  }
+
+  releaseTouch() {
+    this.touchCaptured = false;
+  }
+
   async showDialog(text: string, music: boolean = false, voiceName?: string): Promise<void> {
     this.showBlocker(true);
     this.dialog.style.display = "flex";
@@ -1057,63 +1251,10 @@ export class Hud {
       this.playMusic();
     }
     return new Promise(async resolve => {
-      await new Promise<void>(resolve => setTimeout(resolve, 1000));
-      this.blocker.addEventListener("click", () => {
+      await this.waitABit(500);
+      this.onTap = async () => {
         speechSynthesis.cancel();
-        if (!READY) {
-          (window as any).index = (window as any).index ?? 0;
-          const NOTREADYS = [
-            "Not ready yet, please be patient",
-            "I'm not ready yet, please wait",
-            "I'm still working on it, please wait",
-            "Can you wait a little longer? Jesus!",
-            "Hold your horses, we're almost there!",
-            "Patience is a virtue... that you clearly lack!",
-            "Good things come to those who wait. Great things take a bit longer.",
-            "Rome wasn't built in a day, and neither is this!",
-            "Keep calm and wait a moment.",
-            "Loading... just like your patience.",
-            "If you keep clicking, it won't go any faster!",
-            "Almost there... just kidding, still working on it!",
-            "Why the rush? Enjoy the moment!",
-            "Your impatience is noted. Still not ready.",
-            "Take a deep breath, we're almost there.",
-            "You can't rush perfection!",
-            "Good things take time. Great things take even longer.",
-            "Patience, young grasshopper.",
-            "We're on it! Just a few more seconds.",
-            "Loading... because magic takes time.",
-            "Hang tight, we're almost there!",
-            "If you wait a bit longer, you might get a cookie!",
-            "Almost done... just kidding, still working on it!",
-            "Your impatience is adorable. Still not ready.",
-            "Hold on, we're making it awesome!",
-            "Good things come to those who wait. Great things take a bit longer.",
-            "Keep calm and wait a moment.",
-            "Loading... just like your patience.",
-            "If you keep clicking, it won't go any faster!",
-            "Almost there... just kidding, still working on it!",
-            "Why the rush? Enjoy the moment!",
-            "Your impatience is noted. Still not ready.",
-            "Take a deep breath, we're almost there.",
-            "You can't rush perfection!",
-            "Good things take time. Great things take even longer.",
-            "Patience, young grasshopper.",
-            "We're on it! Just a few more seconds.",
-            "Loading... because magic takes time.",
-            "Hang tight, we're almost there!",
-            "If you wait a bit longer, you might get a cookie!",
-            "Almost done... just kidding, still working on it!",
-            "Your impatience is adorable. Still not ready.",
-            "Hold on, we're making it awesome!",
-          ];
-          const msg = NOTREADYS[(window as any).index];
-          (window as any).index = ((window as any).index + 1) % NOTREADYS.length;
-          this.clear();
-          resolve();
-          this.showDialog(msg);
-          return;
-        }
+
         //  fade music out
         if (music) {
           this.fadeMusicOut();
@@ -1123,11 +1264,14 @@ export class Hud {
         this.cat.style.display = "none";
         this.hideBlocker();
         this.clear();
-        setTimeout(() => {
-          resolve();
-        }, 10);
-      }, { once: true });
+        await this.waitABit(10);
+        resolve();
+      };
     });
+  }
+
+  async waitABit(time = 1000) {
+    await new Promise<void>(resolve => setTimeout(resolve, time));
   }
 
   closeDialog() {
@@ -1149,7 +1293,7 @@ export class Hud {
       errorDiv.style.textAlign = "center";
       errorDiv.style.fontSize = "20pt";
       errorDiv.textContent = event.message;
-      errorDiv.addEventListener("click", () => {
+      this.hookupClick(errorDiv, () => {
         errorDiv.remove();
       });
     }, { once: true });
@@ -1157,6 +1301,7 @@ export class Hud {
 
   async promptForResearch(inventions: Research[], brainsPerTurn: number, currentBrains: number) {
     if (!inventions.length) {
+      this.manager.scene.players[this.manager.getPlayer() - 1].currentResearch = undefined;
       return;
     }
     return new Promise<void>(resolve => {
@@ -1265,7 +1410,7 @@ export class Hud {
         researchDiv.addEventListener("mouseout", () => {
           researchDiv.style.backgroundColor = index === 0 ? "rgba(70, 60, 0, 1)" : "";
         });
-        researchDiv.addEventListener("click", () => {
+        this.hookupClick(researchDiv, () => {
           this.manager.research(invention.name, this.manager.getPlayer());
           this.researchList.style.display = "none";
           this.hideBlocker();

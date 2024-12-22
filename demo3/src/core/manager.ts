@@ -1,4 +1,4 @@
-import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2, LittleJS } from '../lib/littlejs';
+import { cameraPos, cameraScale, EngineObject, mousePos, mouseWasPressed, mouseWasReleased, setCameraPos, setCameraScale, vec2, Vector2, LittleJS, zzfx, postScore } from '../lib/littlejs';
 
 import { AnimationManager } from "../animation/animation-manager";
 import type { Elem } from "../definition/elem";
@@ -9,12 +9,11 @@ import type { Condition } from "../definition/condition";
 import type { Resources } from "../definition/resources";
 import type { ResourceType } from '../definition/resource-type';
 import { Thinker } from '../ai/thinker';
-import { DEBUG, READY } from '../content/constant';
+import { DEBUG } from '../content/constant';
 import type { Research } from '../definition/research';
 import type { QuickAction } from '../definition/quick-actions';
 import type { Action } from '../definition/action';
 import { Medals } from './medals';
-const { zzfx } = require("zzfx");
 
 interface Entry {
   gameObject: Set<GameObject>;
@@ -44,11 +43,12 @@ export class Manager {
   lastUnit: GameObject | undefined;
   lastHovered?: GameObject | undefined;
   advise: Set<string> = new Set();
-  medals = new Medals();
+  medals: Medals;
 
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
     this.hud = new Hud(this);
+    this.medals = new Medals(this.scene?.medals ?? []);
     if (scene.scale) {
       setCameraScale(scene.scale);
     }
@@ -64,6 +64,9 @@ export class Manager {
       // this.hud.ui.classList.add("hidden");
       this.hud.resourceOverlay.classList.add("hidden");
       this.hud.buttonsOverlay.classList.add("hidden");
+      this.hud.medalsView.classList.add("hidden");
+      this.hud.ui.querySelector("#zoomGroup")?.classList.add("hidden");
+      this.hud.quickActionOverlay.classList.add("hidden");
       this.showLabels = false;
       this.cursor?.hide();
       this.updateLabels();
@@ -75,6 +78,9 @@ export class Manager {
       // this.hud.ui.classList.remove("hidden");
       this.hud.resourceOverlay.classList.remove("hidden");
       this.hud.buttonsOverlay.classList.remove("hidden");
+      this.hud.medalsView.classList.remove("hidden");
+      this.hud.ui.querySelector("#zoomGroup")?.classList.remove("hidden");
+      this.hud.quickActionOverlay.classList.remove("hidden");
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
@@ -82,9 +88,6 @@ export class Manager {
         LittleJS.overlayCanvas.style.cursor = "";
       }
     });
-    if (!READY) {
-      this.hud.showDialog("This game is almost ready!.");
-    }
   }
 
   updateLabels() {
@@ -93,7 +96,7 @@ export class Manager {
     });
   }
 
-  refresh() {
+  update() {
     this.scene.elems.forEach((elem) => {
       if (elem.debug && !DEBUG) {
         return;
@@ -106,7 +109,7 @@ export class Manager {
       this.fixWorld();
       this.worldChanged = false;
     }
-    this.hud.refresh();
+    this.hud.update();
   }
 
   clearFogOfWar() {
@@ -200,9 +203,6 @@ export class Manager {
   }
 
   private shiftCamera() {
-    if (this.inUI) {
-      // return;
-    }
     if (!this.hud.onKnob) {
       if (!this.mousePosDown && mouseWasPressed(0)) {
         this.mousePosDown = vec2(mousePos.x, mousePos.y);
@@ -502,6 +502,29 @@ export class Manager {
     if (previousSelected?.elem?.medalOnDeselect) {
       this.medals.unlock(previousSelected.elem.medalOnDeselect);
     }
+    if (previousSelected?.elem?.medalOnCount) {
+      const name = previousSelected.elem.name;
+      let count = 0;
+      await this.iterateRevealedCells(async (gameObject) => {
+        if (gameObject.elem?.name === name && gameObject.elem?.owner === this.getPlayer()) {
+          count++;
+        }
+      });
+      if (count >= previousSelected.elem.medalOnCount.count) {
+        this.medals.unlock(previousSelected.elem.medalOnCount.medal);
+      }
+    }
+    if (this.scene.medalOnCount) {
+      let count = 0;
+      await this.iterateRevealedCells(async (gameObject) => {
+        if (gameObject.elem?.type === "unit" && gameObject.elem?.owner === this.getPlayer()) {
+          count++;
+        }
+      });
+      if (count >= this.scene.medalOnCount.count) {
+        this.medals.unlock(this.scene.medalOnCount.medal);
+      }
+    }
 
     //  select new
     if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
@@ -645,7 +668,7 @@ export class Manager {
         await this.collectResources(player);
       }
       this.refreshUnitsLabels();
-      if (this.getUnits(player).size) {
+      if (this.getUnits(player, true).size) {
         await this.giveUnitsTurns(player);
         await this.selectNext();
       } else if (this.isAiPlayer(player)) {
@@ -655,6 +678,15 @@ export class Manager {
     }
 
     this.hud.updated = false;
+    // this.save();
+  }
+
+  save() {
+    localStorage.setItem("save", JSON.stringify(this.scene));
+  }
+
+  clearSave() {
+    localStorage.removeItem("save");
   }
 
   refreshUnitsLabels() {
@@ -737,7 +769,7 @@ export class Manager {
       if (playerResearch?.[invention.name]) {
         return false;
       }
-      if (!invention.forceInDebug && !DEBUG) {
+      if (!invention.forceInDebug || !DEBUG) {
         const dependency = invention.dependency;
         if (dependency && dependency.some(dep => !playerResearch?.[dep])) {
           return false;
@@ -865,10 +897,12 @@ export class Manager {
     return resources;
   }
 
-  getUnits(player?: number) {
+  getUnits(player?: number, checkWaiting?: boolean) {
     const units: Set<GameObject> = new Set();
     Object.entries(this.grid).forEach(([tag, gameObject]) => {
-      if (gameObject.elem?.type === "unit" && (player === undefined || gameObject.elem?.owner === player)) {
+      if (gameObject.elem?.type === "unit" && (
+        player === undefined
+        || gameObject.elem?.owner === player) && (!checkWaiting || !gameObject.elem?.waiting)) {
         units.add(gameObject);
       }
     });
@@ -917,7 +951,7 @@ export class Manager {
 
   async getUnitRotation(player: number) {
     const cellsRotation: GameObject[] = [];
-    const playerUnits = this.getUnits(player);
+    const playerUnits = this.getUnits(player, true);
     for (const gameObject of playerUnits) {
       let include = false;
       if (this.selected === gameObject) {
@@ -1091,7 +1125,9 @@ export class Manager {
   }
 
   research(research: string, player: number) {
-    this.scene.players[player - 1].currentResearch = research;
+    if (this.scene.players[player - 1]) {
+      this.scene.players[player - 1].currentResearch = research;
+    }
   }
 
   getResearchInfo(player: number) {
@@ -1120,6 +1156,10 @@ export class Manager {
         this.selected.doom(true);
         await this.selectNext();
         this.hud.updated = false;
+        break;
+      case "reset-game":
+        this.clearSave();
+        location.reload();
         break;
     }
   }
@@ -1185,6 +1225,12 @@ export class Manager {
           }
         }
       });
+    }
+    if (action.medal) {
+      this.medals.unlock(action.medal);
+    }
+    if (action.score) {
+      postScore(action.score.board, this.getTurn());
     }
   }
 }

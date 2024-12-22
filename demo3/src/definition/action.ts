@@ -14,4 +14,8 @@ export type Action = {
   updateHouseCloud?: boolean;
   spaceship?: boolean;
   heal?: number;
+  medal?: string;
+  score?: {
+    board: number;
+  }
 };

@@ -7,6 +7,6 @@ export const CANINE_RESEARCH: Research = {
   icon: DOG_ANIMATION,
   waitIcon: DOG_WAIT_ANIMATION,
   dependency: [],
-  cost: 10,
+  cost: 5,
   recommended: 2,
 };

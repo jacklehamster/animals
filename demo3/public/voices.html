@@ -1,0 +1,25 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voices</title>
+  </head>
+  <body>
+    <div id="voices"></div>
+  </body>
+</html>
+
+<script>
+  speechSynthesis.getVoices();
+
+  setTimeout(() => {
+    const voices = speechSynthesis.getVoices();
+    voices.forEach((voice) => {
+      const option = document.createElement("option");
+      option.textContent = `${voice.name} (${voice.lang})`;
+      option.setAttribute("data-lang", voice.lang);
+      option.setAttribute("data-name", voice.name);
+      document.getElementById("voices").appendChild(option);
+    });
+  }, 1000);
+</script>

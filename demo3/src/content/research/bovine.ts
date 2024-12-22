@@ -7,6 +7,6 @@ export const BOVINE_RESEARCH: Research = {
   icon: COW_ANIMATION,
   waitIcon: COW_WAIT_ANIMATION,
   dependency: [],
-  cost: 10,
+  cost: 5,
   recommended: 1,
 };

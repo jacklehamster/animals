@@ -1,26 +1,38 @@
+import type { Medal as MedalType } from "../definition/medal";
 import { newgroundsInit } from "../lib/external/newgrounds";
-import { NewgroundsMedal, medals } from "../lib/littlejs";
-// import { Medal, medalsInit } from 'littlejsengine';
+import { NewgroundsMedal, Medal, medalsInit } from "../lib/littlejs";
 import CryptoJS from 'crypto-js';
 
 export class Medals {
   villageMedal = new NewgroundsMedal(82136, 'First Village', 'You build your first village!', '🎖️');
-  unlocked: Record<string, boolean> = {};
   medals: Record<string, NewgroundsMedal> = {};
+  mMedals: Record<string, Medal> = {};
 
-  constructor() {
+  constructor(medals: MedalType[]) {
     newgroundsInit(
       "59435:yImSBHAv",
       "CgB6J4i3kfvQGILxQUF39g==",
       CryptoJS,
     );
-    this.medals['First Village'] = this.villageMedal;
-    console.log(medals);
+    medals.forEach((medal) => {
+      this.mMedals[medal.name] = new Medal(medal.id, medal.name, medal.description, medal.icon);
+      if (!medal.id) {
+        return;
+      }
+      this.medals[medal.name] = new NewgroundsMedal(medal.id, medal.name, medal.description, medal.icon);
+    });
+    medalsInit("medals");
+  }
+
+  isUnlocked(medal: string) {
+    return this.mMedals[medal]?.unlocked || this.medals[medal]?.unlocked;
   }
 
   unlock(medal: string) {
-    if (!this.unlocked[medal]) {
-      this.unlocked[medal] = true;
+    if (!this.isUnlocked(medal)) {
+      this.mMedals[medal].unlock();
+    }
+    if (!this.medals[medal].unlocked) {
       this.medals[medal].unlock();
     }
   }

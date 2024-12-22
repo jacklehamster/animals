@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const SQUIRREL_DEFINITION: Elem = {
   name: "squirrel",
+  emoji: "🐿️",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,

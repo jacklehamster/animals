@@ -1,15 +1,11 @@
 import type { Menu } from "../../definition/menu";
 import { GOAT_ANIMATION } from "../animations/goat";
+import { RABBIT_ANIMATION } from "../animations/rabbit";
 
 export const RABBIT_MENU: Menu = {
   name: "rabbit",
   description: "Rabbits can heal.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [6, 7],
-  },
+  icon: RABBIT_ANIMATION,
   items: [
     {
       name: "heal",

@@ -143,7 +143,7 @@ export const VILLAGE_MENU: Menu = {
       ...SPACESHIP_ANIMATION,
       label: "build\nspaceship",
       disabled: {
-        levelBelowEqual: [15, "You need to level up\nyour village to level 16"],
+        levelBelowEqual: [11, "You need to level up\nyour village to level 12"],
       },
       resourceCost: {
         wood: 200,
@@ -153,6 +153,12 @@ export const VILLAGE_MENU: Menu = {
       actions: [
         {
           spaceship: true,
+        },
+        {
+          medal: "Build spaceship",
+          score: {
+            board: 14366,
+          }
         },
       ]
     },

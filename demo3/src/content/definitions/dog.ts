@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const DOG_DEFINITION: Elem = {
   name: "dog",
+  emoji: "🐕",// emoji: "🐕",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -51,4 +52,8 @@ export const DOG_DEFINITION: Elem = {
     name: "dog",
     message: "Dogs move 2 tiles each turn, and they can move after attacks.\nUse them to explore the world.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do.",
   },
+  medalOnCount: {
+    count: 2,
+    medal: "Dogs",
+  }
 };

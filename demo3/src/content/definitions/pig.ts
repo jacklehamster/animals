@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const PIG_DEFINITION: Elem = {
   name: "pig",
+  emoji: "🐷",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -54,5 +55,9 @@ export const PIG_DEFINITION: Elem = {
   attack: {
     damage: 1,
     defense: 1,
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Pigs",
   },
 };

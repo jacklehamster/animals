@@ -8,5 +8,5 @@ export const SPACESHIP_RESEARCH: Research = {
   dependency: ["exploration"],
   cost: 200,
   recommended: 20,
-  forceInDebug: true,
+  // forceInDebug: true,
 };

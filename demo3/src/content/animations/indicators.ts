@@ -69,3 +69,12 @@ export const WAVE_ICON: Anim = {
     111,
   ],
 }
+
+export const NUCLEAR_ICON: Anim = {
+  name: "nuclear",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64] as [number, number],
+  frames: [
+    144,
+  ],
+}

@@ -6,12 +6,7 @@ import { PIG_SLEEP_ANIMATION, PIG_WAIT_ANIMATION } from "../animations/pig";
 export const COW_MENU: Menu = {
   name: "cow",
   description: "Cows are your workers.\nUse them to harvest resources.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  icon: COW_ANIMATION,
   items: [
     {
       name: "harvest",

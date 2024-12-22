@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const RABBIT_DEFINITION: Elem = {
   name: "rabbit",
+  emoji: "🐇",
   type: "unit",
   hitpoints: 5,
   maxHitPoints: 5,
@@ -46,4 +47,8 @@ export const RABBIT_DEFINITION: Elem = {
     defense: 1,
   },
   canCrossTerrains: ["tree"],
+  medalOnCount: {
+    count: 2,
+    medal: "Rabbits",
+  },
 };

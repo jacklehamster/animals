@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const GOAT_DEFINITION: Elem = {
   name: "goat",
+  emoji: "🐐", //  emoji: "",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -57,4 +58,8 @@ export const GOAT_DEFINITION: Elem = {
     message: "Goats can climb on mountains."
   },
   canCrossTerrains: ["mountain"],
+  medalOnCount: {
+    count: 2,
+    medal: "Goats",
+  },
 };

@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const PANDA_DEFINITION: Elem = {
   name: "panda",
+  emoji: "🐼",
   type: "unit",
   hitpoints: 20,
   maxHitPoints: 20,
@@ -44,5 +45,9 @@ export const PANDA_DEFINITION: Elem = {
   attack: {
     damage: 3,
     defense: 2,
-  }
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Pandas",
+  },
 };

@@ -12,6 +12,7 @@ interface TileCondition {
 }
 
 export interface Elem {
+  emoji?: string;
   definition?: string;
   lastUpdate?: number;
   name?: string;
@@ -125,4 +126,8 @@ export interface Elem {
   disableQuickActions?: boolean;
   maxLevel?: number;
   medalOnDeselect?: string;
+  medalOnCount?: {
+    count: number;
+    medal: string;
+  }
 }

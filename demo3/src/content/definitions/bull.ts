@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const BULL_DEFINITION: Elem = {
   name: "bull",
+  emoji: "🐂", //  emoji: "🐂",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -46,5 +47,9 @@ export const BULL_DEFINITION: Elem = {
     defense: 1,
     attackAfterMove: true,
     attackAfterAttack: true,
-  }
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Bulls",
+  },
 };

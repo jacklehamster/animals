@@ -683,8 +683,10 @@ export class GameObject extends EngineObject {
       this.manager.grid[this.getTag()] = this;
     }
 
-    if (this.elem?.type === "cursor") {
-      this.manager.onCursorMove(px, py);
+    if (!this.manager.inUI) {
+      if (this.elem?.type === "cursor") {
+        this.manager.onCursorMove(px, py);
+      }
     }
     if (this.elem?.type === "cloud") {
       this.manager.revealed.delete(`${px}_${py}`);
@@ -1213,6 +1215,10 @@ export class GameObject extends EngineObject {
 
   update() {
     super.update();
+    if (this.manager.hud.touchCaptured) {
+      return;
+    }
+
     if (this.updated && !this.elem?.dynamic && !this.elem?.spread?.moving && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
@@ -1319,13 +1325,12 @@ export class GameObject extends EngineObject {
       }
     }
 
-    if (this.elem?.type === "cursor") {
+    if (this.elem?.type === "cursor" && !this.manager.inUI) {
       if (mouseWasReleased(0)) {
         this.manager.mousePosDown = undefined;
         this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
       }
     }
-
 
     const coLayers = this.manager.scene?.colayers;
     let renderOrder = Math.round(-this.py) + (this.manager.scene.layers?.[this.elem?.type ?? ""] ?? 100) * 10000 + (coLayers?.[this.elem?.type ?? ""] ?? 0) * .001;

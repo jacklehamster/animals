@@ -145,6 +145,42 @@
         margin-top: 15px;
         transition: background-color 0.2s;
       }
+      .resource-icon:hover {
+        background-color: #000000;
+      }
+      .bg {
+        height: 100px;
+        bottom: -100px;
+      }
+      @media (orientation: portrait) {
+        .bg {
+          height: 200px;
+          bottom: -200px;
+        }
+        .bg.open.nomenu {
+          height: 100px;
+        }
+      }
+      .bg.open {
+        bottom: 0;
+      }
+      .quick-actions {
+        bottom: 0;
+      }
+      .quick-actions.removed {
+        bottom: -100px !important;
+      }
+      .quick-actions.open {
+        bottom: 100px;
+      }
+      @media (orientation: portrait) {
+        .quick-actions.open {
+          bottom: 200px;
+        }
+        .quick-actions.open.nomenu {
+          bottom: 100px;
+        }
+      }
     </style>
   </head>
   <body>

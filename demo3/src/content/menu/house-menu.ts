@@ -112,7 +112,7 @@ export const HOUSE_MENU: Menu = {
           },
         },
       ],
-      researchNeeded: ["squirrel"],
+      researchNeeded: ["nutology"],
     },
     {
       name: "turtle",

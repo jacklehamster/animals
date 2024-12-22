@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const TURTLE_DEFINITION: Elem = {
   name: "turtle",
+  emoji: "🐢",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -52,4 +53,8 @@ export const TURTLE_DEFINITION: Elem = {
     defense: 4,
   },
   canCrossTerrains: ["lake"],
+  medalOnCount: {
+    count: 2,
+    medal: "Turtles",
+  },
 };

@@ -1,14 +1,11 @@
 import type { Research } from "../../definition/research";
+import { ELEPHANT_ANIMATION, ELEPHANT_WAIT_ANIMATION } from "../animations/elephant";
 
 export const ELEPHANT_RESEARCH: Research = {
   name: "elephant",
   description: "Elephants can trample enemies.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  icon: ELEPHANT_ANIMATION,
+  waitIcon: ELEPHANT_WAIT_ANIMATION,
   dependency: ["pig"],
   cost: 80,
   recommended: 8,

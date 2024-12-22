@@ -2,6 +2,7 @@ import type { Elem } from "../../definition/elem";
 
 export const BEAVER_DEFINITION: Elem = {
   name: "beaver",
+  emoji: "🦫", //  emoji: "🦫",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -49,5 +50,9 @@ export const BEAVER_DEFINITION: Elem = {
   advise: {
     "name": "beaver",
     "message": "Beavers can cut down trees and turn rivers into lakes.",
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Beavers",
   },
 };

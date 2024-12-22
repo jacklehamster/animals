@@ -1,16 +1,12 @@
 import type { Menu } from "../../definition/menu";
+import { BEAVER_ANIMATION } from "../animations/beaver";
 import { RABBIT_ANIMATION } from "../animations/rabbit";
 import { LAKE_ANIMATION, RIVER_ANIMATION, TREE_ANIMATION } from "../animations/terrain";
 
 export const BEAVER_MENU: Menu = {
   name: "beaver",
   description: "Beavers can build dam, turning rivers into lakes.\nThey can also cut down trees.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64] as [number, number],
-    padding: [2, 2],
-    frames: [51],
-  },
+  icon: BEAVER_ANIMATION,
   items: [
     {
       name: "lake",

@@ -23605,82 +23605,6 @@ var require_crypto_js = __commonJS((exports, module) => {
   });
 });
 
-// node_modules/zzfx/ZzFX.js
-var exports_ZzFX = {};
-__export(exports_ZzFX, {
-  zzfx: () => {
-    {
-      return zzfx2;
-    }
-  },
-  ZZFX: () => {
-    {
-      return ZZFX;
-    }
-  }
-});
-function zzfx2(...parameters) {
-  return ZZFX.play(...parameters);
-}
-var ZZFX;
-var init_ZzFX = __esm(() => {
-  ZZFX = {
-    volume: 0.3,
-    sampleRate: 44100,
-    x: new AudioContext,
-    play: function(...parameters) {
-      return this.playSamples(this.buildSamples(...parameters));
-    },
-    playSamples: function(...samples) {
-      const buffer = this.x.createBuffer(samples.length, samples[0].length, this.sampleRate), source = this.x.createBufferSource();
-      samples.map((d, i) => buffer.getChannelData(i).set(d));
-      source.buffer = buffer;
-      source.connect(this.x.destination);
-      source.start();
-      return source;
-    },
-    buildSamples: function(volume = 1, randomness = 0.05, frequency = 220, attack = 0, sustain = 0, release = 0.1, shape = 0, shapeCurve = 1, slide = 0, deltaSlide = 0, pitchJump = 0, pitchJumpTime = 0, repeatTime = 0, noise = 0, modulation = 0, bitCrush = 0, delay = 0, sustainVolume = 1, decay = 0, tremolo = 0, filter = 0) {
-      let PI2 = Math.PI * 2, sign2 = (v) => v < 0 ? -1 : 1, sampleRate = this.sampleRate, startSlide = slide *= 500 * PI2 / sampleRate / sampleRate, startFrequency = frequency *= (1 + randomness * 2 * Math.random() - randomness) * PI2 / sampleRate, b = [], t = 0, tm = 0, i = 0, j = 1, r = 0, c = 0, s = 0, f, length, quality = 2, w = PI2 * Math.abs(filter) * 2 / sampleRate, cos = Math.cos(w), alpha = Math.sin(w) / 2 / quality, a0 = 1 + alpha, a1 = -2 * cos / a0, a2 = (1 - alpha) / a0, b0 = (1 + sign2(filter) * cos) / 2 / a0, b1 = -(sign2(filter) + cos) / a0, b22 = b0, x2 = 0, x1 = 0, y22 = 0, y1 = 0;
-      attack = attack * sampleRate + 9;
-      decay *= sampleRate;
-      sustain *= sampleRate;
-      release *= sampleRate;
-      delay *= sampleRate;
-      deltaSlide *= 500 * PI2 / sampleRate ** 3;
-      modulation *= PI2 / sampleRate;
-      pitchJump *= PI2 / sampleRate;
-      pitchJumpTime *= sampleRate;
-      repeatTime = repeatTime * sampleRate | 0;
-      volume *= this.volume;
-      for (length = attack + decay + sustain + release + delay | 0;i < length; b[i++] = s * volume) {
-        if (!(++c % (bitCrush * 100 | 0))) {
-          s = shape ? shape > 1 ? shape > 2 ? shape > 3 ? Math.sin(t * t) : Math.max(Math.min(Math.tan(t), 1), -1) : 1 - (2 * t / PI2 % 2 + 2) % 2 : 1 - 4 * Math.abs(Math.round(t / PI2) - t / PI2) : Math.sin(t);
-          s = (repeatTime ? 1 - tremolo + tremolo * Math.sin(PI2 * i / repeatTime) : 1) * sign2(s) * Math.abs(s) ** shapeCurve * (i < attack ? i / attack : i < attack + decay ? 1 - (i - attack) / decay * (1 - sustainVolume) : i < attack + decay + sustain ? sustainVolume : i < length - delay ? (length - i - delay) / release * sustainVolume : 0);
-          s = delay ? s / 2 + (delay > i ? 0 : (i < length - delay ? 1 : (length - i) / delay) * b[i - delay | 0] / 2 / volume) : s;
-          if (filter)
-            s = y1 = b22 * x2 + b1 * (x2 = x1) + b0 * (x1 = s) - a2 * y22 - a1 * (y22 = y1);
-        }
-        f = (frequency += slide += deltaSlide) * Math.cos(modulation * tm++);
-        t += f + f * noise * Math.sin(i ** 5);
-        if (j && ++j > pitchJumpTime) {
-          frequency += pitchJump;
-          startFrequency += pitchJump;
-          j = 0;
-        }
-        if (repeatTime && !(++r % repeatTime)) {
-          frequency = startFrequency;
-          slide = startSlide;
-          j = j || 1;
-        }
-      }
-      return b;
-    },
-    getNote: function(semitoneOffset = 0, rootNoteFrequency = 440) {
-      return rootNoteFrequency * 2 ** (semitoneOffset / 12);
-    }
-  };
-});
-
 // dist/littlejs.esm.min.js
 var exports_littlejs_esm_min = {};
 __export(exports_littlejs_esm_min, {
@@ -27026,6 +26950,9 @@ class Newgrounds {
 }
 
 // src/lib/littlejs.ts
+function postScore(board, score) {
+  newgrounds?.postScore(board, score);
+}
 setShowSplashScreen(true);
 setEnablePhysicsSolver(false);
 setGamepadsEnable(false);
@@ -27785,8 +27712,10 @@ class GameObject extends EngineObject {
       this.manager.grid[this.getTag()]?.destroy();
       this.manager.grid[this.getTag()] = this;
     }
-    if (this.elem?.type === "cursor") {
-      this.manager.onCursorMove(px, py);
+    if (!this.manager.inUI) {
+      if (this.elem?.type === "cursor") {
+        this.manager.onCursorMove(px, py);
+      }
     }
     if (this.elem?.type === "cloud") {
       this.manager.revealed.delete(`${px}_${py}`);
@@ -28253,6 +28182,9 @@ class GameObject extends EngineObject {
   }
   update() {
     super.update();
+    if (this.manager.hud.touchCaptured) {
+      return;
+    }
     if (this.updated && !this.elem?.dynamic && !this.elem?.spread?.moving && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
@@ -28343,7 +28275,7 @@ class GameObject extends EngineObject {
         }
       }
     }
-    if (this.elem?.type === "cursor") {
+    if (this.elem?.type === "cursor" && !this.manager.inUI) {
       if (mouseWasReleased(0)) {
         this.manager.mousePosDown = undefined;
         this.manager.onTap(this.px, this.py, mousePos.x, mousePos.y);
@@ -28681,7 +28613,6 @@ class GameObject extends EngineObject {
 // src/content/constant.ts
 var SIZE = 30;
 var DEBUG = window.location.search.includes("debug");
-var READY = true;
 
 // src/ui/hud.ts
 var SPRITESHEET_COLS = 30;
@@ -28705,29 +28636,55 @@ class Hud {
   researchPopup = document.createElement("div");
   spaceshipPopup = document.createElement("div");
   music = document.createElement("audio");
+  confirmDialog = document.createElement("div");
+  medalsView = document.createElement("div");
   updated = false;
   onKnob = false;
   constructor(manager) {
     this.manager = manager;
   }
+  hookupClick(elem, callback, condition) {
+    elem.style.cursor = "pointer";
+    elem.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    elem.addEventListener("click", (e) => {
+      if (condition && !condition()) {
+        return;
+      }
+      zzfx(...[0.8, , 788, 0.02, 0.03, 0.04, , 1.1, , -1, , , , 0.1, 191, , , 0.83, 0.01, 0.01, 125]);
+      e.preventDefault();
+      e.stopPropagation();
+      callback();
+    });
+    elem.addEventListener("touchstart", (e) => {
+      if (condition && !condition()) {
+        return;
+      }
+      zzfx(...[0.8, , 788, 0.02, 0.03, 0.04, , 1.1, , -1, , , , 0.1, 191, , , 0.83, 0.01, 0.01, 125]);
+      e.preventDefault();
+      e.stopPropagation();
+      callback();
+    }, { passive: false, capture: true });
+  }
   initialize() {
     this.ui.id = "hud";
     this.ui.classList.add("hud");
     document.body.appendChild(this.ui);
-    this.ui.addEventListener("mouseover", (e) => {
+    this.ui.addEventListener("mouseover", () => {
       this.manager.inUI = true;
       this.manager.cursor?.hide();
-    });
-    this.ui.addEventListener("mouseout", (e) => {
+    }, { capture: true, passive: false });
+    this.ui.addEventListener("mouseout", () => {
       this.manager.inUI = false;
       this.manager.refreshCursor();
-    });
+    }, { capture: true, passive: false });
     this.ui.style.display = "none";
+    this.bg.classList.add("bg");
     this.bg.style.width = "100%";
-    this.bg.style.height = "100px";
     this.bg.style.position = "absolute";
     this.bg.style.zIndex = "100";
-    this.bg.style.bottom = "-100px";
     this.bg.style.left = "0";
     this.bg.style.background = "rgba(0, 0, 0, 1)";
     this.bg.style.transition = "bottom 0.2s";
@@ -28770,12 +28727,16 @@ class Hud {
     this.blocker.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
     this.blocker.style.display = "none";
     this.ui.appendChild(this.blocker);
+    this.hookupClick(this.blocker, () => {
+      this.executeTap();
+    }, () => !!this.onTap);
     this.dialog.style.position = "absolute";
-    this.dialog.style.zIndex = "100";
+    this.dialog.style.zIndex = "200";
     this.dialog.style.top = "10px";
     this.dialog.style.left = "50%";
     this.dialog.style.transform = "translate(-50%, 0)";
     this.dialog.style.width = "80%";
+    this.dialog.style.padding = "20px";
     this.dialog.style.height = "200px";
     this.dialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
     this.dialog.style.color = "snow";
@@ -28834,8 +28795,10 @@ class Hud {
     this.researchPopup.style.transform = "translate(-50%, -50%)";
     this.researchPopup.style.width = "800px";
     this.researchPopup.style.height = "600px";
+    this.researchPopup.style.maxWidth = "100vw";
+    this.researchPopup.style.maxHeight = "calc(100vw * 6 / 8)";
     this.researchPopup.style.backgroundImage = "url(./assets/researched.png)";
-    this.researchPopup.style.backgroundSize = "cover";
+    this.researchPopup.style.backgroundSize = "contain";
     this.researchPopup.style.pointerEvents = "none";
     this.researchPopup.style.opacity = "0";
     this.researchPopup.style.transition = "opacity .2s";
@@ -28847,8 +28810,10 @@ class Hud {
     this.spaceshipPopup.style.transform = "translate(-50%, -50%)";
     this.spaceshipPopup.style.width = "800px";
     this.spaceshipPopup.style.height = "600px";
+    this.researchPopup.style.maxWidth = "100vw";
+    this.researchPopup.style.maxHeight = "calc(100vw * 6 / 8)";
     this.spaceshipPopup.style.backgroundImage = "url(./assets/spaceship.png)";
-    this.spaceshipPopup.style.backgroundSize = "cover";
+    this.spaceshipPopup.style.backgroundSize = "contain";
     this.spaceshipPopup.style.pointerEvents = "none";
     this.spaceshipPopup.style.opacity = "0";
     this.spaceshipPopup.style.transition = "opacity .2s";
@@ -28858,7 +28823,7 @@ class Hud {
     researchImage.style.position = "absolute";
     researchImage.style.top = "30%";
     researchImage.style.left = "50%";
-    researchImage.style.transform = "translate(-50%, -50%) scale(3)";
+    researchImage.style.transform = "translate(-50%, -50%) scale(2)";
     researchImage.style.transition = "opacity 3s";
     researchImage.style.opacity = "0";
     this.ui.appendChild(this.researchPopup);
@@ -28898,11 +28863,44 @@ class Hud {
     spaceshipText.style.pointerEvents = "none";
     spaceshipText.style.whiteSpace = "pre-wrap";
     this.ui.appendChild(this.spaceshipPopup);
+    this.confirmDialog.style.position = "absolute";
+    this.confirmDialog.style.zIndex = "200";
+    this.confirmDialog.style.top = "50%";
+    this.confirmDialog.style.left = "50%";
+    this.confirmDialog.style.transform = "translate(-50%, -50%)";
+    this.confirmDialog.style.width = "400px";
+    this.confirmDialog.style.height = "200px";
+    this.confirmDialog.style.maxWidth = "100vw";
+    this.confirmDialog.style.backgroundColor = "rgba(0, 0, 0, .7)";
+    this.confirmDialog.style.color = "snow";
+    this.confirmDialog.style.flexDirection = "column";
+    this.confirmDialog.style.justifyContent = "center";
+    this.confirmDialog.style.alignItems = "center";
+    this.confirmDialog.style.textAlign = "center";
+    this.confirmDialog.style.textTransform = "uppercase";
+    this.confirmDialog.style.padding = "20px";
+    this.confirmDialog.style.display = "none";
+    this.ui.appendChild(this.confirmDialog);
+    this.medalsView.style.position = "absolute";
+    this.medalsView.style.zIndex = "100";
+    this.medalsView.style.top = "5px";
+    this.medalsView.style.left = "100px";
+    this.medalsView.style.display = "flex";
+    this.medalsView.style.flexDirection = "row";
+    this.medalsView.style.justifyContent = "center";
+    this.medalsView.style.alignItems = "center";
+    this.medalsView.style.textAlign = "center";
+    this.medalsView.style.textTransform = "uppercase";
+    this.ui.appendChild(this.medalsView);
     this.setupShortcutKeys();
     this.initializeErrorBanner();
     this.setupMusic();
     this.setupQuickActions();
-    this.setupZoom();
+    if (!isTouchDevice) {
+      this.setupZoom();
+    } else {
+      setCameraScale(50);
+    }
   }
   setupMusic() {
     this.music.src = "./assets/animal-anthem.mp3";
@@ -28922,7 +28920,7 @@ class Hud {
       }
     });
   }
-  async refresh() {
+  async update() {
     if (this.updated) {
       return;
     }
@@ -28935,7 +28933,32 @@ class Hud {
       this.ui.style.display = "block";
       this.updated = true;
       this.endButton.disabled = !!this.manager.isAiPlayer(this.manager.getPlayer()) || this.dialog.style.display !== "none";
+      await this.updateMedals();
     }
+  }
+  async updateMedals() {
+    const medalsManager = this.manager.medals;
+    if (this.manager.isAiPlayer(this.manager.getPlayer())) {
+      return;
+    }
+    this.medalsView.innerHTML = "";
+    const medals3 = [...this.manager.scene.medals ?? []];
+    medals3.sort((a, b) => {
+      const unlockedA = this.manager.medals.isUnlocked(a.name) ? 1 : 0;
+      const unlockedB = this.manager.medals.isUnlocked(b.name) ? 1 : 0;
+      if (unlockedA !== unlockedB) {
+        return unlockedB - unlockedA;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    medals3.forEach((medal) => {
+      if (medal.showInUI) {
+        const medalDiv = this.medalsView.appendChild(document.createElement("div"));
+        medalDiv.textContent = `${medal.icon}`;
+        medalDiv.style.opacity = medalsManager.isUnlocked(medal.name) ? "1" : "0.3";
+        medalDiv.title = medalsManager.isUnlocked(medal.name) ? `Medal unlocked: ${medal.name} ${medal.description}` : "";
+      }
+    });
   }
   refreshButtons() {
     const player = this.manager.getPlayer();
@@ -28946,42 +28969,42 @@ class Hud {
     const RESOURCES = this.manager.getAllGlobalResources();
     const revenuePerResource = await this.manager.calculateResourceRevenue(player);
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
+    const taxValue = this.manager.getTaxValue(this.manager.getPlayer());
     RESOURCES.forEach((resource, index) => {
-      let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
-      if (index === 0) {
-        taxValue = 100 - taxValue;
-      }
-      let revenueValue = revenuePerResource[resource];
+      const resTax = index === 0 ? 100 - taxValue : taxValue;
+      const revenueValue = revenuePerResource[resource];
       const taxText = document.getElementById(`${resource}-tax`);
       if (taxText) {
-        taxText.textContent = `${revenueValue >= 0 ? "+" : ""}${revenueValue} (${taxValue}%)`;
+        taxText.textContent = `${revenueValue >= 0 ? "+" : ""}${revenueValue} (${resTax}%)`;
       }
     });
-    let taxKnob = document.getElementById("tax");
-    if (!taxKnob) {
-      taxKnob = this.resourceOverlay.appendChild(document.createElement("input"));
-      taxKnob.id = "tax";
-      taxKnob.type = "range";
-      taxKnob.min = "0";
-      taxKnob.max = "100";
-      taxKnob.step = "5";
-      taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
-      taxKnob.style.width = "60px";
-      taxKnob.style.marginTop = "20px";
-      taxKnob.addEventListener("input", async (e) => {
-        this.manager.updateTaxValue(player, parseInt(taxKnob.value));
-        const previousBrain = this.manager.getPlayerResource("brain", this.manager.getPlayer());
-        await this.refreshTax();
-        await this.refreshResearchInfo();
-      });
-      taxKnob.addEventListener("mouseover", (e) => {
-        this.onKnob = true;
-      });
-      taxKnob.addEventListener("mouseout", (e) => {
-        this.onKnob = false;
-      });
+    if (!isTouchDevice) {
+      let taxKnob = document.getElementById("tax");
+      if (!taxKnob) {
+        taxKnob = this.resourceOverlay.appendChild(document.createElement("input"));
+        taxKnob.id = "tax";
+        taxKnob.type = "range";
+        taxKnob.min = "0";
+        taxKnob.max = "100";
+        taxKnob.step = "10";
+        taxKnob.value = `${this.manager.getTaxValue(this.manager.getPlayer())}`;
+        taxKnob.style.width = "60px";
+        taxKnob.style.marginTop = "20px";
+        taxKnob.addEventListener("input", async (e) => {
+          this.manager.updateTaxValue(player, parseInt(taxKnob.value));
+          await this.refreshTax();
+          await this.refreshResearchInfo();
+        });
+        taxKnob.addEventListener("mouseover", (e) => {
+          this.onKnob = true;
+        });
+        taxKnob.addEventListener("mouseout", (e) => {
+          this.onKnob = false;
+        });
+      }
+      taxKnob.value = taxValue.toString();
+      taxKnob.style.display = hasRevenue ? "block" : "none";
     }
-    taxKnob.style.display = hasRevenue ? "block" : "none";
   }
   async refreshResources() {
     const RESOURCES = this.manager.getAllGlobalResources();
@@ -29003,6 +29026,18 @@ class Hud {
         icon.classList.add("resource-icon");
         icon.style.backgroundPosition = `${-spriteWidth * (frames[0] % 30) + (padding?.[0] ?? 2) / 2}px ${-spriteHeight * Math.floor(frames[0] / 30) + (padding?.[1] ?? 2) / 2}px`;
         icon.textContent = "0";
+        this.hookupClick(icon, async () => {
+          const player = this.manager.getPlayer();
+          let taxValue2 = this.manager.getTaxValue(this.manager.getPlayer());
+          if (index === 0) {
+            taxValue2 = Math.min(100, taxValue2 - 10);
+          } else {
+            taxValue2 = Math.max(0, taxValue2 + 10);
+          }
+          this.manager.updateTaxValue(player, taxValue2);
+          await this.refreshTax();
+          await this.refreshResearchInfo();
+        });
         this.resourceOverlay.appendChild(icon);
       }
       let taxValue = this.manager.getTaxValue(this.manager.getPlayer());
@@ -29017,13 +29052,17 @@ class Hud {
           icon.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
         }, 500);
       }
-      const taxText = document.getElementById(`${resource}-tax`) ?? this.resourceOverlay.appendChild(document.createElement("div"));
-      taxText.id = `${resource}-tax`;
-      taxText.style.color = "white";
-      taxText.style.width = "100%";
-      taxText.style.marginTop = "-20px";
-      taxText.style.textAlign = "center";
-      taxText.style.fontSize = "8pt";
+      let taxText = document.getElementById(`${resource}-tax`);
+      if (!taxText) {
+        taxText = this.resourceOverlay.appendChild(document.createElement("div"));
+        taxText.id = `${resource}-tax`;
+        taxText.style.color = "white";
+        taxText.style.width = "100%";
+        taxText.style.marginTop = "-20px";
+        taxText.style.textAlign = "center";
+        taxText.style.fontSize = "8pt";
+        taxText.style.pointerEvents = "none";
+      }
     });
     const revenuePerResource = await this.manager.calculateResourceRevenue(this.manager.getPlayer());
     const hasRevenue = Object.values(revenuePerResource).some((value) => value > 0);
@@ -29031,6 +29070,7 @@ class Hud {
     this.resourceOverlay.style.display = hasRevenue || hasResource ? "block" : "none";
   }
   flashEndTurn(temp = false) {
+    this.ui.querySelector("#zoomGroup")?.classList.remove("hidden");
     this.buttonsOverlay.style.display = "block";
     document.getElementById("endButton")?.classList.add(temp ? "flash-temp" : "flash");
     if (temp) {
@@ -29063,15 +29103,38 @@ class Hud {
       icon.addEventListener("mouseout", (e) => {
         icon.style.backgroundColor = "rgb(50, 50, 50, .3)";
       });
-      icon.addEventListener("click", (e) => {
-        this.manager.performQuickAction(action);
+      this.hookupClick(icon, () => {
+        this.confirmQuickAction(action);
       });
+    });
+  }
+  confirmQuickAction(action) {
+    this.confirmDialog.style.display = "flex";
+    this.confirmDialog.innerHTML = `<div>${action.description}</div>`;
+    const confirmButton = this.confirmDialog.appendChild(document.createElement("button"));
+    confirmButton.textContent = "confirm";
+    confirmButton.style.cursor = "pointer";
+    confirmButton.style.margin = "10px";
+    this.hookupClick(confirmButton, async () => {
+      await this.waitABit(100);
+      this.manager.performQuickAction(action);
+      this.confirmDialog.style.display = "none";
+    });
+    const cancelButton = this.confirmDialog.appendChild(document.createElement("button"));
+    cancelButton.textContent = "cancel";
+    cancelButton.style.cursor = "pointer";
+    cancelButton.style.margin = "10px";
+    this.hookupClick(cancelButton, async () => {
+      await this.waitABit(100);
+      this.confirmDialog.style.display = "none";
     });
   }
   turnPage() {
   }
   setupZoom() {
     const zoomGroup = this.ui.appendChild(document.createElement("div"));
+    zoomGroup.id = "zoomGroup";
+    zoomGroup.classList.add("hidden");
     zoomGroup.style.display = "flex";
     zoomGroup.style.flexDirection = "column";
     zoomGroup.style.justifyContent = "center";
@@ -29106,18 +29169,19 @@ class Hud {
     });
   }
   setHudButtons() {
+    let icon = null;
     if (this.manager.scene.endTurnAnim) {
       const animation = this.buttonsOverlay.appendChild(document.createElement("div"));
       animation.style.position = "absolute";
       animation.style.marginTop = "-140px";
       animation.style.pointerEvents = "none";
       const { imageSource, spriteSize, frames, padding } = this.manager.scene.endTurnAnim;
-      const icon = animation.appendChild(document.createElement("div"));
+      icon = animation.appendChild(document.createElement("div"));
       icon.style.backgroundImage = `url(${imageSource})`;
       icon.style.width = `${spriteSize[0]}px`;
       icon.style.height = `${spriteSize[1]}px`;
       icon.style.zIndex = "100";
-      icon.style.pointerEvents = "none";
+      icon.style.pointerEvents = "auto";
       icon.style.transform = "scale(0.3) translate(-100%, -100%)";
       const spriteWidth = spriteSize[0] + (padding?.[0] ?? 2) * 2;
       const spriteHeight = spriteSize[1] + (padding?.[1] ?? 2) * 2;
@@ -29131,7 +29195,9 @@ class Hud {
           animationFrame = requestAnimationFrame(animateIcon);
         }
         const frame2 = frames[frameIndex];
-        icon.style.backgroundPosition = `${-spriteWidth * (frame2 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        if (icon) {
+          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        }
       };
       this.turnPage = () => {
         cancelAnimationFrame(animationFrame);
@@ -29142,11 +29208,21 @@ class Hud {
     const endButton = this.buttonsOverlay.appendChild(this.endButton);
     endButton.style.width = "150px";
     endButton.id = "endButton";
-    endButton.addEventListener("click", (e) => {
+    const endTurnAction = () => {
       endButton.disabled = true;
       this.stopFlashEndTurn();
       this.manager.gotoNextTurn();
-    });
+      const timeout = setTimeout(() => {
+        if (endButton.disabled) {
+          endButton.disabled = false;
+        }
+      }, 2000);
+      this.itemsToDestroy.add(() => clearTimeout(timeout));
+    };
+    if (icon) {
+      this.hookupClick(icon, endTurnAction, () => !endButton.disabled);
+    }
+    this.hookupClick(endButton, endTurnAction, () => !endButton.disabled);
     endButton.addEventListener("mousedown", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -29159,26 +29235,28 @@ class Hud {
     nextButton.innerHTML = "<u style='color: blue'>N</u>ext unit";
     nextButton.id = "nextButton";
     nextButton.style.width = "150px";
-    nextButton.addEventListener("click", (e) => {
+    this.hookupClick(nextButton, () => {
       this.manager.selectNext();
     });
     nextButton.style.display = "none";
-    const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
-    const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
-    autoEndLabel.textContent = "auto-end turn";
-    autoEndLabel.htmlFor = "autoEndCheckbox";
-    autoEndLabel.title = "Automatically end turn when no more moves are available";
-    const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
-    autoEndCheckbox.id = "autoEndCheckbox";
-    autoEndCheckbox.type = "checkbox";
-    autoEndCheckbox.checked = this.manager.autoEndTurn;
-    autoEndCheckbox.addEventListener("change", (e) => {
-      this.manager.autoEndTurn = autoEndCheckbox.checked;
-      if (this.manager.autoEndTurn) {
-        this.stopFlashEndTurn();
-        this.manager.checkForAnyMove();
-      }
-    });
+    if (!isTouchDevice) {
+      const autoEndGroup = this.buttonsOverlay.appendChild(document.createElement("div"));
+      const autoEndLabel = autoEndGroup.appendChild(document.createElement("label"));
+      autoEndLabel.textContent = "auto-end turn";
+      autoEndLabel.htmlFor = "autoEndCheckbox";
+      autoEndLabel.title = "Automatically end turn when no more moves are available";
+      const autoEndCheckbox = autoEndGroup.appendChild(document.createElement("input"));
+      autoEndCheckbox.id = "autoEndCheckbox";
+      autoEndCheckbox.type = "checkbox";
+      autoEndCheckbox.checked = this.manager.autoEndTurn;
+      autoEndCheckbox.addEventListener("change", (e) => {
+        this.manager.autoEndTurn = autoEndCheckbox.checked;
+        if (this.manager.autoEndTurn) {
+          this.stopFlashEndTurn();
+          this.manager.checkForAnyMove();
+        }
+      });
+    }
   }
   clear() {
     this.itemsToDestroy.forEach((item) => item());
@@ -29187,8 +29265,19 @@ class Hud {
   async showSelected(obj) {
     const isAi = obj && this.manager.isAiPlayer(obj.elem?.owner);
     const menu = isAi ? undefined : this.manager.getMenu(obj?.elem?.name);
-    this.bg.style.bottom = menu?.items.length ? "0" : "-400px";
-    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi ? "-100px" : menu?.items.length ? "100px" : "0";
+    if (menu?.items.length) {
+      this.bg.classList.add("open");
+      this.quickActionOverlay.classList.add("open");
+    } else {
+      this.bg.classList.remove("open");
+      this.quickActionOverlay.classList.remove("open");
+    }
+    if (obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi) {
+      this.quickActionOverlay.classList.add("removed");
+    } else {
+      this.quickActionOverlay.classList.remove("removed");
+    }
+    this.quickActionOverlay.style.bottom = obj?.elem?.type !== "unit" || obj?.elem?.disableQuickActions || isAi ? `-100px` : menu?.items.length ? `${this.bg.offsetHeight}px` : "0";
     this.buttonsOverlay.style.right = menu?.items.length ? "-200px" : "0";
     this.bg.innerHTML = "";
     this.clear();
@@ -29321,11 +29410,12 @@ class Hud {
       menuDiv.style.display = "flex";
       menuDiv.style.flexDirection = "row";
       menuDiv.style.justifyContent = "center";
-      menuDiv.style.alignItems = "center";
+      menuDiv.style.alignItems = "flex-end";
       menuDiv.style.flexGrow = "1";
       menuDiv.style.margin = "0 10px";
       menuDiv.style.marginLeft = "-100px";
       menuDiv.style.gap = "10px";
+      let hasMenu = false;
       for (const item of menu.items) {
         if (item.debug && !DEBUG) {
           continue;
@@ -29339,6 +29429,7 @@ class Hud {
         }
         const disabled = (!researched ? `Research\n${item.researchNeeded?.join(", ")}` : undefined) || await this.manager.checkCondition(item.disabled, obj) || (obj.canAfford(item.resourceCost) ? null : "not enough\nresources");
         const menuItemDiv = menuDiv.appendChild(document.createElement("div"));
+        hasMenu = true;
         if (item.resourceCost && researched) {
           const resourceDiv = menuItemDiv.appendChild(document.createElement("div"));
           resourceDiv.style.display = "flex";
@@ -29416,7 +29507,7 @@ class Hud {
             e.preventDefault();
             e.stopPropagation();
           });
-          menuItemDiv.addEventListener("click", async (e) => {
+          this.hookupClick(menuItemDiv, async () => {
             menuItemDiv.style.backgroundColor = "rgba(100, 100, 100, 0.5)";
             if (disabled) {
               return;
@@ -29429,8 +29520,6 @@ class Hud {
             obj.refreshLabel();
             this.updated = false;
             obj.refreshBars();
-            e.preventDefault();
-            e.stopPropagation();
           });
         }
         if (disabled) {
@@ -29443,13 +29532,22 @@ class Hud {
           menuItemDiv.style.cursor = "pointer";
         }
       }
+      if (hasMenu) {
+        this.bg.classList.remove("nomenu");
+        this.quickActionOverlay.classList.remove("nomenu");
+      } else {
+        this.bg.classList.add("nomenu");
+        this.quickActionOverlay.classList.add("nomenu");
+      }
     }
   }
   showBlocker(clickable) {
+    this.captureTouch();
     this.blocker.style.display = "block";
     this.blocker.style.cursor = clickable ? "pointer" : "default";
   }
   hideBlocker() {
+    this.releaseTouch();
     this.blocker.style.display = "none";
   }
   async showSpaceshipDialog() {
@@ -29525,26 +29623,30 @@ class Hud {
         utterance.voice = voice;
       }
       speechSynthesis.speak(utterance);
-      setTimeout(() => {
-        this.blocker.addEventListener("click", () => {
-          overlay.parentNode?.removeChild(overlay);
-          speechSynthesis.cancel();
-          this.fadeMusicOut();
-          this.clear();
-          this.spaceshipPopup.style.opacity = "0";
-          this.hideBlocker();
-          resolve();
-          setTimeout(() => {
-            this.spaceshipPopup.style.display = "none";
-          }, 300);
-        }, { once: true });
-      }, 1000);
+      await this.waitABit();
+      this.onTap = async () => {
+        overlay.parentNode?.removeChild(overlay);
+        speechSynthesis.cancel();
+        this.fadeMusicOut();
+        this.clear();
+        this.spaceshipPopup.style.opacity = "0";
+        this.hideBlocker();
+        resolve();
+        await this.waitABit(300);
+        this.spaceshipPopup.style.display = "none";
+      };
     });
   }
+  executeTap() {
+    const onTap = this.onTap;
+    this.onTap = undefined;
+    onTap?.();
+  }
+  onTap;
   async showResearchDialog(research) {
     this.researchPopup.style.display = "flex";
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    return new Promise((resolve) => {
+    await this.waitABit(100);
+    return new Promise(async (resolve) => {
       this.showBlocker(true);
       this.researchPopup.style.opacity = "1";
       const { imageSource, spriteSize, frames, padding } = research.waitIcon ?? research.icon;
@@ -29575,20 +29677,18 @@ class Hud {
         utterance.voice = voice;
       }
       speechSynthesis.speak(utterance);
-      setTimeout(() => {
-        this.blocker.addEventListener("click", () => {
-          speechSynthesis.cancel();
-          this.fadeMusicOut();
-          this.clear();
-          this.researchPopup.style.opacity = "0";
-          this.hideBlocker();
-          resolve();
-          researchImage.style.opacity = "0";
-          setTimeout(() => {
-            this.researchPopup.style.display = "none";
-          }, 300);
-        }, { once: true });
-      }, 1000);
+      await this.waitABit();
+      this.onTap = async () => {
+        speechSynthesis.cancel();
+        this.fadeMusicOut();
+        this.clear();
+        this.researchPopup.style.opacity = "0";
+        this.hideBlocker();
+        resolve();
+        researchImage.style.opacity = "0";
+        await this.waitABit(300);
+        this.researchPopup.style.display = "none";
+      };
     });
   }
   musicFader = 0;
@@ -29611,6 +29711,13 @@ class Hud {
     this.music.volume = 1;
     this.music.currentTime = 0;
   }
+  touchCaptured = false;
+  captureTouch() {
+    this.touchCaptured = true;
+  }
+  releaseTouch() {
+    this.touchCaptured = false;
+  }
   async showDialog(text, music = false, voiceName) {
     this.showBlocker(true);
     this.dialog.style.display = "flex";
@@ -29627,63 +29734,9 @@ class Hud {
       this.playMusic();
     }
     return new Promise(async (resolve) => {
-      await new Promise((resolve2) => setTimeout(resolve2, 1000));
-      this.blocker.addEventListener("click", () => {
+      await this.waitABit(500);
+      this.onTap = async () => {
         speechSynthesis.cancel();
-        if (!READY) {
-          window.index = window.index ?? 0;
-          const NOTREADYS = [
-            "Not ready yet, please be patient",
-            "I'm not ready yet, please wait",
-            "I'm still working on it, please wait",
-            "Can you wait a little longer? Jesus!",
-            "Hold your horses, we're almost there!",
-            "Patience is a virtue... that you clearly lack!",
-            "Good things come to those who wait. Great things take a bit longer.",
-            "Rome wasn't built in a day, and neither is this!",
-            "Keep calm and wait a moment.",
-            "Loading... just like your patience.",
-            "If you keep clicking, it won't go any faster!",
-            "Almost there... just kidding, still working on it!",
-            "Why the rush? Enjoy the moment!",
-            "Your impatience is noted. Still not ready.",
-            "Take a deep breath, we're almost there.",
-            "You can't rush perfection!",
-            "Good things take time. Great things take even longer.",
-            "Patience, young grasshopper.",
-            "We're on it! Just a few more seconds.",
-            "Loading... because magic takes time.",
-            "Hang tight, we're almost there!",
-            "If you wait a bit longer, you might get a cookie!",
-            "Almost done... just kidding, still working on it!",
-            "Your impatience is adorable. Still not ready.",
-            "Hold on, we're making it awesome!",
-            "Good things come to those who wait. Great things take a bit longer.",
-            "Keep calm and wait a moment.",
-            "Loading... just like your patience.",
-            "If you keep clicking, it won't go any faster!",
-            "Almost there... just kidding, still working on it!",
-            "Why the rush? Enjoy the moment!",
-            "Your impatience is noted. Still not ready.",
-            "Take a deep breath, we're almost there.",
-            "You can't rush perfection!",
-            "Good things take time. Great things take even longer.",
-            "Patience, young grasshopper.",
-            "We're on it! Just a few more seconds.",
-            "Loading... because magic takes time.",
-            "Hang tight, we're almost there!",
-            "If you wait a bit longer, you might get a cookie!",
-            "Almost done... just kidding, still working on it!",
-            "Your impatience is adorable. Still not ready.",
-            "Hold on, we're making it awesome!"
-          ];
-          const msg = NOTREADYS[window.index];
-          window.index = (window.index + 1) % NOTREADYS.length;
-          this.clear();
-          resolve();
-          this.showDialog(msg);
-          return;
-        }
         if (music) {
           this.fadeMusicOut();
         }
@@ -29691,11 +29744,13 @@ class Hud {
         this.cat.style.display = "none";
         this.hideBlocker();
         this.clear();
-        setTimeout(() => {
-          resolve();
-        }, 10);
-      }, { once: true });
+        await this.waitABit(10);
+        resolve();
+      };
     });
+  }
+  async waitABit(time2 = 1000) {
+    await new Promise((resolve) => setTimeout(resolve, time2));
   }
   closeDialog() {
     this.dialog.style.display = "none";
@@ -29715,13 +29770,14 @@ class Hud {
       errorDiv.style.textAlign = "center";
       errorDiv.style.fontSize = "20pt";
       errorDiv.textContent = event.message;
-      errorDiv.addEventListener("click", () => {
+      this.hookupClick(errorDiv, () => {
         errorDiv.remove();
       });
     }, { once: true });
   }
   async promptForResearch(inventions, brainsPerTurn, currentBrains) {
     if (!inventions.length) {
+      this.manager.scene.players[this.manager.getPlayer() - 1].currentResearch = undefined;
       return;
     }
     return new Promise((resolve) => {
@@ -29826,7 +29882,7 @@ class Hud {
         researchDiv.addEventListener("mouseout", () => {
           researchDiv.style.backgroundColor = index === 0 ? "rgba(70, 60, 0, 1)" : "";
         });
-        researchDiv.addEventListener("click", () => {
+        this.hookupClick(researchDiv, () => {
           this.manager.research(invention.name, this.manager.getPlayer());
           this.researchList.style.display = "none";
           this.hideBlocker();
@@ -30049,24 +30105,33 @@ var import_crypto_js = __toESM(require_crypto_js(), 1);
 
 class Medals {
   villageMedal = new NewgroundsMedal(82136, "First Village", "You build your first village!", "\uD83C\uDF96\uFE0F");
-  unlocked = {};
   medals = {};
-  constructor() {
+  mMedals = {};
+  constructor(medals3) {
     newgroundsInit("59435:yImSBHAv", "CgB6J4i3kfvQGILxQUF39g==", import_crypto_js.default);
-    this.medals["First Village"] = this.villageMedal;
-    console.log(medals);
+    medals3.forEach((medal) => {
+      this.mMedals[medal.name] = new Medal(medal.id, medal.name, medal.description, medal.icon);
+      if (!medal.id) {
+        return;
+      }
+      this.medals[medal.name] = new NewgroundsMedal(medal.id, medal.name, medal.description, medal.icon);
+    });
+    medalsInit("medals");
+  }
+  isUnlocked(medal) {
+    return this.mMedals[medal]?.unlocked || this.medals[medal]?.unlocked;
   }
   unlock(medal) {
-    if (!this.unlocked[medal]) {
-      this.unlocked[medal] = true;
+    if (!this.isUnlocked(medal)) {
+      this.mMedals[medal].unlock();
+    }
+    if (!this.medals[medal].unlocked) {
       this.medals[medal].unlock();
     }
   }
 }
 
 // src/core/manager.ts
-var { zzfx: zzfx3 } = (init_ZzFX(), __toCommonJS(exports_ZzFX));
-
 class Manager {
   scene;
   entries = new Map;
@@ -30091,11 +30156,12 @@ class Manager {
   lastUnit;
   lastHovered;
   advise = new Set;
-  medals = new Medals;
+  medals;
   constructor(scene) {
     this.scene = scene;
     this.animation = new AnimationManager(scene.animations);
     this.hud = new Hud(this);
+    this.medals = new Medals(this.scene?.medals ?? []);
     if (scene.scale) {
       setCameraScale(scene.scale);
     }
@@ -30108,6 +30174,9 @@ class Manager {
     window.addEventListener("blur", (e) => {
       this.hud.resourceOverlay.classList.add("hidden");
       this.hud.buttonsOverlay.classList.add("hidden");
+      this.hud.medalsView.classList.add("hidden");
+      this.hud.ui.querySelector("#zoomGroup")?.classList.add("hidden");
+      this.hud.quickActionOverlay.classList.add("hidden");
       this.showLabels = false;
       this.cursor?.hide();
       this.updateLabels();
@@ -30118,6 +30187,9 @@ class Manager {
     window.addEventListener("focus", (e) => {
       this.hud.resourceOverlay.classList.remove("hidden");
       this.hud.buttonsOverlay.classList.remove("hidden");
+      this.hud.medalsView.classList.remove("hidden");
+      this.hud.ui.querySelector("#zoomGroup")?.classList.remove("hidden");
+      this.hud.quickActionOverlay.classList.remove("hidden");
       this.showLabels = true;
       this.refreshCursor();
       this.updateLabels();
@@ -30125,16 +30197,13 @@ class Manager {
         exports_littlejs_esm_min.overlayCanvas.style.cursor = "";
       }
     });
-    if (!READY) {
-      this.hud.showDialog("This game is almost ready!.");
-    }
   }
   updateLabels() {
     this.getAllUnitsOrHouses().forEach((gameObject) => {
       gameObject.updateLabel(this.showLabels);
     });
   }
-  refresh() {
+  update() {
     this.scene.elems.forEach((elem) => {
       if (elem.debug && !DEBUG) {
         return;
@@ -30147,7 +30216,7 @@ class Manager {
       this.fixWorld();
       this.worldChanged = false;
     }
-    this.hud.refresh();
+    this.hud.update();
   }
   clearFogOfWar() {
     Object.keys(this.grid).forEach((tag) => {
@@ -30234,8 +30303,6 @@ class Manager {
     }
   }
   shiftCamera() {
-    if (this.inUI) {
-    }
     if (!this.hud.onKnob) {
       if (!this.mousePosDown && mouseWasPressed(0)) {
         this.mousePosDown = vec2(mousePos.x, mousePos.y);
@@ -30471,12 +30538,12 @@ class Manager {
       return;
     }
     if (this.selected?.canMoveTo(x, y) && this.selected.hasMoveOptionToLandOn(x, y)) {
-      zzfx3(...[, , 310, 0.01, 0.08, 0.06, , 0.5, 17, 3, , , , , , , , 0.65, 0.04, , -1486]);
+      zzfx(...[, , 310, 0.01, 0.08, 0.06, , 0.5, 17, 3, , , , , , , , 0.65, 0.04, , -1486]);
       this.selected.moveTo(x, y);
       return;
     }
     if (this.selected?.canAttackAt(x, y) && this.selected.hasAttackOptionOn(x, y)) {
-      zzfx3(...[1.9, , 169, , 0.06, 0.19, 3, 1.7, -9, , , , , 0.7, , 0.3, 0.17, 0.69, 0.09]);
+      zzfx(...[1.9, , 169, , 0.06, 0.19, 3, 1.7, -9, , , , , 0.7, , 0.3, 0.17, 0.69, 0.09]);
       this.selected.attackAt(x, y);
       return;
     }
@@ -30506,6 +30573,29 @@ class Manager {
     }
     if (previousSelected?.elem?.medalOnDeselect) {
       this.medals.unlock(previousSelected.elem.medalOnDeselect);
+    }
+    if (previousSelected?.elem?.medalOnCount) {
+      const name = previousSelected.elem.name;
+      let count = 0;
+      await this.iterateRevealedCells(async (gameObject2) => {
+        if (gameObject2.elem?.name === name && gameObject2.elem?.owner === this.getPlayer()) {
+          count++;
+        }
+      });
+      if (count >= previousSelected.elem.medalOnCount.count) {
+        this.medals.unlock(previousSelected.elem.medalOnCount.medal);
+      }
+    }
+    if (this.scene.medalOnCount) {
+      let count = 0;
+      await this.iterateRevealedCells(async (gameObject2) => {
+        if (gameObject2.elem?.type === "unit" && gameObject2.elem?.owner === this.getPlayer()) {
+          count++;
+        }
+      });
+      if (count >= this.scene.medalOnCount.count) {
+        this.medals.unlock(this.scene.medalOnCount.medal);
+      }
     }
     if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
       this.advise.add(gameObject.elem.advise.name);
@@ -30627,20 +30717,20 @@ class Manager {
     if (this.scene.turn) {
       this.setSelection(undefined);
       if (this.scene.turn.player < this.scene.players.length) {
-        zzfx3(...[0.6, , 326, 0.02, 0.01, 0.07, , 1.6, 2, , 179, 0.04, , 0.2, , , , 0.97, 0.01, , 133]);
+        zzfx(...[0.6, , 326, 0.02, 0.01, 0.07, , 1.6, 2, , 179, 0.04, , 0.2, , , , 0.97, 0.01, , 133]);
         this.scene.turn.player++;
       } else {
         this.hud.turnPage();
         this.scene.turn.player = 0;
         this.scene.turn.turn++;
-        zzfx3(...[, , 242, 0.01, 0.07, 0.12, , 1.7, , -49, 283, 0.06, , , , 0.1, , 0.52, 0.05]);
+        zzfx(...[, , 242, 0.01, 0.07, 0.12, , 1.7, , -49, 283, 0.06, , , , 0.1, , 0.52, 0.05]);
       }
       const player = this.getPlayer();
       if (this.scene.turn && player) {
         await this.collectResources(player);
       }
       this.refreshUnitsLabels();
-      if (this.getUnits(player).size) {
+      if (this.getUnits(player, true).size) {
         await this.giveUnitsTurns(player);
         await this.selectNext();
       } else if (this.isAiPlayer(player)) {
@@ -30649,6 +30739,12 @@ class Manager {
       await this.checkForAnyMove(true);
     }
     this.hud.updated = false;
+  }
+  save() {
+    localStorage.setItem("save", JSON.stringify(this.scene));
+  }
+  clearSave() {
+    localStorage.removeItem("save");
   }
   refreshUnitsLabels() {
     Object.entries(this.grid).forEach(([tag, gameObject]) => {
@@ -30721,7 +30817,7 @@ class Manager {
       if (playerResearch?.[invention.name]) {
         return false;
       }
-      if (!invention.forceInDebug && !DEBUG) {
+      if (!invention.forceInDebug || !DEBUG) {
         const dependency = invention.dependency;
         if (dependency && dependency.some((dep) => !playerResearch?.[dep])) {
           return false;
@@ -30831,10 +30927,10 @@ class Manager {
     });
     return resources;
   }
-  getUnits(player) {
+  getUnits(player, checkWaiting) {
     const units = new Set;
     Object.entries(this.grid).forEach(([tag, gameObject]) => {
-      if (gameObject.elem?.type === "unit" && (player === undefined || gameObject.elem?.owner === player)) {
+      if (gameObject.elem?.type === "unit" && (player === undefined || gameObject.elem?.owner === player) && (!checkWaiting || !gameObject.elem?.waiting)) {
         units.add(gameObject);
       }
     });
@@ -30874,7 +30970,7 @@ class Manager {
   }
   async getUnitRotation(player) {
     const cellsRotation = [];
-    const playerUnits = this.getUnits(player);
+    const playerUnits = this.getUnits(player, true);
     for (const gameObject of playerUnits) {
       let include = false;
       if (this.selected === gameObject) {
@@ -31022,7 +31118,9 @@ class Manager {
     return this.scene.players[player - 1]?.research?.[research];
   }
   research(research, player) {
-    this.scene.players[player - 1].currentResearch = research;
+    if (this.scene.players[player - 1]) {
+      this.scene.players[player - 1].currentResearch = research;
+    }
   }
   getResearchInfo(player) {
     const current = this.scene.players[player - 1]?.currentResearch;
@@ -31049,6 +31147,10 @@ class Manager {
         await this.selectNext();
         this.hud.updated = false;
         break;
+      case "reset-game":
+        this.clearSave();
+        location.reload();
+        break;
     }
   }
   async performAction(action, obj) {
@@ -31063,7 +31165,7 @@ class Manager {
       });
     }
     if (action.create && obj) {
-      zzfx3(...[1.1, , 153, 0.06, 0.19, 0.12, , 4, -7, , -68, 0.07, 0.09, , , , , 0.77, 0.16, 0.11]);
+      zzfx(...[1.1, , 153, 0.06, 0.19, 0.12, , 4, -7, , -68, 0.07, 0.09, , , , , 0.77, 0.16, 0.11]);
       const elem = JSON.parse(JSON.stringify(action.create));
       this.addSceneElemAt(elem, obj.px, obj.py, {
         owner: obj?.elem?.owner,
@@ -31074,24 +31176,24 @@ class Manager {
       this.setSelection(undefined);
     }
     if (action.level && obj?.elem) {
-      zzfx3(...[1.4, , 265, 0.08, 0.13, 0.45, , 0.8, , , -193, 0.07, 0.08, , , , 0.02, 0.98, 0.28, 0.43]);
+      zzfx(...[1.4, , 265, 0.08, 0.13, 0.45, , 0.8, , , -193, 0.07, 0.08, , , , 0.02, 0.98, 0.28, 0.43]);
       obj.updateLevel((obj.elem.level ?? 0) + action.level);
       obj.refreshLabel();
     }
     if (action.harvest && obj?.elem) {
-      zzfx3(...[, , 98, 0.03, 0.03, 0.13, , 3.5, 2, 86, , , , , , , , 0.65, 0.03, , -975]);
+      zzfx(...[, , 98, 0.03, 0.03, 0.13, , 3.5, 2, 86, , , , , , , , 0.65, 0.03, , -975]);
       obj.setHarvesting(true);
     }
     if (action.stopHarvest && obj?.elem) {
       obj.setHarvesting(false);
     }
     if (action.clearFogOfWar) {
-      zzfx3(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
+      zzfx(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
       this.scene.clearFogOfWar = true;
       this.worldChanged = true;
     }
     if (action.updateHouseCloud) {
-      zzfx3(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
+      zzfx(...[0.7, , 369, , 0.19, 0.38, 1, 1.4, , , 208, 0.07, 0.06, , , , , 0.96, 0.29, , 309]);
       await this.iterateRevealedCells(async (gameObject) => {
         if (gameObject.elem?.type === "house" && gameObject.elem?.owner === this.getPlayer()) {
           gameObject.clearedCloud = false;
@@ -31103,7 +31205,7 @@ class Manager {
       await this.hud.showSpaceshipDialog();
     }
     if (action.heal && obj) {
-      zzfx3(...[, , 537, 0.01, 0.29, 0.21, 1, 0.2, 6, , , , 0.05, 0.2, , , , 0.5, 0.18]);
+      zzfx(...[, , 537, 0.01, 0.29, 0.21, 1, 0.2, 6, , , , 0.05, 0.2, , , , 0.5, 0.18]);
       await this.iterateGridCell(obj?.px, obj?.py, async (cell) => {
         if (cell.elem?.type === "unit" && cell.elem?.owner === this.getPlayer()) {
           if (cell.elem.maxHitPoints) {
@@ -31112,6 +31214,12 @@ class Manager {
           }
         }
       });
+    }
+    if (action.medal) {
+      this.medals.unlock(action.medal);
+    }
+    if (action.score) {
+      postScore(action.score.board, this.getTurn());
     }
   }
 }
@@ -31158,6 +31266,7 @@ var CABANA_DEFINITION = {
 // src/content/definitions/cow.ts
 var COW_DEFINITION = {
   name: "cow",
+  emoji: "\uD83D\uDC04",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -31220,6 +31329,7 @@ var COW_DEFINITION = {
 // src/content/definitions/dog.ts
 var DOG_DEFINITION = {
   name: "dog",
+  emoji: "\uD83D\uDC15",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -31268,6 +31378,10 @@ var DOG_DEFINITION = {
   advise: {
     name: "dog",
     message: "Dogs move 2 tiles each turn, and they can move after attacks.\nUse them to explore the world.\nYou can also find some buttons on the bottom left for additional actions.\nHover over them to see what they do."
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Dogs"
   }
 };
 
@@ -31339,6 +31453,7 @@ var RIVER_DEFINITION = {
 // src/content/definitions/sheep.ts
 var SHEEP_DEFINITION = {
   name: "sheep",
+  emoji: "\uD83D\uDC11",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -31506,12 +31621,7 @@ var PIG_SLEEP_ANIMATION = {
 var COW_MENU = {
   name: "cow",
   description: "Cows are your workers.\nUse them to harvest resources.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
+  icon: COW_ANIMATION,
   items: [
     {
       name: "harvest",
@@ -32021,7 +32131,7 @@ var HOUSE_MENU = {
           }
         }
       ],
-      researchNeeded: ["squirrel"]
+      researchNeeded: ["nutology"]
     },
     {
       name: "turtle",
@@ -32119,12 +32229,7 @@ var GOAT_SLEEP_ANIMATION = {
 var SHEEP_MENU = {
   name: "sheep",
   description: "The sheep is your settler.\nUse it to build settlements.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [6, 7]
-  },
+  icon: SHEEP_ANIMATION,
   items: [
     {
       name: "build",
@@ -32134,6 +32239,7 @@ var SHEEP_MENU = {
       frames: [27, 28, 29],
       label: "build\nsettlement",
       disabled: {
+        occupied: ["house", "Move away from house"],
         proximity: ["house", "Too close to\nanother house"]
       },
       actions: [
@@ -32191,7 +32297,7 @@ var BOVINE_RESEARCH = {
   icon: COW_ANIMATION,
   waitIcon: COW_WAIT_ANIMATION,
   dependency: [],
-  cost: 10,
+  cost: 5,
   recommended: 1
 };
 
@@ -32202,8 +32308,51 @@ var CANINE_RESEARCH = {
   icon: DOG_ANIMATION,
   waitIcon: DOG_WAIT_ANIMATION,
   dependency: [],
-  cost: 10,
+  cost: 5,
   recommended: 2
+};
+
+// src/content/animations/elephant.ts
+var ELEPHANT_ANIMATION = {
+  name: "elephant",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  frames: [
+    145
+  ]
+};
+var ELEPHANT_WAIT_ANIMATION = {
+  name: "elephant_wait",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 20,
+  frames: [
+    145,
+    146
+  ]
+};
+var ELEPHANT_WALK_ANIMATION = {
+  name: "elephant_walk",
+  imageSource: "./assets/tiles.png",
+  spriteSize: [64, 64],
+  mul: 2,
+  frames: [
+    145,
+    147,
+    145,
+    148
+  ]
+};
+
+// src/content/research/elephant.ts
+var ELEPHANT_RESEARCH = {
+  name: "elephant",
+  description: "Elephants can trample enemies.",
+  icon: ELEPHANT_ANIMATION,
+  waitIcon: ELEPHANT_WAIT_ANIMATION,
+  dependency: ["pig"],
+  cost: 80,
+  recommended: 8
 };
 
 // src/content/research/goat.ts
@@ -32277,7 +32426,7 @@ var SQUIRREL_RESEARCH = {
   description: "Squirrels can climb trees and throw nuts.",
   icon: SQUIRREL_ANIMATION,
   waitIcon: SQUIRREL_WAIT_ANIMATION,
-  dependency: [],
+  dependency: ["productivity"],
   cost: 20,
   recommended: 4
 };
@@ -32926,6 +33075,7 @@ var HOBO_JUMP_ANIMATION = {
 // src/content/definitions/squirrel.ts
 var SQUIRREL_DEFINITION = {
   name: "squirrel",
+  emoji: "\uD83D\uDC3F\uFE0F",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -33265,6 +33415,7 @@ var OVICULTURE_RESEARCH = {
 // src/content/definitions/beaver.ts
 var BEAVER_DEFINITION = {
   name: "beaver",
+  emoji: "\uD83E\uDDAB",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -33312,6 +33463,10 @@ var BEAVER_DEFINITION = {
   advise: {
     name: "beaver",
     message: "Beavers can cut down trees and turn rivers into lakes."
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Beavers"
   }
 };
 
@@ -33408,6 +33563,7 @@ var SQUIRREL_MENU = {
 // src/content/definitions/bull.ts
 var BULL_DEFINITION = {
   name: "bull",
+  emoji: "\uD83D\uDC02",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -33452,6 +33608,10 @@ var BULL_DEFINITION = {
     defense: 1,
     attackAfterMove: true,
     attackAfterAttack: true
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Bulls"
   }
 };
 
@@ -33470,12 +33630,7 @@ var TAUROLOGY_RESEARCH = {
 var BEAVER_MENU = {
   name: "beaver",
   description: "Beavers can build dam, turning rivers into lakes.\nThey can also cut down trees.",
-  icon: {
-    imageSource: "./assets/tiles.png",
-    spriteSize: [64, 64],
-    padding: [2, 2],
-    frames: [51]
-  },
+  icon: BEAVER_ANIMATION,
   items: [
     {
       name: "lake",
@@ -33591,6 +33746,7 @@ var TREE_DEFINITION = {
 // src/content/definitions/turtle.ts
 var TURTLE_DEFINITION = {
   name: "turtle",
+  emoji: "\uD83D\uDC22",
   type: "unit",
   hitpoints: 10,
   maxHitPoints: 10,
@@ -33640,7 +33796,11 @@ var TURTLE_DEFINITION = {
     damage: 1,
     defense: 4
   },
-  canCrossTerrains: ["lake"]
+  canCrossTerrains: ["lake"],
+  medalOnCount: {
+    count: 2,
+    medal: "Turtles"
+  }
 };
 
 // src/content/definitions/fruit.ts
@@ -34003,7 +34163,7 @@ var VILLAGE_MENU = {
       ...SPACESHIP_ANIMATION,
       label: "build\nspaceship",
       disabled: {
-        levelBelowEqual: [15, "You need to level up\nyour village to level 16"]
+        levelBelowEqual: [11, "You need to level up\nyour village to level 12"]
       },
       resourceCost: {
         wood: 200,
@@ -34013,6 +34173,12 @@ var VILLAGE_MENU = {
       actions: [
         {
           spaceship: true
+        },
+        {
+          medal: "Build spaceship",
+          score: {
+            board: 14366
+          }
         }
       ]
     }
@@ -34026,8 +34192,7 @@ var SPACESHIP_RESEARCH = {
   icon: SPACESHIP_ANIMATION,
   dependency: ["exploration"],
   cost: 200,
-  recommended: 20,
-  forceInDebug: true
+  recommended: 20
 };
 
 // src/content/menu/turtle-menu.ts
@@ -34078,19 +34243,10 @@ var TURTLE_MENU = {
   ]
 };
 
-// src/content/elems/barbarian.ts
-var HOBO = {
-  definition: "hobo",
-  group: {
-    grid: [SIZE + 1, SIZE + 1],
-    chance: 0.05,
-    farFromCenter: 7
-  }
-};
-
 // src/content/definitions/goat.ts
 var GOAT_DEFINITION = {
   name: "goat",
+  emoji: "\uD83D\uDC10",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -34145,12 +34301,17 @@ var GOAT_DEFINITION = {
     name: "goat",
     message: "Goats can climb on mountains."
   },
-  canCrossTerrains: ["mountain"]
+  canCrossTerrains: ["mountain"],
+  medalOnCount: {
+    count: 2,
+    medal: "Goats"
+  }
 };
 
 // src/content/definitions/panda.ts
 var PANDA_DEFINITION = {
   name: "panda",
+  emoji: "\uD83D\uDC3C",
   type: "unit",
   hitpoints: 20,
   maxHitPoints: 20,
@@ -34193,12 +34354,17 @@ var PANDA_DEFINITION = {
   attack: {
     damage: 3,
     defense: 2
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Pandas"
   }
 };
 
 // src/content/definitions/rabbit.ts
 var RABBIT_DEFINITION = {
   name: "rabbit",
+  emoji: "\uD83D\uDC07",
   type: "unit",
   hitpoints: 5,
   maxHitPoints: 5,
@@ -34242,12 +34408,17 @@ var RABBIT_DEFINITION = {
     damage: 1,
     defense: 1
   },
-  canCrossTerrains: ["tree"]
+  canCrossTerrains: ["tree"],
+  medalOnCount: {
+    count: 2,
+    medal: "Rabbits"
+  }
 };
 
 // src/content/definitions/pig.ts
 var PIG_DEFINITION = {
   name: "pig",
+  emoji: "\uD83D\uDC37",
   type: "unit",
   hitpoints: 15,
   maxHitPoints: 15,
@@ -34300,7 +34471,231 @@ var PIG_DEFINITION = {
   attack: {
     damage: 1,
     defense: 1
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Pigs"
   }
+};
+
+// src/content/menu/pig-menu.ts
+var PIG_MENU = {
+  name: "pig",
+  description: "Pigs are cute",
+  icon: PIG_ANIMATION,
+  items: [
+    {
+      name: "harvest",
+      ...PIG_SLEEP_ANIMATION,
+      label: "harvest",
+      hidden: {
+        occupied: ["house", "No harvest on house"],
+        harvesting: true
+      },
+      disabled: {
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          harvest: true
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "stopHarvest",
+      ...PIG_ANIMATION,
+      label: "stop harvest",
+      hidden: {
+        notHarvesting: true
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          stopHarvest: true
+        }
+      ]
+    },
+    {
+      name: "elephant",
+      ...ELEPHANT_ANIMATION,
+      label: "evolve into\nelephant",
+      researchNeeded: ["elephant"],
+      resourceCost: {
+        gold: 40
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "elephant",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    }
+  ]
+};
+
+// src/content/menu/rabbit-menu.ts
+var RABBIT_MENU = {
+  name: "rabbit",
+  description: "Rabbits can heal.",
+  icon: RABBIT_ANIMATION,
+  items: [
+    {
+      name: "heal",
+      imageSource: "./assets/tiles.png",
+      spriteSize: [64, 64],
+      padding: [2, 2],
+      frames: [27, 28, 29],
+      label: "heal",
+      disabled: {
+        nonProximity: ["unit", "Need a unit\nnearby to heal"]
+      },
+      actions: [
+        {
+          deselect: true,
+          heal: 10
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    },
+    {
+      name: "goat",
+      ...GOAT_ANIMATION,
+      label: "evolve into\ngoat",
+      researchNeeded: ["goat"],
+      resourceCost: {
+        gold: 10
+      },
+      actions: [
+        {
+          deselect: true,
+          create: {
+            definition: "goat",
+            selfSelect: true
+          }
+        },
+        {
+          selfDestroy: true
+        }
+      ]
+    }
+  ]
+};
+
+// src/content/definitions/elephant.ts
+var ELEPHANT_DEFINITION = {
+  name: "elephant",
+  emoji: "\uD83D\uDC18",
+  type: "unit",
+  hitpoints: 40,
+  maxHitPoints: 40,
+  gameObject: {
+    size: [1.8, 1.8],
+    speed: 0.08
+  },
+  animation: {
+    name: "elephant"
+  },
+  onHover: {
+    hideCursor: true,
+    indic: {
+      animation: "hover"
+    }
+  },
+  selected: {
+    animation: "elephant_wait",
+    indic: {
+      animation: "indic"
+    },
+    moveIndic: {
+      animation: "blue",
+      selectedAnimation: "blue_selected"
+    }
+  },
+  move: {
+    animation: "elephant_walk",
+    distance: 1
+  },
+  shadow: {
+    animation: "shadow"
+  },
+  clearCloud: true,
+  dynamic: true,
+  turn: {
+    moves: 1,
+    attacks: 1
+  },
+  attack: {
+    damage: 4,
+    defense: 4
+  },
+  medalOnCount: {
+    count: 2,
+    medal: "Elephants"
+  }
+};
+
+// src/content/menu/goat-menu.ts
+var GOAT_MENU = {
+  name: "goat",
+  description: "Goats can climb mountains.",
+  icon: PIG_ANIMATION,
+  items: [
+    {
+      name: "harvest",
+      ...GOAT_SLEEP_ANIMATION,
+      label: "harvest",
+      hidden: {
+        occupied: ["house", "No harvest on house"],
+        harvesting: true
+      },
+      disabled: {
+        proximity: ["foe", "Nearby foes,\ntoo dangerous."]
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          harvest: true
+        },
+        {
+          clearMoves: true
+        }
+      ]
+    },
+    {
+      name: "stopHarvest",
+      ...GOAT_ANIMATION,
+      label: "stop harvest",
+      hidden: {
+        notHarvesting: true
+      },
+      actions: [
+        {
+          deselect: true
+        },
+        {
+          stopHarvest: true
+        }
+      ]
+    }
+  ]
 };
 
 // src/content/world.ts
@@ -34375,7 +34770,8 @@ var worldData = {
     GOAT_DEFINITION,
     PANDA_DEFINITION,
     RABBIT_DEFINITION,
-    PIG_DEFINITION
+    PIG_DEFINITION,
+    ELEPHANT_DEFINITION
   ],
   animations: [
     TRIANGLE_ANIMATION,
@@ -34450,7 +34846,10 @@ var worldData = {
     PIG_ANIMATION,
     PIG_WAIT_ANIMATION,
     PIG_JUMP_ANIMATION,
-    PIG_SLEEP_ANIMATION
+    PIG_SLEEP_ANIMATION,
+    ELEPHANT_ANIMATION,
+    ELEPHANT_WAIT_ANIMATION,
+    ELEPHANT_WALK_ANIMATION
   ],
   elems: [
     CURSOR,
@@ -34465,7 +34864,6 @@ var worldData = {
     FRUIT,
     POTGOLD,
     CORAL,
-    HOBO,
     ...TEST_UNITS
   ],
   menu: [
@@ -34475,7 +34873,10 @@ var worldData = {
     SQUIRREL_MENU,
     BEAVER_MENU,
     VILLAGE_MENU,
-    TURTLE_MENU
+    TURTLE_MENU,
+    PIG_MENU,
+    RABBIT_MENU,
+    GOAT_MENU
   ],
   resources: {
     wheat: WHEAT_RESOURCE,
@@ -34500,8 +34901,98 @@ var worldData = {
     GOAT_RESEARCH,
     PANDA_RESEARCH,
     RABBIT_RESEARCH,
-    PIG_RESEARCH
-  ]
+    PIG_RESEARCH,
+    ELEPHANT_RESEARCH,
+    PANDA_RESEARCH
+  ],
+  medals: [
+    {
+      id: 82136,
+      name: "First Village",
+      description: "You build your first village!",
+      icon: "\uD83C\uDFE0",
+      showInUI: true
+    },
+    {
+      id: 82140,
+      name: "Build spaceship",
+      description: "You build the spaceship!",
+      icon: "\uD83D\uDE80"
+    },
+    {
+      id: 82141,
+      name: "25 animals",
+      description: "You have 25 animals!",
+      icon: "\uD83E\uDD9C"
+    },
+    {
+      id: 82142,
+      name: "Pandas",
+      description: "You have 2 pandas!",
+      icon: "\uD83D\uDC3C",
+      showInUI: true
+    },
+    {
+      id: 82166,
+      name: "Beavers",
+      description: "You have 2 beavers!",
+      icon: "\uD83E\uDDAB",
+      showInUI: true
+    },
+    {
+      id: 82167,
+      name: "Bulls",
+      description: "You have 2 bulls!",
+      icon: "\uD83D\uDC02",
+      showInUI: true
+    },
+    {
+      id: 82168,
+      name: "Turtles",
+      description: "You have 2 turtles!",
+      icon: "\uD83D\uDC22",
+      showInUI: true
+    },
+    {
+      id: 82171,
+      name: "Goats",
+      description: "You have 2 goats!",
+      icon: "\uD83D\uDC10",
+      showInUI: true
+    },
+    {
+      id: 82170,
+      name: "Pigs",
+      description: "You have 2 pigs!",
+      icon: "\uD83D\uDC16",
+      showInUI: true
+    },
+    {
+      id: 82169,
+      name: "Rabbits",
+      description: "You have 2 rabbits!",
+      icon: "\uD83D\uDC07",
+      showInUI: true
+    },
+    {
+      id: 82174,
+      name: "Elephants",
+      description: "You have 2 elephants!",
+      icon: "\uD83D\uDC18",
+      showInUI: true
+    },
+    {
+      id: 82175,
+      name: "Dogs",
+      description: "You have 2 dogs!",
+      icon: "\uD83D\uDC15",
+      showInUI: true
+    }
+  ],
+  medalOnCount: {
+    count: 25,
+    medal: "25 animals"
+  }
 };
 window.worldData = worldData;
 
@@ -34509,7 +35000,7 @@ window.worldData = worldData;
 var gameInit = function() {
 };
 var gameUpdate = function() {
-  manager2.refresh();
+  manager2.update();
 };
 var postUpdate = function() {
 };
@@ -34517,8 +35008,9 @@ var render = function() {
 };
 var renderPost = function() {
 };
-var manager2 = new Manager(worldData);
+var scene = worldData;
+var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=E3289C01AA3FDA4A64756e2164756e21
+//# debugId=18B272DAD25A7C6564756e2164756e21

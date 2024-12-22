@@ -30,4 +30,8 @@ export interface Scene {
   clearFogOfWar?: boolean;
   medals?: Medal[];
   endTurnAnim?: Anim;
+  medalOnCount?: {
+    count: number;
+    medal: string;
+  };
 }

@@ -6,7 +6,7 @@ export const SQUIRREL_RESEARCH: Research = {
   description: "Squirrels can climb trees and throw nuts.",
   icon: SQUIRREL_ANIMATION,
   waitIcon: SQUIRREL_WAIT_ANIMATION,
-  dependency: [],
+  dependency: ["productivity"],
   cost: 20,
   recommended: 4,
 };
