@@ -9,4 +9,11 @@ export const BOVINE_RESEARCH: Research = {
   dependency: [],
   cost: 5,
   recommended: 1,
+  adviseAfterResearch: {
+    name: "move-units",
+    message: "You are now able to spawn units.\nClick on the settlement, and click to spawn a unit and move it around the world.\nIf you have enough resources, you can spawn more units.",
+  },
+  resourceReward: {
+    wood: 5,
+  },
 };

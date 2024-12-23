@@ -824,11 +824,21 @@ export class Manager {
     this.updateResource("brain", brains => Math.max(0, brains - invention.cost), this.getPlayer());
     await this.hud.showResearchDialog(invention);
 
+    if (invention.resourceReward) {
+      const resources = invention.resourceReward;
+      Object.entries(resources).forEach(([resource, value]) => {
+        const r = resource as keyof Resources;
+        this.updateResource(r, amount => amount + value, player);
+      });
+    }
     if (invention.action) {
       console.log(player, invention.name, playerInfo.research, playerInfo.research[invention.name]);
       await this.performAction(invention.action);
     }
     await this.findNextResearch(player);
+    if (invention.adviseAfterResearch) {
+      await this.hud.showDialog(invention.adviseAfterResearch.message, invention.adviseAfterResearch.music, invention.adviseAfterResearch.voice);
+    }
   }
 
   async checkForAnyBuilding() {

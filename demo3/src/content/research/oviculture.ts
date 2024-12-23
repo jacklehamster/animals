@@ -9,4 +9,11 @@ export const OVICULTURE_RESEARCH: Research = {
   dependency: [],
   cost: 10,
   recommended: 3,
+  adviseAfterResearch: {
+    name: "move-units",
+    message: "You are now able to spawn units.\nClick on the settlement, and click to spawn a unit and move it around the world.\nOnce you have enough resources, you can spawn more units.",
+  },
+  resourceReward: {
+    wood: 10,
+  }
 };

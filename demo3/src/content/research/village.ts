@@ -9,4 +9,8 @@ export const VILLAGE_RESEARCH: Research = {
   cost: 30,
   recommended: 5,
   forceInDebug: true,
+  adviseAfterResearch: {
+    name: "exploration-research",
+    message: "Great discovery! I advise you to research exploration when you have the chance.\nThis will then unlock 'spaceship' which will allow you to leave this planet.",
+  },
 };

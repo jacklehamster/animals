@@ -30867,11 +30867,21 @@ class Manager {
     playerInfo.research[invention.name] = Date.now();
     this.updateResource("brain", (brains) => Math.max(0, brains - invention.cost), this.getPlayer());
     await this.hud.showResearchDialog(invention);
+    if (invention.resourceReward) {
+      const resources = invention.resourceReward;
+      Object.entries(resources).forEach(([resource, value]) => {
+        const r = resource;
+        this.updateResource(r, (amount) => amount + value, player);
+      });
+    }
     if (invention.action) {
       console.log(player, invention.name, playerInfo.research, playerInfo.research[invention.name]);
       await this.performAction(invention.action);
     }
     await this.findNextResearch(player);
+    if (invention.adviseAfterResearch) {
+      await this.hud.showDialog(invention.adviseAfterResearch.message, invention.adviseAfterResearch.music, invention.adviseAfterResearch.voice);
+    }
   }
   async checkForAnyBuilding() {
     let anyBuilding = undefined;
@@ -32298,7 +32308,14 @@ var BOVINE_RESEARCH = {
   waitIcon: COW_WAIT_ANIMATION,
   dependency: [],
   cost: 5,
-  recommended: 1
+  recommended: 1,
+  adviseAfterResearch: {
+    name: "move-units",
+    message: "You are now able to spawn units.\nClick on the settlement, and click to spawn a unit and move it around the world.\nIf you have enough resources, you can spawn more units."
+  },
+  resourceReward: {
+    wood: 5
+  }
 };
 
 // src/content/research/canine.ts
@@ -32309,7 +32326,14 @@ var CANINE_RESEARCH = {
   waitIcon: DOG_WAIT_ANIMATION,
   dependency: [],
   cost: 5,
-  recommended: 2
+  recommended: 2,
+  adviseAfterResearch: {
+    name: "move-units",
+    message: "You are now able to spawn units.\nClick on the settlement, and click to spawn a unit and move it around the world.\nIf you have enough resources, you can spawn more units."
+  },
+  resourceReward: {
+    wood: 10
+  }
 };
 
 // src/content/animations/elephant.ts
@@ -33409,7 +33433,14 @@ var OVICULTURE_RESEARCH = {
   waitIcon: SHEEP_WAIT_ANIMATION,
   dependency: [],
   cost: 10,
-  recommended: 3
+  recommended: 3,
+  adviseAfterResearch: {
+    name: "move-units",
+    message: "You are now able to spawn units.\nClick on the settlement, and click to spawn a unit and move it around the world.\nOnce you have enough resources, you can spawn more units."
+  },
+  resourceReward: {
+    wood: 10
+  }
 };
 
 // src/content/definitions/beaver.ts
@@ -34011,7 +34042,11 @@ var VILLAGE_RESEARCH = {
   dependency: ["oviculture"],
   cost: 30,
   recommended: 5,
-  forceInDebug: true
+  forceInDebug: true,
+  adviseAfterResearch: {
+    name: "exploration-research",
+    message: "Great discovery! I advise you to research exploration when you have the chance.\nThis will then unlock 'spaceship' which will allow you to leave this planet."
+  }
 };
 
 // src/content/animations/spaceship.ts
@@ -35013,4 +35048,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=18B272DAD25A7C6564756e2164756e21
+//# debugId=01AE67AC678AF31364756e2164756e21
