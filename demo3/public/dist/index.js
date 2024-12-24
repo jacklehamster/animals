@@ -30555,6 +30555,12 @@ class Manager {
     const nextSelection = unit === this.selected ? house : unit;
     this.setSelection(this.selected === nextSelection ? undefined : nextSelection);
   }
+  async handleAdvise(advise) {
+    if (advise && !this.advise.has(advise.name)) {
+      this.advise.add(advise.name);
+      await this.hud.showDialog(advise.message, advise.music, advise.voice);
+    }
+  }
   async setSelection(gameObject) {
     if (this.selected === gameObject) {
       return;
@@ -30567,10 +30573,7 @@ class Manager {
     this.selected = undefined;
     await previousSelected?.onSelectChange();
     await this.hud.showSelected(undefined);
-    if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
-      this.advise.add(previousSelected.elem.adviseOnDeselect.name);
-      await this.hud.showDialog(previousSelected.elem.adviseOnDeselect.message, previousSelected.elem.adviseOnDeselect.music, previousSelected.elem.adviseOnDeselect.voice);
-    }
+    await this.handleAdvise(previousSelected?.elem?.adviseOnDeselect);
     if (previousSelected?.elem?.medalOnDeselect) {
       this.medals.unlock(previousSelected.elem.medalOnDeselect);
     }
@@ -30597,10 +30600,7 @@ class Manager {
         this.medals.unlock(this.scene.medalOnCount.medal);
       }
     }
-    if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
-      this.advise.add(gameObject.elem.advise.name);
-      await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
-    }
+    await this.handleAdvise(gameObject?.elem?.advise);
     this.selected = gameObject;
     await this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
@@ -30871,7 +30871,24 @@ class Manager {
       const resources = invention.resourceReward;
       Object.entries(resources).forEach(([resource, value]) => {
         const r = resource;
-        this.updateResource(r, (amount) => amount + value, player);
+        const resType = this.getResourceType(r);
+        if (resType?.global) {
+          this.updateResource(r, (amount) => amount + value, player);
+        } else {
+          const buildings = this.getAllUnitsOrHouses();
+          let lowestBuilding = undefined;
+          let lowestValue = 999999;
+          for (const gameObject of buildings) {
+            if (gameObject.elem?.owner === player && gameObject.elem?.type === "house") {
+              const current = gameObject.elem?.resourcesAccumulated?.[r] ?? 0;
+              if (current < lowestValue) {
+                lowestBuilding = gameObject;
+                lowestValue = current;
+              }
+            }
+          }
+          lowestBuilding?.updateResource(r, (v) => v + value);
+        }
       });
     }
     if (invention.action) {
@@ -30879,9 +30896,7 @@ class Manager {
       await this.performAction(invention.action);
     }
     await this.findNextResearch(player);
-    if (invention.adviseAfterResearch) {
-      await this.hud.showDialog(invention.adviseAfterResearch.message, invention.adviseAfterResearch.music, invention.adviseAfterResearch.voice);
-    }
+    await this.handleAdvise(invention.adviseAfterResearch);
   }
   async checkForAnyBuilding() {
     let anyBuilding = undefined;
@@ -35048,4 +35063,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=01AE67AC678AF31364756e2164756e21
+//# debugId=1075094A9DBDA1EC64756e2164756e21

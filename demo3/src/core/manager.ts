@@ -14,6 +14,7 @@ import type { Research } from '../definition/research';
 import type { QuickAction } from '../definition/quick-actions';
 import type { Action } from '../definition/action';
 import { Medals } from './medals';
+import type { Advise } from '../definition/tooltip';
 
 interface Entry {
   gameObject: Set<GameObject>;
@@ -482,6 +483,13 @@ export class Manager {
     this.setSelection(this.selected === nextSelection ? undefined : nextSelection);
   }
 
+  async handleAdvise(advise?: Advise) {
+    if (advise && !this.advise.has(advise.name)) {
+      this.advise.add(advise.name);
+      await this.hud.showDialog(advise.message, advise.music, advise.voice);
+    }
+  }
+
   async setSelection(gameObject: GameObject | undefined) {
     if (this.selected === gameObject) {
       return;
@@ -495,10 +503,7 @@ export class Manager {
     this.selected = undefined;
     await previousSelected?.onSelectChange();
     await this.hud.showSelected(undefined);
-    if (previousSelected?.elem?.adviseOnDeselect && !this.advise.has(previousSelected.elem.adviseOnDeselect.name)) {
-      this.advise.add(previousSelected.elem.adviseOnDeselect.name);
-      await this.hud.showDialog(previousSelected.elem.adviseOnDeselect.message, previousSelected.elem.adviseOnDeselect.music, previousSelected.elem.adviseOnDeselect.voice);
-    }
+    await this.handleAdvise(previousSelected?.elem?.adviseOnDeselect);
     if (previousSelected?.elem?.medalOnDeselect) {
       this.medals.unlock(previousSelected.elem.medalOnDeselect);
     }
@@ -527,10 +532,7 @@ export class Manager {
     }
 
     //  select new
-    if (gameObject?.elem?.advise && !this.advise.has(gameObject.elem.advise.name)) {
-      this.advise.add(gameObject.elem.advise.name);
-      await this.hud.showDialog(gameObject.elem.advise.message, gameObject.elem.advise.music, gameObject.elem.advise.voice);
-    }
+    await this.handleAdvise(gameObject?.elem?.advise);
     this.selected = gameObject;
     await this.selected?.onSelectChange();
     await this.hud.showSelected(this.selected);
@@ -828,7 +830,25 @@ export class Manager {
       const resources = invention.resourceReward;
       Object.entries(resources).forEach(([resource, value]) => {
         const r = resource as keyof Resources;
-        this.updateResource(r, amount => amount + value, player);
+        const resType = this.getResourceType(r);
+        if (resType?.global) {
+          this.updateResource(r, amount => amount + value, player);
+        } else {
+          //  find building with lowest resource
+          const buildings = this.getAllUnitsOrHouses();
+          let lowestBuilding: GameObject | undefined = undefined;
+          let lowestValue = 999999;
+          for (const gameObject of buildings) {
+            if (gameObject.elem?.owner === player && gameObject.elem?.type === "house") {
+              const current = gameObject.elem?.resourcesAccumulated?.[r] ?? 0;
+              if (current < lowestValue) {
+                lowestBuilding = gameObject;
+                lowestValue = current;
+              }
+            }
+          }
+          lowestBuilding?.updateResource(r, v => v + value);
+        }
       });
     }
     if (invention.action) {
@@ -836,9 +856,7 @@ export class Manager {
       await this.performAction(invention.action);
     }
     await this.findNextResearch(player);
-    if (invention.adviseAfterResearch) {
-      await this.hud.showDialog(invention.adviseAfterResearch.message, invention.adviseAfterResearch.music, invention.adviseAfterResearch.voice);
-    }
+    await this.handleAdvise(invention.adviseAfterResearch);
   }
 
   async checkForAnyBuilding() {
