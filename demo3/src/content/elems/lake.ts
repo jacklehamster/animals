@@ -23,7 +23,7 @@ export const LAKE: Elem = {
   },
   spread: {
     animation: "wave",
-    count: [3, 7] as [number, number],
+    count: [1, 1] as [number, number],
   },
   branchOut: {
     count: [3, 5] as [number, number],

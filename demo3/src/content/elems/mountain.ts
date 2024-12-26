@@ -23,7 +23,7 @@ export const MOUNTAIN: Elem = {
   },
   spread: {
     animation: "mountain",
-    count: [8, 10] as [number, number],
+    count: [1, 1] as [number, number],
     radius: .3,
     behind: true,
   },

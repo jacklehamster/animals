@@ -17,7 +17,7 @@ export const CLOUD: Elem = {
   },
   spread: {
     animation: "cloud",
-    count: [4, 5] as [number, number],
+    count: [1, 1] as [number, number],
     color: "#ffffffaa",
     size: 1.2,
     moving: .1,

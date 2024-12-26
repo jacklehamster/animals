@@ -19,6 +19,6 @@ export const GRASS: Elem = {
   },
   spread: {
     animation: "grass",
-    count: [3, 7] as [number, number],
+    count: [1, 1] as [number, number],
   },
 };

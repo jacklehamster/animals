@@ -18,7 +18,7 @@ export const TREE_DEFINITION: Elem = {
   },
   spread: {
     animation: "tree_leaf",
-    count: [50, 100] as [number, number],
+    count: [5, 5] as [number, number],
     radius: .25,
   },
 };

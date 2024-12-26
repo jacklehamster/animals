@@ -32886,7 +32886,7 @@ var CLOUD = {
   },
   spread: {
     animation: "cloud",
-    count: [4, 5],
+    count: [1, 1],
     color: "#ffffffaa",
     size: 1.2,
     moving: 0.1
@@ -32912,7 +32912,7 @@ var GRASS = {
   },
   spread: {
     animation: "grass",
-    count: [3, 7]
+    count: [1, 1]
   }
 };
 
@@ -32937,7 +32937,7 @@ var PLAIN = {
   },
   spread: {
     animation: "grass",
-    count: [3, 7]
+    count: [1, 1]
   }
 };
 
@@ -32961,7 +32961,7 @@ var LAKE = {
   },
   spread: {
     animation: "wave",
-    count: [3, 7]
+    count: [1, 1]
   },
   branchOut: {
     count: [3, 5],
@@ -33007,7 +33007,7 @@ var MOUNTAIN = {
   },
   spread: {
     animation: "mountain",
-    count: [8, 10],
+    count: [1, 1],
     radius: 0.3,
     behind: true
   }
@@ -33784,7 +33784,7 @@ var TREE_DEFINITION = {
   },
   spread: {
     animation: "tree_leaf",
-    count: [50, 100],
+    count: [5, 5],
     radius: 0.25
   }
 };
@@ -35063,4 +35063,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=1075094A9DBDA1EC64756e2164756e21
+//# debugId=ECAC13E261E4576264756e2164756e21
