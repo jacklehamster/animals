@@ -55,8 +55,10 @@ export class Manager {
     }
 
     document.addEventListener("wheel", (e) => {
-      this.camShift.x += e.deltaX / cameraScale;
-      this.camShift.y -= e.deltaY / cameraScale;
+      const newScale = Math.max(20, Math.min(200, cameraScale + e.deltaY / 10));
+      setCameraScale(newScale);
+      // this.camShift.x += e.deltaX / cameraScale;
+      // this.camShift.y -= e.deltaY / cameraScale;
       e.preventDefault();
     }, { passive: false });
     this.hud.initialize();

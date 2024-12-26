@@ -30166,8 +30166,8 @@ class Manager {
       setCameraScale(scene.scale);
     }
     document.addEventListener("wheel", (e) => {
-      this.camShift.x += e.deltaX / cameraScale;
-      this.camShift.y -= e.deltaY / cameraScale;
+      const newScale = Math.max(20, Math.min(200, cameraScale + e.deltaY / 10));
+      setCameraScale(newScale);
       e.preventDefault();
     }, { passive: false });
     this.hud.initialize();
@@ -35063,4 +35063,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=ECAC13E261E4576264756e2164756e21
+//# debugId=26468CB7CF2121FB64756e2164756e21
