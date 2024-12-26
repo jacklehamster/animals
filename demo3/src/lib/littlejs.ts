@@ -8,8 +8,8 @@ export {
   ASSERT, setTouchInputEnable,
   isTouchDevice,
   zzfx,
-} from '../../dist/littlejs.esm.min';
-// } from 'littlejsengine';
+  // } from '../../dist/littlejs.esm.min';
+} from 'littlejsengine';
 import { setEnablePhysicsSolver, setGamepadsEnable, setShowSplashScreen, medals } from '../../dist/littlejs.esm.min';
 export * as LittleJS from "../../dist/littlejs.esm.min";
 

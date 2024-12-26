@@ -3780,7 +3780,7 @@ Use Chrome, Firefox or Internet Explorer 11`);
     Ih.exports = S1;
     Ih.exports.finished = x8;
   });
-  k1 = T((PI2, Lh) => {
+  k1 = T((PI3, Lh) => {
     var B1 = globalThis.AbortController || No().AbortController, { codes: { ERR_INVALID_ARG_TYPE: va, ERR_MISSING_ARGS: S8, ERR_OUT_OF_RANGE: E8 }, AbortError: Jr } = Jt(), { validateAbortSignal: af, validateInteger: A8, validateObject: of } = pa(), R8 = Tt().Symbol("kWeak"), { finished: B8 } = Ui(), { ArrayPrototypePush: q8, MathFloor: I8, Number: T8, NumberIsNaN: k8, Promise: E1, PromiseReject: A1, PromisePrototypeThen: L8, Symbol: q1 } = Tt(), Wo = q1("kEmpty"), R1 = q1("kEof");
     function Ko(t, e) {
       if (typeof t != "function")
@@ -23605,22 +23605,1904 @@ var require_crypto_js = __commonJS((exports, module) => {
   });
 });
 
+// node_modules/littlejsengine/dist/littlejs.esm.js
+var ASSERT = function(assert, output) {
+  if (enableAsserts)
+    output ? console.assert(assert, output) : console.assert(assert);
+};
+var debugRect = function(pos, size = vec2(), color = "#fff", time = 0, angle = 0, fill = false) {
+  ASSERT(typeof color == "string", "pass in css color strings");
+  debugPrimitives.push({ pos, size: vec2(size), color, time: new Timer(time), angle, fill });
+};
+var debugCircle = function(pos, radius = 0, color = "#fff", time = 0, fill = false) {
+  ASSERT(typeof color == "string", "pass in css color strings");
+  debugPrimitives.push({ pos, size: radius, color, time: new Timer(time), angle: 0, fill });
+};
+var debugPoint = function(pos, color, time, angle) {
+  ASSERT(typeof color == "string", "pass in css color strings");
+  debugRect(pos, undefined, color, time, angle);
+};
+var debugLine = function(posA, posB, color, thickness = 0.1, time) {
+  const halfDelta = vec2((posB.x - posA.x) / 2, (posB.y - posA.y) / 2);
+  const size = vec2(thickness, halfDelta.length() * 2);
+  debugRect(posA.add(halfDelta), size, color, time, halfDelta.angle(), true);
+};
+var debugOverlap = function(pA, sA, pB, sB, color) {
+  const minPos = vec2(min(pA.x - sA.x / 2, pB.x - sB.x / 2), min(pA.y - sA.y / 2, pB.y - sB.y / 2));
+  const maxPos = vec2(max(pA.x + sA.x / 2, pB.x + sB.x / 2), max(pA.y + sA.y / 2, pB.y + sB.y / 2));
+  debugRect(minPos.lerp(maxPos, 0.5), maxPos.subtract(minPos), color);
+};
+var debugText = function(text, pos, size = 1, color = "#fff", time = 0, angle = 0, font = "monospace") {
+  ASSERT(typeof color == "string", "pass in css color strings");
+  debugPrimitives.push({ text, pos, size, color, time: new Timer(time), angle, font });
+};
+var debugSaveCanvas = function(canvas, filename = "screenshot", type = "image/png") {
+  debugSaveDataURL(canvas.toDataURL(type), filename);
+};
+var debugSaveDataURL = function(dataURL, filename) {
+  downloadLink.download = filename;
+  downloadLink.href = dataURL;
+  downloadLink.click();
+};
+var debugInit = function() {
+  downloadLink = document.createElement("a");
+};
+var debugUpdate = function() {
+  if (!debug)
+    return;
+  if (keyWasPressed(debugKey))
+    debugOverlay = !debugOverlay;
+  if (debugOverlay) {
+    if (keyWasPressed("Digit0"))
+      showWatermark = !showWatermark;
+    if (keyWasPressed("Digit1"))
+      debugPhysics = !debugPhysics, debugParticles = false;
+    if (keyWasPressed("Digit2"))
+      debugParticles = !debugParticles, debugPhysics = false;
+    if (keyWasPressed("Digit3"))
+      debugGamepads = !debugGamepads;
+    if (keyWasPressed("Digit4"))
+      debugRaycast = !debugRaycast;
+    if (keyWasPressed("Digit5"))
+      debugTakeScreenshot = 1;
+  }
+};
+var debugRender = function() {
+  glCopyToContext(mainContext);
+  if (debugTakeScreenshot) {
+    glCopyToContext(mainContext, true);
+    mainContext.drawImage(overlayCanvas, 0, 0);
+    overlayCanvas.width |= 0;
+    const { width: w, height: h } = mainCanvas;
+    overlayContext.fillRect(0, 0, w, h);
+    overlayContext.drawImage(mainCanvas, 0, 0);
+    debugSaveCanvas(overlayCanvas);
+    debugTakeScreenshot = 0;
+  }
+  if (debugGamepads && gamepadsEnable && navigator.getGamepads) {
+    const gamepads = navigator.getGamepads();
+    for (let i = gamepads.length;i--; ) {
+      const gamepad = gamepads[i];
+      if (gamepad) {
+        const stickScale = 1;
+        const buttonScale = 0.2;
+        const centerPos = cameraPos;
+        const sticks = gamepadStickData[i];
+        for (let j = sticks.length;j--; ) {
+          const drawPos = centerPos.add(vec2(j * stickScale * 2, i * stickScale * 3));
+          const stickPos = drawPos.add(sticks[j].scale(stickScale));
+          debugCircle(drawPos, stickScale, "#fff7", 0, true);
+          debugLine(drawPos, stickPos, "#f00");
+          debugPoint(stickPos, "#f00");
+        }
+        for (let j = gamepad.buttons.length;j--; ) {
+          const drawPos = centerPos.add(vec2(j * buttonScale * 2, i * stickScale * 3 - stickScale - buttonScale));
+          const pressed = gamepad.buttons[j].pressed;
+          debugCircle(drawPos, buttonScale, pressed ? "#f00" : "#fff7", 0, true);
+          debugText("" + j, drawPos, 0.2);
+        }
+      }
+    }
+  }
+  let debugObject;
+  if (debugOverlay) {
+    const saveContext = mainContext;
+    mainContext = overlayContext;
+    const cameraSize = getCameraSize();
+    debugRect(cameraPos, cameraSize.subtract(vec2(0.1)), "#f008");
+    let bestDistance = Infinity;
+    for (const o of engineObjects) {
+      if (o.canvas || o.destroyed)
+        continue;
+      o.renderDebugInfo();
+      if (!o.size.x || !o.size.y)
+        continue;
+      const distance = mousePos.distanceSquared(o.pos);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        debugObject = o;
+      }
+    }
+    if (tileCollisionSize.x > 0 && tileCollisionSize.y > 0)
+      drawRect(mousePos.floor().add(vec2(0.5)), vec2(1), rgb(0, 0, 1, 0.5), 0, false);
+    mainContext = saveContext;
+  }
+  {
+    overlayContext.lineWidth = 2;
+    const pointSize = debugPointSize * cameraScale;
+    debugPrimitives.forEach((p) => {
+      overlayContext.save();
+      const pos = worldToScreen(p.pos);
+      overlayContext.translate(pos.x | 0, pos.y | 0);
+      overlayContext.rotate(p.angle);
+      overlayContext.scale(1, p.text ? 1 : -1);
+      overlayContext.fillStyle = overlayContext.strokeStyle = p.color;
+      if (p.text != null) {
+        overlayContext.font = p.size * cameraScale + "px " + p.font;
+        overlayContext.textAlign = "center";
+        overlayContext.textBaseline = "middle";
+        overlayContext.fillText(p.text, 0, 0);
+      } else if (p.points != null) {
+        overlayContext.beginPath();
+        for (const point of p.points) {
+          const p2 = point.scale(cameraScale).floor();
+          overlayContext.lineTo(p2.x, p2.y);
+        }
+        overlayContext.closePath();
+        p.fill && overlayContext.fill();
+        overlayContext.stroke();
+      } else if (p.size == 0 || p.size.x === 0 && p.size.y === 0) {
+        overlayContext.fillRect(-pointSize / 2, -1, pointSize, 3);
+        overlayContext.fillRect(-1, -pointSize / 2, 3, pointSize);
+      } else if (p.size.x != null) {
+        const s = p.size.scale(cameraScale).floor();
+        const { x: w, y: h } = s;
+        p.fill && overlayContext.fillRect(-w / 2 | 0, -h / 2 | 0, w, h);
+        overlayContext.strokeRect(-w / 2 | 0, -h / 2 | 0, w, h);
+      } else {
+        overlayContext.beginPath();
+        overlayContext.arc(0, 0, p.size * cameraScale, 0, 9);
+        p.fill && overlayContext.fill();
+        overlayContext.stroke();
+      }
+      overlayContext.restore();
+    });
+    debugPrimitives = debugPrimitives.filter((r) => r.time < 0);
+  }
+  if (debugObject) {
+    const saveContext = mainContext;
+    mainContext = overlayContext;
+    const raycastHitPos = tileCollisionRaycast(debugObject.pos, mousePos);
+    raycastHitPos && drawRect(raycastHitPos.floor().add(vec2(0.5)), vec2(1), rgb(0, 1, 1, 0.3));
+    drawLine(mousePos, debugObject.pos, 0.1, raycastHitPos ? rgb(1, 0, 0, 0.5) : rgb(0, 1, 0, 0.5), false);
+    const debugText2 = "mouse pos = " + mousePos + "\nmouse collision = " + getTileCollisionData(mousePos) + "\n\n--- object info ---\n" + debugObject.toString();
+    drawTextScreen(debugText2, mousePosScreen, 24, rgb(), 0.05, undefined, "center", "monospace");
+    mainContext = saveContext;
+  }
+  {
+    overlayContext.save();
+    overlayContext.fillStyle = "#fff";
+    overlayContext.textAlign = "left";
+    overlayContext.textBaseline = "top";
+    overlayContext.font = "28px monospace";
+    overlayContext.shadowColor = "#000";
+    overlayContext.shadowBlur = 9;
+    let x = 9, y = -20, h = 30;
+    if (debugOverlay) {
+      overlayContext.fillText(engineName, x, y += h);
+      overlayContext.fillText("Objects: " + engineObjects.length, x, y += h);
+      overlayContext.fillText("Time: " + formatTime(time), x, y += h);
+      overlayContext.fillText("---------", x, y += h);
+      overlayContext.fillStyle = "#f00";
+      overlayContext.fillText("ESC: Debug Overlay", x, y += h);
+      overlayContext.fillStyle = debugPhysics ? "#f00" : "#fff";
+      overlayContext.fillText("1: Debug Physics", x, y += h);
+      overlayContext.fillStyle = debugParticles ? "#f00" : "#fff";
+      overlayContext.fillText("2: Debug Particles", x, y += h);
+      overlayContext.fillStyle = debugGamepads ? "#f00" : "#fff";
+      overlayContext.fillText("3: Debug Gamepads", x, y += h);
+      overlayContext.fillStyle = debugRaycast ? "#f00" : "#fff";
+      overlayContext.fillText("4: Debug Raycasts", x, y += h);
+      overlayContext.fillStyle = "#fff";
+      overlayContext.fillText("5: Save Screenshot", x, y += h);
+      let keysPressed = "";
+      for (const i in inputData[0]) {
+        if (keyIsDown(i, 0))
+          keysPressed += i + " ";
+      }
+      keysPressed && overlayContext.fillText("Keys Down: " + keysPressed, x, y += h);
+      let buttonsPressed = "";
+      if (inputData[1])
+        for (const i in inputData[1]) {
+          if (keyIsDown(i, 1))
+            buttonsPressed += i + " ";
+        }
+      buttonsPressed && overlayContext.fillText("Gamepad: " + buttonsPressed, x, y += h);
+    } else {
+      overlayContext.fillText(debugPhysics ? "Debug Physics" : "", x, y += h);
+      overlayContext.fillText(debugParticles ? "Debug Particles" : "", x, y += h);
+      overlayContext.fillText(debugRaycast ? "Debug Raycasts" : "", x, y += h);
+      overlayContext.fillText(debugGamepads ? "Debug Gamepads" : "", x, y += h);
+    }
+    overlayContext.restore();
+  }
+};
+var abs = function(value) {
+  return Math.abs(value);
+};
+var min = function(valueA, valueB) {
+  return Math.min(valueA, valueB);
+};
+var max = function(valueA, valueB) {
+  return Math.max(valueA, valueB);
+};
+var sign = function(value) {
+  return Math.sign(value);
+};
+var mod = function(dividend, divisor = 1) {
+  return (dividend % divisor + divisor) % divisor;
+};
+var clamp = function(value, min2 = 0, max2 = 1) {
+  return value < min2 ? min2 : value > max2 ? max2 : value;
+};
+var percent = function(value, valueA, valueB) {
+  return (valueB -= valueA) ? clamp((value - valueA) / valueB) : 0;
+};
+var lerp = function(percent2, valueA, valueB) {
+  return valueA + clamp(percent2) * (valueB - valueA);
+};
+var isOverlapping = function(posA, sizeA, posB, sizeB = vec2()) {
+  return abs(posA.x - posB.x) * 2 < sizeA.x + sizeB.x && abs(posA.y - posB.y) * 2 < sizeA.y + sizeB.y;
+};
+var wave = function(frequency = 1, amplitude = 1, t = time) {
+  return amplitude / 2 * (1 - Math.cos(t * frequency * 2 * PI));
+};
+var formatTime = function(t) {
+  return (t / 60 | 0) + ":" + (t % 60 < 10 ? "0" : "") + (t % 60 | 0);
+};
+var rand = function(valueA = 1, valueB = 0) {
+  return valueB + Math.random() * (valueA - valueB);
+};
+var randVector = function(length = 1) {
+  return new Vector2().setAngle(rand(2 * PI), length);
+};
+var randColor = function(colorA = new Color, colorB = new Color(0, 0, 0, 1), linear = false) {
+  return linear ? colorA.lerp(colorB, rand()) : new Color(rand(colorA.r, colorB.r), rand(colorA.g, colorB.g), rand(colorA.b, colorB.b), rand(colorA.a, colorB.a));
+};
+var vec2 = function(x = 0, y) {
+  return typeof x == "number" ? new Vector2(x, y == undefined ? x : y) : new Vector2(x.x, x.y);
+};
+var isVector2 = function(v) {
+  return v instanceof Vector2;
+};
+var rgb = function(r, g, b, a) {
+  return new Color(r, g, b, a);
+};
+var hsl = function(h, s, l, a) {
+  return new Color().setHSLA(h, s, l, a);
+};
+var isColor = function(c) {
+  return c instanceof Color;
+};
+var setCameraPos = function(pos) {
+  cameraPos = pos;
+};
+var setCameraScale = function(scale) {
+  cameraScale = scale;
+};
+var screenToWorld = function(screenPos) {
+  return new Vector2((screenPos.x - mainCanvasSize.x / 2 + 0.5) / cameraScale + cameraPos.x, (screenPos.y - mainCanvasSize.y / 2 + 0.5) / -cameraScale + cameraPos.y);
+};
+var worldToScreen = function(worldPos) {
+  return new Vector2((worldPos.x - cameraPos.x) * cameraScale + mainCanvasSize.x / 2 - 0.5, (worldPos.y - cameraPos.y) * -cameraScale + mainCanvasSize.y / 2 - 0.5);
+};
+var getCameraSize = function() {
+  return mainCanvasSize.scale(1 / cameraScale);
+};
+var drawTile = function(pos, size = vec2(1), tileInfo, color = new Color, angle = 0, mirror, additiveColor = new Color(0, 0, 0, 0), useWebGL = glEnable, screenSpace, context) {
+  ASSERT(!context || !useWebGL, "context only supported in canvas 2D mode");
+  ASSERT(typeof tileInfo !== "number" || !tileInfo, "this is an old style calls, to fix replace it with tile(tileIndex, tileSize)");
+  const textureInfo = tileInfo && tileInfo.getTextureInfo();
+  if (useWebGL) {
+    if (screenSpace) {
+      pos = screenToWorld(pos);
+      size = size.scale(1 / cameraScale);
+    }
+    if (textureInfo) {
+      const sizeInverse = vec2(1).divide(textureInfo.size);
+      const x = tileInfo.pos.x * sizeInverse.x;
+      const y = tileInfo.pos.y * sizeInverse.y;
+      const w = tileInfo.size.x * sizeInverse.x;
+      const h = tileInfo.size.y * sizeInverse.y;
+      const tileImageFixBleed = sizeInverse.scale(tileFixBleedScale);
+      glSetTexture(textureInfo.glTexture);
+      glDraw(pos.x, pos.y, mirror ? -size.x : size.x, size.y, angle, x + tileImageFixBleed.x, y + tileImageFixBleed.y, x - tileImageFixBleed.x + w, y - tileImageFixBleed.y + h, color.rgbaInt(), additiveColor.rgbaInt());
+    } else {
+      glDraw(pos.x, pos.y, size.x, size.y, angle, 0, 0, 0, 0, 0, color.rgbaInt());
+    }
+  } else {
+    showWatermark && ++drawCount;
+    size = vec2(size.x, -size.y);
+    drawCanvas2D(pos, size, angle, mirror, (context2) => {
+      if (textureInfo) {
+        const x = tileInfo.pos.x + tileFixBleedScale;
+        const y = tileInfo.pos.y + tileFixBleedScale;
+        const w = tileInfo.size.x - 2 * tileFixBleedScale;
+        const h = tileInfo.size.y - 2 * tileFixBleedScale;
+        context2.globalAlpha = color.a;
+        context2.drawImage(textureInfo.image, x, y, w, h, -0.5, -0.5, 1, 1);
+        context2.globalAlpha = 1;
+      } else {
+        context2.fillStyle = color;
+        context2.fillRect(-0.5, -0.5, 1, 1);
+      }
+    }, screenSpace, context);
+  }
+};
+var drawRect = function(pos, size, color, angle, useWebGL, screenSpace, context) {
+  drawTile(pos, size, undefined, color, angle, false, undefined, useWebGL, screenSpace, context);
+};
+var drawLine = function(posA, posB, thickness = 0.1, color, useWebGL, screenSpace, context) {
+  const halfDelta = vec2((posB.x - posA.x) / 2, (posB.y - posA.y) / 2);
+  const size = vec2(thickness, halfDelta.length() * 2);
+  drawRect(posA.add(halfDelta), size, color, halfDelta.angle(), useWebGL, screenSpace, context);
+};
+var drawCanvas2D = function(pos, size, angle, mirror, drawFunction, screenSpace, context = mainContext) {
+  if (!screenSpace) {
+    pos = worldToScreen(pos);
+    size = size.scale(cameraScale);
+  }
+  context.save();
+  context.translate(pos.x + 0.5, pos.y + 0.5);
+  context.rotate(angle);
+  context.scale(mirror ? -size.x : size.x, -size.y);
+  drawFunction(context);
+  context.restore();
+};
+var drawTextScreen = function(text, pos, size = 1, color = new Color, lineWidth = 0, lineColor = new Color(0, 0, 0), textAlign = "center", font = fontDefault, context = overlayContext, maxWidth = undefined) {
+  context.fillStyle = color.toString();
+  context.lineWidth = lineWidth;
+  context.strokeStyle = lineColor.toString();
+  context.textAlign = textAlign;
+  context.font = size + "px " + font;
+  context.textBaseline = "middle";
+  context.lineJoin = "round";
+  pos = pos.copy();
+  (text + "").split("\n").forEach((line) => {
+    lineWidth && context.strokeText(line, pos.x, pos.y, maxWidth);
+    context.fillText(line, pos.x, pos.y, maxWidth);
+    pos.y += size;
+  });
+};
+var keyIsDown = function(key, device = 0) {
+  ASSERT(device > 0 || typeof key !== "number" || key < 3, "use code string for keyboard");
+  return inputData[device] && !!(inputData[device][key] & 1);
+};
+var keyWasPressed = function(key, device = 0) {
+  ASSERT(device > 0 || typeof key !== "number" || key < 3, "use code string for keyboard");
+  return inputData[device] && !!(inputData[device][key] & 2);
+};
+var keyWasReleased = function(key, device = 0) {
+  ASSERT(device > 0 || typeof key !== "number" || key < 3, "use code string for keyboard");
+  return inputData[device] && !!(inputData[device][key] & 4);
+};
+var clearInput = function() {
+  inputData = [[]];
+  touchGamepadButtons = [];
+};
+var gamepadIsDown = function(button, gamepad = 0) {
+  return keyIsDown(button, gamepad + 1);
+};
+var inputUpdate = function() {
+  if (headlessMode)
+    return;
+  if (!(touchInputEnable && isTouchDevice) && !document.hasFocus())
+    clearInput();
+  mousePos = screenToWorld(mousePosScreen);
+  gamepadsUpdate();
+};
+var inputUpdatePost = function() {
+  if (headlessMode)
+    return;
+  for (const deviceInputData of inputData)
+    for (const i in deviceInputData)
+      deviceInputData[i] &= 1;
+  mouseWheel = 0;
+};
+var inputInit = function() {
+  if (headlessMode)
+    return;
+  onkeydown = (e) => {
+    if (!e.repeat) {
+      isUsingGamepad = false;
+      inputData[0][e.code] = 3;
+      if (inputWASDEmulateDirection)
+        inputData[0][remapKey(e.code)] = 3;
+    }
+    preventDefaultInput && e.preventDefault();
+  };
+  onkeyup = (e) => {
+    inputData[0][e.code] = 4;
+    if (inputWASDEmulateDirection)
+      inputData[0][remapKey(e.code)] = 4;
+  };
+  function remapKey(c) {
+    return inputWASDEmulateDirection ? c == "KeyW" ? "ArrowUp" : c == "KeyS" ? "ArrowDown" : c == "KeyA" ? "ArrowLeft" : c == "KeyD" ? "ArrowRight" : c : c;
+  }
+  onmousedown = (e) => {
+    if (soundEnable && !headlessMode && audioContext && audioContext.state != "running")
+      audioContext.resume();
+    isUsingGamepad = false;
+    inputData[0][e.button] = 3;
+    mousePosScreen = mouseToScreen(e);
+    e.button && e.preventDefault();
+  };
+  onmouseup = (e) => inputData[0][e.button] = inputData[0][e.button] & 2 | 4;
+  onmousemove = (e) => mousePosScreen = mouseToScreen(e);
+  onwheel = (e) => mouseWheel = e.ctrlKey ? 0 : sign(e.deltaY);
+  oncontextmenu = (e) => false;
+  onblur = (e) => clearInput();
+  if (isTouchDevice && touchInputEnable)
+    touchInputInit();
+};
+var mouseToScreen = function(mousePos) {
+  if (!mainCanvas || headlessMode)
+    return vec2();
+  const rect = mainCanvas.getBoundingClientRect();
+  return vec2(mainCanvas.width, mainCanvas.height).multiply(vec2(percent(mousePos.x, rect.left, rect.right), percent(mousePos.y, rect.top, rect.bottom)));
+};
+var gamepadsUpdate = function() {
+  const applyDeadZones = (v) => {
+    const min2 = 0.3, max2 = 0.8;
+    const deadZone = (v2) => v2 > min2 ? percent(v2, min2, max2) : v2 < -min2 ? -percent(-v2, min2, max2) : 0;
+    return vec2(deadZone(v.x), deadZone(-v.y)).clampLength();
+  };
+  if (touchGamepadEnable && isTouchDevice) {
+    ASSERT(touchGamepadButtons, "set touchGamepadEnable before calling init!");
+    if (touchGamepadTimer.isSet()) {
+      const sticks = gamepadStickData[0] || (gamepadStickData[0] = []);
+      sticks[0] = vec2();
+      if (touchGamepadAnalog)
+        sticks[0] = applyDeadZones(touchGamepadStick);
+      else if (touchGamepadStick.lengthSquared() > 0.3) {
+        sticks[0].x = Math.round(touchGamepadStick.x);
+        sticks[0].y = -Math.round(touchGamepadStick.y);
+        sticks[0] = sticks[0].clampLength();
+      }
+      const data = inputData[1] || (inputData[1] = []);
+      for (let i = 10;i--; ) {
+        const j = i == 3 ? 2 : i == 2 ? 3 : i;
+        const wasDown = gamepadIsDown(j, 0);
+        data[j] = touchGamepadButtons[i] ? wasDown ? 1 : 3 : wasDown ? 4 : 0;
+      }
+    }
+  }
+  if (!gamepadsEnable || !navigator || !navigator.getGamepads)
+    return;
+  if (!debug && !document.hasFocus())
+    return;
+  const gamepads = navigator.getGamepads();
+  for (let i = gamepads.length;i--; ) {
+    const gamepad = gamepads[i];
+    const data = inputData[i + 1] || (inputData[i + 1] = []);
+    const sticks = gamepadStickData[i] || (gamepadStickData[i] = []);
+    if (gamepad) {
+      for (let j = 0;j < gamepad.axes.length - 1; j += 2)
+        sticks[j >> 1] = applyDeadZones(vec2(gamepad.axes[j], gamepad.axes[j + 1]));
+      for (let j = gamepad.buttons.length;j--; ) {
+        const button = gamepad.buttons[j];
+        const wasDown = gamepadIsDown(j, i);
+        data[j] = button.pressed ? wasDown ? 1 : 3 : wasDown ? 4 : 0;
+        isUsingGamepad ||= !i && button.pressed;
+      }
+      if (gamepadDirectionEmulateStick) {
+        const dpad = vec2((gamepadIsDown(15, i) && 1) - (gamepadIsDown(14, i) && 1), (gamepadIsDown(12, i) && 1) - (gamepadIsDown(13, i) && 1));
+        if (dpad.lengthSquared())
+          sticks[0] = dpad.clampLength();
+      }
+      touchGamepadEnable && isUsingGamepad && touchGamepadTimer.unset();
+    }
+  }
+};
+var touchInputInit = function() {
+  let handleTouch = handleTouchDefault;
+  if (touchGamepadEnable) {
+    handleTouch = handleTouchGamepad;
+    touchGamepadButtons = [];
+    touchGamepadStick = vec2();
+  }
+  document.addEventListener("touchstart", (e) => handleTouch(e), { passive: false });
+  document.addEventListener("touchmove", (e) => handleTouch(e), { passive: false });
+  document.addEventListener("touchend", (e) => handleTouch(e), { passive: false });
+  onmousedown = onmouseup = () => 0;
+  let wasTouching;
+  function handleTouchDefault(e) {
+    if (soundEnable && !headlessMode && audioContext && audioContext.state != "running")
+      audioContext.resume();
+    const touching = e.touches.length;
+    const button = 0;
+    if (touching) {
+      const p = vec2(e.touches[0].clientX, e.touches[0].clientY);
+      mousePosScreen = mouseToScreen(p);
+      wasTouching ? isUsingGamepad = touchGamepadEnable : inputData[0][button] = 3;
+    } else if (wasTouching)
+      inputData[0][button] = inputData[0][button] & 2 | 4;
+    wasTouching = touching;
+    if (document.hasFocus())
+      e.preventDefault();
+    return true;
+  }
+  function handleTouchGamepad(e) {
+    touchGamepadStick = vec2();
+    touchGamepadButtons = [];
+    isUsingGamepad = true;
+    const touching = e.touches.length;
+    if (touching) {
+      touchGamepadTimer.set();
+      if (paused && !wasTouching) {
+        touchGamepadButtons[9] = 1;
+        handleTouchDefault(e);
+        return;
+      }
+    }
+    const stickCenter = vec2(touchGamepadSize, mainCanvasSize.y - touchGamepadSize);
+    const buttonCenter = mainCanvasSize.subtract(vec2(touchGamepadSize, touchGamepadSize));
+    const startCenter = mainCanvasSize.scale(0.5);
+    for (const touch of e.touches) {
+      const touchPos = mouseToScreen(vec2(touch.clientX, touch.clientY));
+      if (touchPos.distance(stickCenter) < touchGamepadSize) {
+        touchGamepadStick = touchPos.subtract(stickCenter).scale(2 / touchGamepadSize).clampLength();
+      } else if (touchPos.distance(buttonCenter) < touchGamepadSize) {
+        const button = touchPos.subtract(buttonCenter).direction();
+        touchGamepadButtons[button] = 1;
+      } else if (touchPos.distance(startCenter) < touchGamepadSize && !wasTouching) {
+        touchGamepadButtons[9] = 1;
+      }
+    }
+    handleTouchDefault(e);
+    return true;
+  }
+};
+var touchGamepadRender = function() {
+  if (!touchInputEnable || !isTouchDevice || headlessMode)
+    return;
+  if (!touchGamepadEnable || !touchGamepadTimer.isSet())
+    return;
+  const alpha = percent(touchGamepadTimer.get(), 4, 3);
+  if (!alpha || paused)
+    return;
+  const context = overlayContext;
+  context.save();
+  context.globalAlpha = alpha * touchGamepadAlpha;
+  context.strokeStyle = "#fff";
+  context.lineWidth = 3;
+  context.fillStyle = touchGamepadStick.lengthSquared() > 0 ? "#fff" : "#000";
+  context.beginPath();
+  const leftCenter = vec2(touchGamepadSize, mainCanvasSize.y - touchGamepadSize);
+  if (touchGamepadAnalog) {
+    context.arc(leftCenter.x, leftCenter.y, touchGamepadSize / 2, 0, 9);
+    context.fill();
+    context.stroke();
+  } else {
+    for (let i = 10;i--; ) {
+      const angle = i * PI / 4;
+      context.arc(leftCenter.x, leftCenter.y, touchGamepadSize * 0.6, angle + PI / 8, angle + PI / 8);
+      i % 2 && context.arc(leftCenter.x, leftCenter.y, touchGamepadSize * 0.33, angle, angle);
+      i == 1 && context.fill();
+    }
+    context.stroke();
+  }
+  const rightCenter = vec2(mainCanvasSize.x - touchGamepadSize, mainCanvasSize.y - touchGamepadSize);
+  for (let i = 4;i--; ) {
+    const pos = rightCenter.add(vec2().setDirection(i, touchGamepadSize / 2));
+    context.fillStyle = touchGamepadButtons[i] ? "#fff" : "#000";
+    context.beginPath();
+    context.arc(pos.x, pos.y, touchGamepadSize / 4, 0, 9);
+    context.fill();
+    context.stroke();
+  }
+  context.restore();
+};
+var audioInit = function() {
+  if (!soundEnable || headlessMode)
+    return;
+  audioGainNode = audioContext.createGain();
+  audioGainNode.connect(audioContext.destination);
+  audioGainNode.gain.value = soundVolume;
+};
+var playSamples = function(sampleChannels, volume = 1, rate = 1, pan = 0, loop = false, sampleRate = zzfxR, gainNode) {
+  if (!soundEnable || headlessMode)
+    return;
+  const channelCount = sampleChannels.length;
+  const sampleLength = sampleChannels[0].length;
+  const buffer = audioContext.createBuffer(channelCount, sampleLength, sampleRate);
+  const source = audioContext.createBufferSource();
+  sampleChannels.forEach((c, i) => buffer.getChannelData(i).set(c));
+  source.buffer = buffer;
+  source.playbackRate.value = rate;
+  source.loop = loop;
+  gainNode = gainNode || audioContext.createGain();
+  gainNode.gain.value = volume;
+  gainNode.connect(audioGainNode);
+  const pannerNode = new StereoPannerNode(audioContext, { pan: clamp(pan, -1, 1) });
+  source.connect(pannerNode).connect(gainNode);
+  if (audioContext.state != "running") {
+    audioContext.resume().then(() => source.start());
+  } else
+    source.start();
+  return source;
+};
+var zzfx = function(...zzfxSound) {
+  return playSamples([zzfxG(...zzfxSound)]);
+};
+var zzfxG = function(volume = 1, randomness = 0.05, frequency = 220, attack = 0, sustain = 0, release = 0.1, shape = 0, shapeCurve = 1, slide = 0, deltaSlide = 0, pitchJump = 0, pitchJumpTime = 0, repeatTime = 0, noise = 0, modulation = 0, bitCrush = 0, delay = 0, sustainVolume = 1, decay = 0, tremolo = 0, filter = 0) {
+  let PI2 = PI * 2, sampleRate = zzfxR, startSlide = slide *= 500 * PI2 / sampleRate / sampleRate, startFrequency = frequency *= rand(1 + randomness, 1 - randomness) * PI2 / sampleRate, b = [], t = 0, tm = 0, i = 0, j = 1, r = 0, c = 0, s = 0, f, length, quality = 2, w = PI2 * abs(filter) * 2 / sampleRate, cos = Math.cos(w), alpha = Math.sin(w) / 2 / quality, a0 = 1 + alpha, a1 = -2 * cos / a0, a2 = (1 - alpha) / a0, b0 = (1 + sign(filter) * cos) / 2 / a0, b1 = -(sign(filter) + cos) / a0, b2 = b0, x2 = 0, x1 = 0, y2 = 0, y1 = 0;
+  attack = attack * sampleRate + 9;
+  decay *= sampleRate;
+  sustain *= sampleRate;
+  release *= sampleRate;
+  delay *= sampleRate;
+  deltaSlide *= 500 * PI2 / sampleRate ** 3;
+  modulation *= PI2 / sampleRate;
+  pitchJump *= PI2 / sampleRate;
+  pitchJumpTime *= sampleRate;
+  repeatTime = repeatTime * sampleRate | 0;
+  for (length = attack + decay + sustain + release + delay | 0;i < length; b[i++] = s * volume) {
+    if (!(++c % (bitCrush * 100 | 0))) {
+      s = shape ? shape > 1 ? shape > 2 ? shape > 3 ? Math.sin(t ** 3) : clamp(Math.tan(t), 1, -1) : 1 - (2 * t / PI2 % 2 + 2) % 2 : 1 - 4 * abs(Math.round(t / PI2) - t / PI2) : Math.sin(t);
+      s = (repeatTime ? 1 - tremolo + tremolo * Math.sin(PI2 * i / repeatTime) : 1) * sign(s) * abs(s) ** shapeCurve * (i < attack ? i / attack : i < attack + decay ? 1 - (i - attack) / decay * (1 - sustainVolume) : i < attack + decay + sustain ? sustainVolume : i < length - delay ? (length - i - delay) / release * sustainVolume : 0);
+      s = delay ? s / 2 + (delay > i ? 0 : (i < length - delay ? 1 : (length - i) / delay) * b[i - delay | 0] / 2 / volume) : s;
+      if (filter)
+        s = y1 = b2 * x2 + b1 * (x2 = x1) + b0 * (x1 = s) - a2 * y2 - a1 * (y2 = y1);
+    }
+    f = (frequency += slide += deltaSlide) * Math.cos(modulation * tm++);
+    t += f + f * noise * Math.sin(i ** 5);
+    if (j && ++j > pitchJumpTime) {
+      frequency += pitchJump;
+      startFrequency += pitchJump;
+      j = 0;
+    }
+    if (repeatTime && !(++r % repeatTime)) {
+      frequency = startFrequency;
+      slide = startSlide;
+      j = j || 1;
+    }
+  }
+  return b;
+};
+var getTileCollisionData = function(pos) {
+  return pos.arrayCheck(tileCollisionSize) ? tileCollision[(pos.y | 0) * tileCollisionSize.x + pos.x | 0] : 0;
+};
+var tileCollisionTest = function(pos, size = vec2(), object) {
+  const minX = max(pos.x - size.x / 2 | 0, 0);
+  const minY = max(pos.y - size.y / 2 | 0, 0);
+  const maxX = min(pos.x + size.x / 2, tileCollisionSize.x);
+  const maxY = min(pos.y + size.y / 2, tileCollisionSize.y);
+  for (let y = minY;y < maxY; ++y)
+    for (let x = minX;x < maxX; ++x) {
+      const tileData = tileCollision[y * tileCollisionSize.x + x];
+      if (tileData && (!object || object.collideWithTile(tileData, vec2(x, y))))
+        return true;
+    }
+  return false;
+};
+var tileCollisionRaycast = function(posStart, posEnd, object) {
+  const delta = posEnd.subtract(posStart);
+  const totalLength = delta.length();
+  const normalizedDelta = delta.normalize();
+  const unit = vec2(abs(1 / normalizedDelta.x), abs(1 / normalizedDelta.y));
+  const flooredPosStart = posStart.floor();
+  let pos = flooredPosStart;
+  let xi = unit.x * (delta.x < 0 ? posStart.x - pos.x : pos.x - posStart.x + 1);
+  let yi = unit.y * (delta.y < 0 ? posStart.y - pos.y : pos.y - posStart.y + 1);
+  while (true) {
+    const tileData = getTileCollisionData(pos);
+    if (tileData && (!object || object.collideWithTile(tileData, pos))) {
+      debugRaycast && debugLine(posStart, posEnd, "#f00", 0.02);
+      debugRaycast && debugPoint(pos.add(vec2(0.5)), "#ff0");
+      return pos.add(vec2(0.5));
+    }
+    if (xi > totalLength && yi > totalLength)
+      break;
+    if (xi > yi)
+      pos.y += sign(delta.y), yi += unit.y;
+    else
+      pos.x += sign(delta.x), xi += unit.x;
+  }
+  debugRaycast && debugLine(posStart, posEnd, "#00f", 0.02);
+};
+var medalsInit = function(saveName) {
+  medalsSaveName = saveName;
+  if (!debugMedals)
+    medalsForEach((medal) => medal.unlocked = !!localStorage[medal.storageKey()]);
+  engineAddPlugin(undefined, medalsRender);
+  function medalsRender() {
+    if (!medalsDisplayQueue.length)
+      return;
+    const medal = medalsDisplayQueue[0];
+    const time = timeReal - medalsDisplayTimeLast;
+    if (!medalsDisplayTimeLast)
+      medalsDisplayTimeLast = timeReal;
+    else if (time > medalDisplayTime) {
+      medalsDisplayTimeLast = 0;
+      medalsDisplayQueue.shift();
+    } else {
+      const slideOffTime = medalDisplayTime - medalDisplaySlideTime;
+      const hidePercent = time < medalDisplaySlideTime ? 1 - time / medalDisplaySlideTime : time > slideOffTime ? (time - slideOffTime) / medalDisplaySlideTime : 0;
+      medal.render(hidePercent);
+    }
+  }
+};
+var medalsForEach = function(callback) {
+  Object.values(medals).forEach((medal) => callback(medal));
+};
+var glInit = function() {
+  if (!glEnable || headlessMode)
+    return;
+  glCanvas = document.createElement("canvas");
+  glContext = glCanvas.getContext("webgl2", { antialias: glAntialias });
+  const rootElement = mainCanvas.parentElement;
+  glOverlay && rootElement.appendChild(glCanvas);
+  glShader = glCreateProgram("#version 300 es\nprecision highp float;uniform mat4 m;in vec2 g;in vec4 p,u,c,a;in float r;out vec2 v;out vec4 d,e;void main(){vec2 s=(g-.5)*p.zw;gl_Position=m*vec4(p.xy+s*cos(r)-vec2(-s.y,s)*sin(r),1,1);v=mix(u.xw,u.zy,g);d=c;e=a;}", "#version 300 es\nprecision highp float;uniform sampler2D s;in vec2 v;in vec4 d,e;out vec4 c;void main(){c=texture(s,v)*d+e;}");
+  const glInstanceData = new ArrayBuffer(gl_INSTANCE_BUFFER_SIZE);
+  glPositionData = new Float32Array(glInstanceData);
+  glColorData = new Uint32Array(glInstanceData);
+  glArrayBuffer = glContext.createBuffer();
+  glGeometryBuffer = glContext.createBuffer();
+  const geometry = new Float32Array([glInstanceCount = 0, 0, 1, 0, 0, 1, 1, 1]);
+  glContext.bindBuffer(gl_ARRAY_BUFFER, glGeometryBuffer);
+  glContext.bufferData(gl_ARRAY_BUFFER, geometry, gl_STATIC_DRAW);
+};
+var glPreRender = function() {
+  if (!glEnable || headlessMode)
+    return;
+  glContext.viewport(0, 0, glCanvas.width = mainCanvas.width, glCanvas.height = mainCanvas.height);
+  glContext.clear(gl_COLOR_BUFFER_BIT);
+  glContext.useProgram(glShader);
+  glContext.activeTexture(gl_TEXTURE0);
+  if (textureInfos[0])
+    glContext.bindTexture(gl_TEXTURE_2D, glActiveTexture = textureInfos[0].glTexture);
+  let offset = glAdditive = glBatchAdditive = 0;
+  let initVertexAttribArray = (name, type, typeSize, size) => {
+    const location2 = glContext.getAttribLocation(glShader, name);
+    const stride = typeSize && gl_INSTANCE_BYTE_STRIDE;
+    const divisor = typeSize && 1;
+    const normalize = typeSize == 1;
+    glContext.enableVertexAttribArray(location2);
+    glContext.vertexAttribPointer(location2, size, type, normalize, stride, offset);
+    glContext.vertexAttribDivisor(location2, divisor);
+    offset += size * typeSize;
+  };
+  glContext.bindBuffer(gl_ARRAY_BUFFER, glGeometryBuffer);
+  initVertexAttribArray("g", gl_FLOAT, 0, 2);
+  glContext.bindBuffer(gl_ARRAY_BUFFER, glArrayBuffer);
+  glContext.bufferData(gl_ARRAY_BUFFER, gl_INSTANCE_BUFFER_SIZE, gl_DYNAMIC_DRAW);
+  initVertexAttribArray("p", gl_FLOAT, 4, 4);
+  initVertexAttribArray("u", gl_FLOAT, 4, 4);
+  initVertexAttribArray("c", gl_UNSIGNED_BYTE, 1, 4);
+  initVertexAttribArray("a", gl_UNSIGNED_BYTE, 1, 4);
+  initVertexAttribArray("r", gl_FLOAT, 4, 1);
+  const s = vec2(2 * cameraScale).divide(mainCanvasSize);
+  const p = vec2(-1).subtract(cameraPos.multiply(s));
+  glContext.uniformMatrix4fv(glContext.getUniformLocation(glShader, "m"), false, [
+    s.x,
+    0,
+    0,
+    0,
+    0,
+    s.y,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    p.x,
+    p.y,
+    0,
+    0
+  ]);
+};
+var glSetTexture = function(texture) {
+  if (headlessMode || texture == glActiveTexture)
+    return;
+  glFlush();
+  glContext.bindTexture(gl_TEXTURE_2D, glActiveTexture = texture);
+};
+var glCompileShader = function(source, type) {
+  const shader = glContext.createShader(type);
+  glContext.shaderSource(shader, source);
+  glContext.compileShader(shader);
+  if (debug && !glContext.getShaderParameter(shader, gl_COMPILE_STATUS))
+    throw glContext.getShaderInfoLog(shader);
+  return shader;
+};
+var glCreateProgram = function(vsSource, fsSource) {
+  const program = glContext.createProgram();
+  glContext.attachShader(program, glCompileShader(vsSource, gl_VERTEX_SHADER));
+  glContext.attachShader(program, glCompileShader(fsSource, gl_FRAGMENT_SHADER));
+  glContext.linkProgram(program);
+  if (debug && !glContext.getProgramParameter(program, gl_LINK_STATUS))
+    throw glContext.getProgramInfoLog(program);
+  return program;
+};
+var glCreateTexture = function(image) {
+  const texture = glContext.createTexture();
+  glContext.bindTexture(gl_TEXTURE_2D, texture);
+  if (image && image.width)
+    glContext.texImage2D(gl_TEXTURE_2D, 0, gl_RGBA, gl_RGBA, gl_UNSIGNED_BYTE, image);
+  else {
+    const whitePixel = new Uint8Array([255, 255, 255, 255]);
+    glContext.texImage2D(gl_TEXTURE_2D, 0, gl_RGBA, 1, 1, 0, gl_RGBA, gl_UNSIGNED_BYTE, whitePixel);
+  }
+  const filter = canvasPixelated ? gl_NEAREST : gl_LINEAR;
+  glContext.texParameteri(gl_TEXTURE_2D, gl_TEXTURE_MIN_FILTER, filter);
+  glContext.texParameteri(gl_TEXTURE_2D, gl_TEXTURE_MAG_FILTER, filter);
+  return texture;
+};
+var glFlush = function() {
+  if (!glInstanceCount)
+    return;
+  const destBlend = glBatchAdditive ? gl_ONE : gl_ONE_MINUS_SRC_ALPHA;
+  glContext.blendFuncSeparate(gl_SRC_ALPHA, destBlend, gl_ONE, destBlend);
+  glContext.enable(gl_BLEND);
+  glContext.bufferSubData(gl_ARRAY_BUFFER, 0, glPositionData);
+  glContext.drawArraysInstanced(gl_TRIANGLE_STRIP, 0, 4, glInstanceCount);
+  if (showWatermark)
+    drawCount += glInstanceCount;
+  glInstanceCount = 0;
+  glBatchAdditive = glAdditive;
+};
+var glCopyToContext = function(context, forceDraw = false) {
+  if (!glEnable || !glInstanceCount && !forceDraw)
+    return;
+  glFlush();
+  if (!glOverlay || forceDraw)
+    context.drawImage(glCanvas, 0, 0);
+};
+var glDraw = function(x, y, sizeX, sizeY, angle, uv0X, uv0Y, uv1X, uv1Y, rgba, rgbaAdditive = 0) {
+  ASSERT(typeof rgba == "number" && typeof rgbaAdditive == "number", "invalid color");
+  if (glInstanceCount >= gl_MAX_INSTANCES || glBatchAdditive != glAdditive)
+    glFlush();
+  let offset = glInstanceCount * gl_INDICIES_PER_INSTANCE;
+  glPositionData[offset++] = x;
+  glPositionData[offset++] = y;
+  glPositionData[offset++] = sizeX;
+  glPositionData[offset++] = sizeY;
+  glPositionData[offset++] = uv0X;
+  glPositionData[offset++] = uv0Y;
+  glPositionData[offset++] = uv1X;
+  glPositionData[offset++] = uv1Y;
+  glColorData[offset++] = rgba;
+  glColorData[offset++] = rgbaAdditive;
+  glPositionData[offset++] = angle;
+  glInstanceCount++;
+};
+var engineAddPlugin = function(updateFunction, renderFunction) {
+  ASSERT(!pluginUpdateList.includes(updateFunction));
+  ASSERT(!pluginRenderList.includes(renderFunction));
+  updateFunction && pluginUpdateList.push(updateFunction);
+  renderFunction && pluginRenderList.push(renderFunction);
+};
+var engineInit = function(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost, imageSources = [], rootElement = document.body) {
+  ASSERT(Array.isArray(imageSources), "pass in images as array");
+  function enginePreRender() {
+    mainCanvasSize = vec2(mainCanvas.width, mainCanvas.height);
+    mainContext.imageSmoothingEnabled = !canvasPixelated;
+    glPreRender();
+  }
+  function engineUpdate(frameTimeMS = 0) {
+    let frameTimeDeltaMS = frameTimeMS - frameTimeLastMS;
+    frameTimeLastMS = frameTimeMS;
+    if (debug || showWatermark)
+      averageFPS = lerp(0.05, averageFPS, 1000 / (frameTimeDeltaMS || 1));
+    const debugSpeedUp = debug && keyIsDown("Equal");
+    const debugSpeedDown = debug && keyIsDown("Minus");
+    if (debug)
+      frameTimeDeltaMS *= debugSpeedUp ? 5 : debugSpeedDown ? 0.2 : 1;
+    timeReal += frameTimeDeltaMS / 1000;
+    frameTimeBufferMS += paused ? 0 : frameTimeDeltaMS;
+    if (!debugSpeedUp)
+      frameTimeBufferMS = min(frameTimeBufferMS, 50);
+    updateCanvas();
+    if (paused) {
+      for (const o of engineObjects)
+        o.parent || o.updateTransforms();
+      inputUpdate();
+      pluginUpdateList.forEach((f) => f());
+      debugUpdate();
+      gameUpdatePost();
+      inputUpdatePost();
+    } else {
+      let deltaSmooth = 0;
+      if (frameTimeBufferMS < 0 && frameTimeBufferMS > -9) {
+        deltaSmooth = frameTimeBufferMS;
+        frameTimeBufferMS = 0;
+      }
+      for (;frameTimeBufferMS >= 0; frameTimeBufferMS -= 1000 / frameRate) {
+        time = frame++ / frameRate;
+        inputUpdate();
+        gameUpdate();
+        pluginUpdateList.forEach((f) => f());
+        engineObjectsUpdate();
+        debugUpdate();
+        gameUpdatePost();
+        inputUpdatePost();
+      }
+      frameTimeBufferMS += deltaSmooth;
+    }
+    if (!headlessMode) {
+      enginePreRender();
+      gameRender();
+      engineObjects.sort((a, b) => a.renderOrder - b.renderOrder);
+      for (const o of engineObjects)
+        o.destroyed || o.render();
+      gameRenderPost();
+      pluginRenderList.forEach((f) => f());
+      touchGamepadRender();
+      debugRender();
+      glCopyToContext(mainContext);
+      if (showWatermark) {
+        overlayContext.textAlign = "right";
+        overlayContext.textBaseline = "top";
+        overlayContext.font = "1em monospace";
+        overlayContext.fillStyle = "#000";
+        const text = engineName + " v" + engineVersion + " / " + drawCount + " / " + engineObjects.length + " / " + averageFPS.toFixed(1) + (glEnable ? " GL" : " 2D");
+        overlayContext.fillText(text, mainCanvas.width - 3, 3);
+        overlayContext.fillStyle = "#fff";
+        overlayContext.fillText(text, mainCanvas.width - 2, 2);
+        drawCount = 0;
+      }
+    }
+    requestAnimationFrame(engineUpdate);
+  }
+  function updateCanvas() {
+    if (headlessMode)
+      return;
+    if (canvasFixedSize.x) {
+      mainCanvas.width = canvasFixedSize.x;
+      mainCanvas.height = canvasFixedSize.y;
+      const aspect = innerWidth / innerHeight;
+      const fixedAspect = mainCanvas.width / mainCanvas.height;
+      (glCanvas || mainCanvas).style.width = mainCanvas.style.width = overlayCanvas.style.width = aspect < fixedAspect ? "100%" : "";
+      (glCanvas || mainCanvas).style.height = mainCanvas.style.height = overlayCanvas.style.height = aspect < fixedAspect ? "" : "100%";
+    } else {
+      mainCanvas.width = min(innerWidth, canvasMaxSize.x);
+      mainCanvas.height = min(innerHeight, canvasMaxSize.y);
+    }
+    overlayCanvas.width = mainCanvas.width;
+    overlayCanvas.height = mainCanvas.height;
+    mainCanvasSize = vec2(mainCanvas.width, mainCanvas.height);
+  }
+  function startEngine() {
+    new Promise((resolve) => resolve(gameInit())).then(engineUpdate);
+  }
+  if (headlessMode) {
+    startEngine();
+    return;
+  }
+  const styleRoot = "margin:0;overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#000;user-select:none;-webkit-user-select:none;" + (!touchInputEnable ? "" : "touch-action:none;-webkit-touch-callout:none");
+  rootElement.style.cssText = styleRoot;
+  rootElement.appendChild(mainCanvas = document.createElement("canvas"));
+  mainContext = mainCanvas.getContext("2d");
+  inputInit();
+  audioInit();
+  debugInit();
+  glInit();
+  rootElement.appendChild(overlayCanvas = document.createElement("canvas"));
+  overlayContext = overlayCanvas.getContext("2d");
+  const styleCanvas = "position:absolute";
+  mainCanvas.style.cssText = overlayCanvas.style.cssText = styleCanvas;
+  if (glCanvas)
+    glCanvas.style.cssText = styleCanvas;
+  updateCanvas();
+  const promises = imageSources.map((src, textureIndex) => new Promise((resolve) => {
+    const image = new Image;
+    image.onerror = image.onload = () => {
+      textureInfos[textureIndex] = new TextureInfo(image);
+      resolve();
+    };
+    image.src = src;
+  }));
+  if (!imageSources.length) {
+    promises.push(new Promise((resolve) => {
+      textureInfos[0] = new TextureInfo(new Image);
+      resolve();
+    }));
+  }
+  if (showSplashScreen) {
+    promises.push(new Promise((resolve) => {
+      let t = 0;
+      console.log(`${engineName} Engine v${engineVersion}`);
+      updateSplash();
+      function updateSplash() {
+        clearInput();
+        drawEngineSplashScreen(t += 0.01);
+        t > 1 ? resolve() : setTimeout(updateSplash, 16);
+      }
+    }));
+  }
+  Promise.all(promises).then(startEngine);
+};
+var engineObjectsUpdate = function() {
+  engineObjectsCollide = engineObjects.filter((o) => o.collideSolidObjects);
+  function updateObject(o) {
+    if (!o.destroyed) {
+      o.update();
+      for (const child of o.children)
+        updateObject(child);
+    }
+  }
+  for (const o of engineObjects) {
+    if (!o.parent) {
+      updateObject(o);
+      o.updateTransforms();
+    }
+  }
+  engineObjects = engineObjects.filter((o) => !o.destroyed);
+};
+var drawEngineSplashScreen = function(t) {
+  const x = overlayContext;
+  const w = overlayCanvas.width = innerWidth;
+  const h = overlayCanvas.height = innerHeight;
+  {
+    const p3 = percent(t, 1, 0.8);
+    const p4 = percent(t, 0, 0.5);
+    const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) * 0.7);
+    g.addColorStop(0, hsl(0, 0, lerp(p4, 0, p3 / 2), p3).toString());
+    g.addColorStop(1, hsl(0, 0, 0, p3).toString());
+    x.save();
+    x.fillStyle = g;
+    x.fillRect(0, 0, w, h);
+  }
+  const rect = (X, Y, W, H, C) => {
+    x.beginPath();
+    x.rect(X, Y, W, C ? H * p : H);
+    x.fillStyle = C;
+    C ? x.fill() : x.stroke();
+  };
+  const line = (X, Y, Z, W) => {
+    x.beginPath();
+    x.lineTo(X, Y);
+    x.lineTo(Z, W);
+    x.stroke();
+  };
+  const circle = (X, Y, R, A = 0, B = 2 * PI, C, F) => {
+    const D = (A + B) / 2, E = p * (B - A) / 2;
+    x.beginPath();
+    F && x.lineTo(X, Y);
+    x.arc(X, Y, R, D - E, D + E);
+    x.fillStyle = C;
+    C ? x.fill() : x.stroke();
+  };
+  const color = (c = 0, l = 0) => hsl([0.98, 0.3, 0.57, 0.14][c % 4] - 10, 0.8, [0, 0.3, 0.5, 0.8, 0.9][l]).toString();
+  const alpha = wave(1, 1, t);
+  const p = percent(alpha, 0.1, 0.5);
+  x.translate(w / 2, h / 2);
+  const size = min(6, min(w, h) / 99);
+  x.scale(size, size);
+  x.translate(-40, -35);
+  x.lineJoin = x.lineCap = "round";
+  x.lineWidth = 0.1 + p * 1.9;
+  const p2 = percent(alpha, 0.1, 1);
+  x.setLineDash([99 * p2, 99]);
+  rect(7, 16, 18, -8, color(2, 2));
+  rect(7, 8, 18, 4, color(2, 3));
+  rect(25, 8, 8, 8, color(2, 1));
+  rect(25, 8, -18, 8);
+  rect(25, 8, 8, 8);
+  rect(25, 16, 7, 23, color());
+  rect(11, 39, 14, -23, color(1, 1));
+  rect(11, 16, 14, 18, color(1, 2));
+  rect(11, 16, 14, 8, color(1, 3));
+  rect(25, 16, -14, 24);
+  rect(15, 29, 6, -9, color(2, 2));
+  circle(15, 21, 5, 0, PI / 2, color(2, 4), 1);
+  rect(21, 21, -6, 9);
+  rect(37, 14, 9, 6, color(3, 2));
+  rect(37, 14, 4.5, 6, color(3, 3));
+  rect(37, 14, 9, 6);
+  rect(50, 20, 10, -8, color(0, 1));
+  rect(50, 20, 6.5, -8, color(0, 2));
+  rect(50, 20, 3.5, -8, color(0, 3));
+  rect(50, 20, 10, -8);
+  circle(55, 2, 11.4, 0.5, PI - 0.5, color(3, 3));
+  circle(55, 2, 11.4, 0.5, PI / 2, color(3, 2), 1);
+  circle(55, 2, 11.4, 0.5, PI - 0.5);
+  rect(45, 7, 20, -7, color(0, 2));
+  rect(45, -1, 20, 4, color(0, 3));
+  rect(45, -1, 20, 8);
+  for (let i = 5;i--; ) {
+    circle(60 - i * 6, 30, 9.9, 0, 2 * PI, color(i + 2, 3));
+    circle(60 - i * 6, 30, 10, -0.5, PI + 0.5, color(i + 2, 2));
+    circle(60 - i * 6, 30, 10.1, 0.5, PI - 0.5, color(i + 2, 1));
+  }
+  circle(36, 30, 10, PI / 2, PI * 3 / 2);
+  circle(48, 30, 10, PI / 2, PI * 3 / 2);
+  circle(60, 30, 10);
+  line(36, 20, 60, 20);
+  circle(60, 30, 4, PI, 3 * PI, color(3, 2));
+  circle(60, 30, 4, PI, 2 * PI, color(3, 3));
+  circle(60, 30, 4, PI, 3 * PI);
+  for (let i = 6;i--; ) {
+    x.beginPath();
+    x.lineTo(53, 54);
+    x.lineTo(53, 40);
+    x.lineTo(53 + (1 + i * 2.9) * p, 40);
+    x.lineTo(53 + (4 + i * 3.5) * p, 54);
+    x.fillStyle = color(0, i % 2 + 2);
+    x.fill();
+    i % 2 && x.stroke();
+  }
+  rect(6, 40, 5, 5);
+  rect(6, 40, 5, 5, color());
+  rect(15, 54, 38, -14, color());
+  for (let i = 3;i--; )
+    for (let j = 2;j--; ) {
+      circle(15 * i + 15, 47, j ? 7 : 1, PI, 3 * PI, color(i, 3));
+      x.stroke();
+      circle(15 * i + 15, 47, j ? 7 : 1, 0, PI, color(i, 2));
+      x.stroke();
+    }
+  line(6, 40, 68, 40);
+  line(77, 54, 4, 54);
+  const s = engineName;
+  x.font = "900 16px arial";
+  x.textAlign = "center";
+  x.textBaseline = "top";
+  x.lineWidth = 0.1 + p * 3.9;
+  let w2 = 0;
+  for (let i = 0;i < s.length; ++i)
+    w2 += x.measureText(s[i]).width;
+  for (let j = 2;j--; )
+    for (let i = 0, X = 41 - w2 / 2;i < s.length; ++i) {
+      x.fillStyle = color(i, 2);
+      const w3 = x.measureText(s[i]).width;
+      x[j ? "strokeText" : "fillText"](s[i], X + w3 / 2, 55.5, 17 * p);
+      X += w3;
+    }
+  x.restore();
+};
+var debug = true;
+var enableAsserts = true;
+var debugPointSize = 0.5;
+var showWatermark = true;
+var debugKey = "Escape";
+var debugOverlay = false;
+var debugPrimitives = [];
+var debugPhysics = false;
+var debugRaycast = false;
+var debugParticles = false;
+var debugGamepads = false;
+var debugMedals = false;
+var debugTakeScreenshot;
+var downloadLink;
+var PI = Math.PI;
+class Vector2 {
+  constructor(x = 0, y = 0) {
+    this.x = x;
+    this.y = y;
+    ASSERT(this.isValid());
+  }
+  set(x = 0, y = 0) {
+    this.x = x;
+    this.y = y;
+    ASSERT(this.isValid());
+    return this;
+  }
+  copy() {
+    return new Vector2(this.x, this.y);
+  }
+  add(v) {
+    ASSERT(isVector2(v));
+    return new Vector2(this.x + v.x, this.y + v.y);
+  }
+  subtract(v) {
+    ASSERT(isVector2(v));
+    return new Vector2(this.x - v.x, this.y - v.y);
+  }
+  multiply(v) {
+    ASSERT(isVector2(v));
+    return new Vector2(this.x * v.x, this.y * v.y);
+  }
+  divide(v) {
+    ASSERT(isVector2(v));
+    return new Vector2(this.x / v.x, this.y / v.y);
+  }
+  scale(s) {
+    ASSERT(!isVector2(s));
+    return new Vector2(this.x * s, this.y * s);
+  }
+  length() {
+    return this.lengthSquared() ** 0.5;
+  }
+  lengthSquared() {
+    return this.x ** 2 + this.y ** 2;
+  }
+  distance(v) {
+    ASSERT(isVector2(v));
+    return this.distanceSquared(v) ** 0.5;
+  }
+  distanceSquared(v) {
+    ASSERT(isVector2(v));
+    return (this.x - v.x) ** 2 + (this.y - v.y) ** 2;
+  }
+  normalize(length = 1) {
+    const l = this.length();
+    return l ? this.scale(length / l) : new Vector2(0, length);
+  }
+  clampLength(length = 1) {
+    const l = this.length();
+    return l > length ? this.scale(length / l) : this;
+  }
+  dot(v) {
+    ASSERT(isVector2(v));
+    return this.x * v.x + this.y * v.y;
+  }
+  cross(v) {
+    ASSERT(isVector2(v));
+    return this.x * v.y - this.y * v.x;
+  }
+  angle() {
+    return Math.atan2(this.x, this.y);
+  }
+  setAngle(angle = 0, length = 1) {
+    this.x = length * Math.sin(angle);
+    this.y = length * Math.cos(angle);
+    return this;
+  }
+  rotate(angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    return new Vector2(this.x * c - this.y * s, this.x * s + this.y * c);
+  }
+  setDirection(direction, length = 1) {
+    direction = mod(direction, 4);
+    ASSERT(direction == 0 || direction == 1 || direction == 2 || direction == 3);
+    return vec2(direction % 2 ? direction - 1 ? -length : length : 0, direction % 2 ? 0 : direction ? -length : length);
+  }
+  direction() {
+    return abs(this.x) > abs(this.y) ? this.x < 0 ? 3 : 1 : this.y < 0 ? 2 : 0;
+  }
+  invert() {
+    return new Vector2(this.y, -this.x);
+  }
+  floor() {
+    return new Vector2(Math.floor(this.x), Math.floor(this.y));
+  }
+  area() {
+    return abs(this.x * this.y);
+  }
+  lerp(v, percent2) {
+    ASSERT(isVector2(v));
+    return this.add(v.subtract(this).scale(clamp(percent2)));
+  }
+  arrayCheck(arraySize) {
+    ASSERT(isVector2(arraySize));
+    return this.x >= 0 && this.y >= 0 && this.x < arraySize.x && this.y < arraySize.y;
+  }
+  toString(digits = 3) {
+    if (debug)
+      return `(${(this.x < 0 ? "" : " ") + this.x.toFixed(digits)},${(this.y < 0 ? "" : " ") + this.y.toFixed(digits)} )`;
+  }
+  isValid() {
+    return typeof this.x == "number" && !isNaN(this.x) && typeof this.y == "number" && !isNaN(this.y);
+  }
+}
+
+class Color {
+  constructor(r = 1, g = 1, b = 1, a = 1) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+    ASSERT(this.isValid());
+  }
+  set(r = 1, g = 1, b = 1, a = 1) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+    ASSERT(this.isValid());
+    return this;
+  }
+  copy() {
+    return new Color(this.r, this.g, this.b, this.a);
+  }
+  add(c) {
+    ASSERT(isColor(c));
+    return new Color(this.r + c.r, this.g + c.g, this.b + c.b, this.a + c.a);
+  }
+  subtract(c) {
+    ASSERT(isColor(c));
+    return new Color(this.r - c.r, this.g - c.g, this.b - c.b, this.a - c.a);
+  }
+  multiply(c) {
+    ASSERT(isColor(c));
+    return new Color(this.r * c.r, this.g * c.g, this.b * c.b, this.a * c.a);
+  }
+  divide(c) {
+    ASSERT(isColor(c));
+    return new Color(this.r / c.r, this.g / c.g, this.b / c.b, this.a / c.a);
+  }
+  scale(scale, alphaScale = scale) {
+    return new Color(this.r * scale, this.g * scale, this.b * scale, this.a * alphaScale);
+  }
+  clamp() {
+    return new Color(clamp(this.r), clamp(this.g), clamp(this.b), clamp(this.a));
+  }
+  lerp(c, percent2) {
+    ASSERT(isColor(c));
+    return this.add(c.subtract(this).scale(clamp(percent2)));
+  }
+  setHSLA(h = 0, s = 0, l = 1, a = 1) {
+    h = mod(h, 1);
+    s = clamp(s);
+    l = clamp(l);
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, f = (p2, q2, t) => (t = mod(t, 1)) * 6 < 1 ? p2 + (q2 - p2) * 6 * t : t * 2 < 1 ? q2 : t * 3 < 2 ? p2 + (q2 - p2) * (4 - t * 6) : p2;
+    this.r = f(p, q, h + 1 / 3);
+    this.g = f(p, q, h);
+    this.b = f(p, q, h - 1 / 3);
+    this.a = a;
+    ASSERT(this.isValid());
+    return this;
+  }
+  HSLA() {
+    const r = clamp(this.r);
+    const g = clamp(this.g);
+    const b = clamp(this.b);
+    const a = clamp(this.a);
+    const max2 = Math.max(r, g, b);
+    const min2 = Math.min(r, g, b);
+    const l = (max2 + min2) / 2;
+    let h = 0, s = 0;
+    if (max2 != min2) {
+      let d = max2 - min2;
+      s = l > 0.5 ? d / (2 - max2 - min2) : d / (max2 + min2);
+      if (r == max2)
+        h = (g - b) / d + (g < b ? 6 : 0);
+      else if (g == max2)
+        h = (b - r) / d + 2;
+      else if (b == max2)
+        h = (r - g) / d + 4;
+    }
+    return [h / 6, s, l, a];
+  }
+  mutate(amount = 0.05, alphaAmount = 0) {
+    return new Color(this.r + rand(amount, -amount), this.g + rand(amount, -amount), this.b + rand(amount, -amount), this.a + rand(alphaAmount, -alphaAmount)).clamp();
+  }
+  toString(useAlpha = true) {
+    const toHex = (c) => ((c = clamp(c) * 255 | 0) < 16 ? "0" : "") + c.toString(16);
+    return "#" + toHex(this.r) + toHex(this.g) + toHex(this.b) + (useAlpha ? toHex(this.a) : "");
+  }
+  setHex(hex) {
+    ASSERT(typeof hex == "string" && hex[0] == "#");
+    ASSERT([4, 5, 7, 9].includes(hex.length), "Invalid hex");
+    if (hex.length < 6) {
+      const fromHex = (c) => clamp(parseInt(hex[c], 16) / 15);
+      this.r = fromHex(1);
+      this.g = fromHex(2), this.b = fromHex(3);
+      this.a = hex.length == 5 ? fromHex(4) : 1;
+    } else {
+      const fromHex = (c) => clamp(parseInt(hex.slice(c, c + 2), 16) / 255);
+      this.r = fromHex(1);
+      this.g = fromHex(3), this.b = fromHex(5);
+      this.a = hex.length == 9 ? fromHex(7) : 1;
+    }
+    ASSERT(this.isValid());
+    return this;
+  }
+  rgbaInt() {
+    const r = clamp(this.r) * 255 | 0;
+    const g = clamp(this.g) * 255 << 8;
+    const b = clamp(this.b) * 255 << 16;
+    const a = clamp(this.a) * 255 << 24;
+    return r + g + b + a;
+  }
+  isValid() {
+    return typeof this.r == "number" && !isNaN(this.r) && typeof this.g == "number" && !isNaN(this.g) && typeof this.b == "number" && !isNaN(this.b) && typeof this.a == "number" && !isNaN(this.a);
+  }
+}
+var WHITE = rgb();
+var BLACK = rgb(0, 0, 0);
+var GRAY = rgb(0.5, 0.5, 0.5);
+var RED = rgb(1, 0, 0);
+var ORANGE = rgb(1, 0.5, 0);
+var YELLOW = rgb(1, 1, 0);
+var GREEN = rgb(0, 1, 0);
+var CYAN = rgb(0, 1, 1);
+var BLUE = rgb(0, 0, 1);
+var PURPLE = rgb(0.5, 0, 1);
+var MAGENTA = rgb(1, 0, 1);
+
+class Timer {
+  constructor(timeLeft) {
+    this.time = timeLeft == undefined ? undefined : time + timeLeft;
+    this.setTime = timeLeft;
+  }
+  set(timeLeft = 0) {
+    this.time = time + timeLeft;
+    this.setTime = timeLeft;
+  }
+  unset() {
+    this.time = undefined;
+  }
+  isSet() {
+    return this.time != null;
+  }
+  active() {
+    return time < this.time;
+  }
+  elapsed() {
+    return time >= this.time;
+  }
+  get() {
+    return this.isSet() ? time - this.time : 0;
+  }
+  getPercent() {
+    return this.isSet() ? percent(this.time - time, this.setTime, 0) : 0;
+  }
+  toString() {
+    if (debug) {
+      return this.isSet() ? Math.abs(this.get()) + " seconds " + (this.get() < 0 ? "before" : "after") : "unset";
+    }
+  }
+  valueOf() {
+    return this.get();
+  }
+}
+var cameraPos = vec2();
+var cameraScale = 32;
+var canvasMaxSize = vec2(1920, 1080);
+var canvasFixedSize = vec2();
+var canvasPixelated = true;
+var fontDefault = "arial";
+var showSplashScreen = false;
+var headlessMode = false;
+var glEnable = true;
+var glOverlay = true;
+var tileSizeDefault = vec2(16);
+var tileFixBleedScale = 0;
+var enablePhysicsSolver = true;
+var objectDefaultMass = 1;
+var objectDefaultDamping = 1;
+var objectDefaultAngleDamping = 1;
+var objectDefaultElasticity = 0;
+var objectDefaultFriction = 0.8;
+var objectMaxSpeed = 1;
+var gravity = 0;
+var gamepadsEnable = true;
+var gamepadDirectionEmulateStick = true;
+var inputWASDEmulateDirection = true;
+var touchInputEnable = true;
+var touchGamepadEnable = false;
+var touchGamepadAnalog = true;
+var touchGamepadSize = 99;
+var touchGamepadAlpha = 0.3;
+var soundEnable = true;
+var soundVolume = 0.3;
+var medalDisplayTime = 5;
+var medalDisplaySlideTime = 0.5;
+var medalDisplaySize = vec2(640, 80);
+var medalDisplayIconSize = 50;
+var medalsPreventUnlock = false;
+
+class EngineObject {
+  constructor(pos = vec2(), size = vec2(1), tileInfo, angle = 0, color = new Color, renderOrder = 0) {
+    ASSERT(isVector2(pos) && isVector2(size), "ensure pos and size are vec2s");
+    ASSERT(typeof tileInfo !== "number" || !tileInfo, "old style tile setup");
+    this.pos = pos.copy();
+    this.size = size;
+    this.drawSize = undefined;
+    this.tileInfo = tileInfo;
+    this.angle = angle;
+    this.color = color;
+    this.additiveColor = undefined;
+    this.mirror = false;
+    this.mass = objectDefaultMass;
+    this.damping = objectDefaultDamping;
+    this.angleDamping = objectDefaultAngleDamping;
+    this.elasticity = objectDefaultElasticity;
+    this.friction = objectDefaultFriction;
+    this.gravityScale = 1;
+    this.renderOrder = renderOrder;
+    this.velocity = vec2();
+    this.angleVelocity = 0;
+    this.spawnTime = time;
+    this.children = [];
+    this.clampSpeedLinear = true;
+    this.parent = undefined;
+    this.localPos = vec2();
+    this.localAngle = 0;
+    this.collideTiles = false;
+    this.collideSolidObjects = false;
+    this.isSolid = false;
+    this.collideRaycast = false;
+    engineObjects.push(this);
+  }
+  updateTransforms() {
+    const parent = this.parent;
+    if (parent) {
+      const mirror = parent.getMirrorSign();
+      this.pos = this.localPos.multiply(vec2(mirror, 1)).rotate(-parent.angle).add(parent.pos);
+      this.angle = mirror * this.localAngle + parent.angle;
+    }
+    for (const child of this.children)
+      child.updateTransforms();
+  }
+  update() {
+    if (this.parent)
+      return;
+    if (this.clampSpeedLinear) {
+      this.velocity.x = clamp(this.velocity.x, -objectMaxSpeed, objectMaxSpeed);
+      this.velocity.y = clamp(this.velocity.y, -objectMaxSpeed, objectMaxSpeed);
+    } else {
+      const length2 = this.velocity.lengthSquared();
+      if (length2 > objectMaxSpeed * objectMaxSpeed) {
+        const s = objectMaxSpeed / length2 ** 0.5;
+        this.velocity.x *= s;
+        this.velocity.y *= s;
+      }
+    }
+    const oldPos = this.pos.copy();
+    this.velocity.x *= this.damping;
+    this.velocity.y *= this.damping;
+    if (this.mass)
+      this.velocity.y += gravity * this.gravityScale;
+    this.pos.x += this.velocity.x;
+    this.pos.y += this.velocity.y;
+    this.angle += this.angleVelocity *= this.angleDamping;
+    ASSERT(this.angleDamping >= 0 && this.angleDamping <= 1);
+    ASSERT(this.damping >= 0 && this.damping <= 1);
+    if (!enablePhysicsSolver || !this.mass)
+      return;
+    const wasMovingDown = this.velocity.y < 0;
+    if (this.groundObject) {
+      const groundSpeed = this.groundObject.velocity ? this.groundObject.velocity.x : 0;
+      this.velocity.x = groundSpeed + (this.velocity.x - groundSpeed) * this.friction;
+      this.groundObject = 0;
+    }
+    if (this.collideSolidObjects) {
+      const epsilon = 0.001;
+      for (const o of engineObjectsCollide) {
+        if (!this.isSolid && !o.isSolid || o.destroyed || o.parent || o == this)
+          continue;
+        if (!isOverlapping(this.pos, this.size, o.pos, o.size))
+          continue;
+        const collide1 = this.collideWithObject(o);
+        const collide2 = o.collideWithObject(this);
+        if (!collide1 || !collide2)
+          continue;
+        if (isOverlapping(oldPos, this.size, o.pos, o.size)) {
+          const deltaPos = oldPos.subtract(o.pos);
+          const length = deltaPos.length();
+          const pushAwayAccel = 0.001;
+          const velocity = length < 0.01 ? randVector(pushAwayAccel) : deltaPos.scale(pushAwayAccel / length);
+          this.velocity = this.velocity.add(velocity);
+          if (o.mass)
+            o.velocity = o.velocity.subtract(velocity);
+          debugOverlay && debugPhysics && debugOverlap(this.pos, this.size, o.pos, o.size, "#f00");
+          continue;
+        }
+        const sizeBoth = this.size.add(o.size);
+        const smallStepUp = (oldPos.y - o.pos.y) * 2 > sizeBoth.y + gravity;
+        const isBlockedX = abs(oldPos.y - o.pos.y) * 2 < sizeBoth.y;
+        const isBlockedY = abs(oldPos.x - o.pos.x) * 2 < sizeBoth.x;
+        const elasticity = max(this.elasticity, o.elasticity);
+        if (smallStepUp || isBlockedY || !isBlockedX) {
+          this.pos.y = o.pos.y + (sizeBoth.y / 2 + epsilon) * sign(oldPos.y - o.pos.y);
+          if (o.groundObject && wasMovingDown || !o.mass) {
+            if (wasMovingDown)
+              this.groundObject = o;
+            this.velocity.y *= -elasticity;
+          } else if (o.mass) {
+            const inelastic = (this.mass * this.velocity.y + o.mass * o.velocity.y) / (this.mass + o.mass);
+            const elastic0 = this.velocity.y * (this.mass - o.mass) / (this.mass + o.mass) + o.velocity.y * 2 * o.mass / (this.mass + o.mass);
+            const elastic1 = o.velocity.y * (o.mass - this.mass) / (this.mass + o.mass) + this.velocity.y * 2 * this.mass / (this.mass + o.mass);
+            this.velocity.y = lerp(elasticity, inelastic, elastic0);
+            o.velocity.y = lerp(elasticity, inelastic, elastic1);
+          }
+        }
+        if (!smallStepUp && isBlockedX) {
+          this.pos.x = o.pos.x + (sizeBoth.x / 2 + epsilon) * sign(oldPos.x - o.pos.x);
+          if (o.mass) {
+            const inelastic = (this.mass * this.velocity.x + o.mass * o.velocity.x) / (this.mass + o.mass);
+            const elastic0 = this.velocity.x * (this.mass - o.mass) / (this.mass + o.mass) + o.velocity.x * 2 * o.mass / (this.mass + o.mass);
+            const elastic1 = o.velocity.x * (o.mass - this.mass) / (this.mass + o.mass) + this.velocity.x * 2 * this.mass / (this.mass + o.mass);
+            this.velocity.x = lerp(elasticity, inelastic, elastic0);
+            o.velocity.x = lerp(elasticity, inelastic, elastic1);
+          } else
+            this.velocity.x *= -elasticity;
+        }
+        debugOverlay && debugPhysics && debugOverlap(this.pos, this.size, o.pos, o.size, "#f0f");
+      }
+    }
+    if (this.collideTiles) {
+      if (tileCollisionTest(this.pos, this.size, this)) {
+        if (!tileCollisionTest(oldPos, this.size, this)) {
+          const isBlockedY = tileCollisionTest(vec2(oldPos.x, this.pos.y), this.size, this);
+          const isBlockedX = tileCollisionTest(vec2(this.pos.x, oldPos.y), this.size, this);
+          if (isBlockedY || !isBlockedX) {
+            this.velocity.y *= -this.elasticity;
+            if (this.groundObject = wasMovingDown) {
+              const epsilon = 0.0001;
+              this.pos.y = (oldPos.y - this.size.y / 2 | 0) + this.size.y / 2 + epsilon;
+            } else {
+              this.pos.y = oldPos.y;
+            }
+          }
+          if (isBlockedX) {
+            this.pos.x = oldPos.x;
+            this.velocity.x *= -this.elasticity;
+          }
+          debugOverlay && debugPhysics && debugRect(this.pos, this.size, "#f00");
+        }
+      }
+    }
+  }
+  render() {
+    drawTile(this.pos, this.drawSize || this.size, this.tileInfo, this.color, this.angle, this.mirror, this.additiveColor);
+  }
+  destroy() {
+    if (this.destroyed)
+      return;
+    this.destroyed = 1;
+    this.parent && this.parent.removeChild(this);
+    for (const child of this.children)
+      child.destroy(child.parent = 0);
+  }
+  localToWorld(pos) {
+    return this.pos.add(pos.rotate(-this.angle));
+  }
+  worldToLocal(pos) {
+    return pos.subtract(this.pos).rotate(this.angle);
+  }
+  localToWorldVector(vec) {
+    return vec.rotate(this.angle);
+  }
+  worldToLocalVector(vec) {
+    return vec.rotate(-this.angle);
+  }
+  collideWithTile(tileData, pos) {
+    return tileData > 0;
+  }
+  collideWithObject(object) {
+    return true;
+  }
+  getAliveTime() {
+    return time - this.spawnTime;
+  }
+  applyAcceleration(acceleration) {
+    if (this.mass)
+      this.velocity = this.velocity.add(acceleration);
+  }
+  applyForce(force) {
+    this.applyAcceleration(force.scale(1 / this.mass));
+  }
+  getMirrorSign() {
+    return this.mirror ? -1 : 1;
+  }
+  addChild(child, localPos = vec2(), localAngle = 0) {
+    ASSERT(!child.parent && !this.children.includes(child));
+    this.children.push(child);
+    child.parent = this;
+    child.localPos = localPos.copy();
+    child.localAngle = localAngle;
+  }
+  removeChild(child) {
+    ASSERT(child.parent == this && this.children.includes(child));
+    this.children.splice(this.children.indexOf(child), 1);
+    child.parent = 0;
+  }
+  setCollision(collideSolidObjects = true, isSolid = true, collideTiles = true, collideRaycast = true) {
+    ASSERT(collideSolidObjects || !isSolid, "solid objects must be set to collide");
+    this.collideSolidObjects = collideSolidObjects;
+    this.isSolid = isSolid;
+    this.collideTiles = collideTiles;
+    this.collideRaycast = collideRaycast;
+  }
+  toString() {
+    if (debug) {
+      let text = "type = " + this.constructor.name;
+      if (this.pos.x || this.pos.y)
+        text += "\npos = " + this.pos;
+      if (this.velocity.x || this.velocity.y)
+        text += "\nvelocity = " + this.velocity;
+      if (this.size.x || this.size.y)
+        text += "\nsize = " + this.size;
+      if (this.angle)
+        text += "\nangle = " + this.angle.toFixed(3);
+      if (this.color)
+        text += "\ncolor = " + this.color;
+      return text;
+    }
+  }
+  renderDebugInfo() {
+    if (debug) {
+      const size = vec2(max(this.size.x, 0.2), max(this.size.y, 0.2));
+      const color1 = rgb(this.collideTiles ? 1 : 0, this.collideSolidObjects ? 1 : 0, this.isSolid ? 1 : 0, this.parent ? 0.2 : 0.5);
+      const color2 = this.parent ? rgb(1, 1, 1, 0.5) : rgb(0, 0, 0, 0.8);
+      drawRect(this.pos, size, color1, this.angle, false);
+      drawRect(this.pos, size.scale(0.8), color2, this.angle, false);
+      this.parent && drawLine(this.pos, this.parent.pos, 0.1, rgb(0, 0, 1, 0.5), false);
+    }
+  }
+}
+var mainCanvas;
+var mainContext;
+var overlayCanvas;
+var overlayContext;
+var mainCanvasSize = vec2();
+var textureInfos = [];
+var drawCount;
+
+class TileInfo {
+  constructor(pos = vec2(), size = tileSizeDefault, textureIndex = 0, padding = 0) {
+    this.pos = pos.copy();
+    this.size = size.copy();
+    this.textureIndex = textureIndex;
+    this.padding = padding;
+  }
+  offset(offset) {
+    return new TileInfo(this.pos.add(offset), this.size, this.textureIndex);
+  }
+  frame(frame) {
+    ASSERT(typeof frame == "number");
+    return this.offset(vec2(frame * (this.size.x + this.padding * 2), 0));
+  }
+  getTextureInfo() {
+    return textureInfos[this.textureIndex];
+  }
+}
+
+class TextureInfo {
+  constructor(image) {
+    this.image = image;
+    this.size = vec2(image.width, image.height);
+    this.glTexture = glEnable && glCreateTexture(image);
+  }
+}
+var mouseWasPressed = keyWasPressed;
+var mouseWasReleased = keyWasReleased;
+var mousePos = vec2();
+var mousePosScreen = vec2();
+var mouseWheel = 0;
+var isUsingGamepad = false;
+var preventDefaultInput = false;
+var inputData = [[]];
+var gamepadStickData = [];
+var isTouchDevice = window.ontouchstart !== undefined;
+var touchGamepadTimer = new Timer;
+var touchGamepadButtons;
+var touchGamepadStick;
+var audioContext = new AudioContext;
+var audioGainNode;
+var zzfxR = 44100;
+var tileCollision = [];
+var tileCollisionSize = vec2();
+var medals = {};
+var medalsDisplayQueue = [];
+var medalsSaveName;
+var medalsDisplayTimeLast;
+
+class Medal {
+  constructor(id, name, description = "", icon = "\uD83C\uDFC6", src) {
+    ASSERT(id >= 0 && !medals[id]);
+    this.id = id;
+    this.name = name;
+    this.description = description;
+    this.icon = icon;
+    this.unlocked = false;
+    if (src)
+      (this.image = new Image).src = src;
+    medals[id] = this;
+  }
+  unlock() {
+    if (medalsPreventUnlock || this.unlocked)
+      return;
+    ASSERT(medalsSaveName, "save name must be set");
+    localStorage[this.storageKey()] = this.unlocked = true;
+    medalsDisplayQueue.push(this);
+  }
+  render(hidePercent = 0) {
+    const context = overlayContext;
+    const width = min(medalDisplaySize.x, mainCanvas.width);
+    const x = overlayCanvas.width - width;
+    const y = -medalDisplaySize.y * hidePercent;
+    context.save();
+    context.beginPath();
+    context.fillStyle = new Color(0.9, 0.9, 0.9).toString();
+    context.strokeStyle = new Color(0, 0, 0).toString();
+    context.lineWidth = 3;
+    context.rect(x, y, width, medalDisplaySize.y);
+    context.fill();
+    context.stroke();
+    context.clip();
+    this.renderIcon(vec2(x + 15 + medalDisplayIconSize / 2, y + medalDisplaySize.y / 2));
+    const pos = vec2(x + medalDisplayIconSize + 30, y + 28);
+    drawTextScreen(this.name, pos, 38, new Color(0, 0, 0), 0, undefined, "left");
+    pos.y += 32;
+    drawTextScreen(this.description, pos, 24, new Color(0, 0, 0), 0, undefined, "left");
+    context.restore();
+  }
+  renderIcon(pos, size = medalDisplayIconSize) {
+    if (this.image)
+      overlayContext.drawImage(this.image, pos.x - size / 2, pos.y - size / 2, size, size);
+    else
+      drawTextScreen(this.icon, pos, size * 0.7, new Color(0, 0, 0));
+  }
+  storageKey() {
+    return medalsSaveName + "_" + this.id;
+  }
+}
+var glCanvas;
+var glContext;
+var glAntialias = true;
+var glShader;
+var glActiveTexture;
+var glArrayBuffer;
+var glGeometryBuffer;
+var glPositionData;
+var glColorData;
+var glInstanceCount;
+var glAdditive;
+var glBatchAdditive;
+var gl_ONE = 1;
+var gl_TRIANGLE_STRIP = 5;
+var gl_SRC_ALPHA = 770;
+var gl_ONE_MINUS_SRC_ALPHA = 771;
+var gl_BLEND = 3042;
+var gl_TEXTURE_2D = 3553;
+var gl_UNSIGNED_BYTE = 5121;
+var gl_FLOAT = 5126;
+var gl_RGBA = 6408;
+var gl_NEAREST = 9728;
+var gl_LINEAR = 9729;
+var gl_TEXTURE_MAG_FILTER = 10240;
+var gl_TEXTURE_MIN_FILTER = 10241;
+var gl_COLOR_BUFFER_BIT = 16384;
+var gl_TEXTURE0 = 33984;
+var gl_ARRAY_BUFFER = 34962;
+var gl_STATIC_DRAW = 35044;
+var gl_DYNAMIC_DRAW = 35048;
+var gl_FRAGMENT_SHADER = 35632;
+var gl_VERTEX_SHADER = 35633;
+var gl_COMPILE_STATUS = 35713;
+var gl_LINK_STATUS = 35714;
+var gl_INDICIES_PER_INSTANCE = 11;
+var gl_MAX_INSTANCES = 1e4;
+var gl_INSTANCE_BYTE_STRIDE = gl_INDICIES_PER_INSTANCE * 4;
+var gl_INSTANCE_BUFFER_SIZE = gl_MAX_INSTANCES * gl_INSTANCE_BYTE_STRIDE;
+var engineName = "LittleJS";
+var engineVersion = "1.10.7";
+var frameRate = 60;
+var timeDelta = 1 / frameRate;
+var engineObjects = [];
+var engineObjectsCollide = [];
+var frame = 0;
+var time = 0;
+var timeReal = 0;
+var paused = false;
+var frameTimeLastMS = 0;
+var frameTimeBufferMS = 0;
+var averageFPS = 0;
+var pluginUpdateList = [];
+var pluginRenderList = [];
 // dist/littlejs.esm.min.js
 var exports_littlejs_esm_min = {};
 __export(exports_littlejs_esm_min, {
   zzfx: () => {
     {
-      return zzfx;
+      return zzfx2;
     }
   },
   worldToScreen: () => {
     {
-      return worldToScreen;
+      return worldToScreen2;
     }
   },
   wave: () => {
     {
-      return wave;
+      return wave2;
     }
   },
   vibrateStop: () => {
@@ -23640,27 +25522,27 @@ __export(exports_littlejs_esm_min, {
   },
   vec2: () => {
     {
-      return vec2;
+      return vec22;
     }
   },
   touchGamepadSize: () => {
     {
-      return touchGamepadSize;
+      return touchGamepadSize2;
     }
   },
   touchGamepadEnable: () => {
     {
-      return touchGamepadEnable;
+      return touchGamepadEnable2;
     }
   },
   touchGamepadAnalog: () => {
     {
-      return touchGamepadAnalog;
+      return touchGamepadAnalog2;
     }
   },
   touchGamepadAlpha: () => {
     {
-      return touchGamepadAlpha;
+      return touchGamepadAlpha2;
     }
   },
   toggleFullscreen: () => {
@@ -23670,47 +25552,47 @@ __export(exports_littlejs_esm_min, {
   },
   timeReal: () => {
     {
-      return timeReal;
+      return timeReal2;
     }
   },
   timeDelta: () => {
     {
-      return timeDelta;
+      return timeDelta2;
     }
   },
   time: () => {
     {
-      return time;
+      return time2;
     }
   },
   tileSizeDefault: () => {
     {
-      return tileSizeDefault;
+      return tileSizeDefault2;
     }
   },
   tileFixBleedScale: () => {
     {
-      return tileFixBleedScale;
+      return tileFixBleedScale2;
     }
   },
   tileCollisionTest: () => {
     {
-      return tileCollisionTest;
+      return tileCollisionTest2;
     }
   },
   tileCollisionSize: () => {
     {
-      return tileCollisionSize;
+      return tileCollisionSize2;
     }
   },
   tileCollisionRaycast: () => {
     {
-      return tileCollisionRaycast;
+      return tileCollisionRaycast2;
     }
   },
   tileCollision: () => {
     {
-      return tileCollision;
+      return tileCollision2;
     }
   },
   tile: () => {
@@ -23720,7 +25602,7 @@ __export(exports_littlejs_esm_min, {
   },
   textureInfos: () => {
     {
-      return textureInfos;
+      return textureInfos2;
     }
   },
   speakStop: () => {
@@ -23735,12 +25617,12 @@ __export(exports_littlejs_esm_min, {
   },
   soundVolume: () => {
     {
-      return soundVolume;
+      return soundVolume2;
     }
   },
   soundEnable: () => {
     {
-      return soundEnable;
+      return soundEnable2;
     }
   },
   soundDefaultTaper: () => {
@@ -23760,17 +25642,17 @@ __export(exports_littlejs_esm_min, {
   },
   sign: () => {
     {
-      return sign;
+      return sign2;
     }
   },
   showWatermark: () => {
     {
-      return showWatermark;
+      return showWatermark2;
     }
   },
   showSplashScreen: () => {
     {
-      return showSplashScreen;
+      return showSplashScreen2;
     }
   },
   setVibrateEnable: () => {
@@ -23980,12 +25862,12 @@ __export(exports_littlejs_esm_min, {
   },
   setCameraScale: () => {
     {
-      return setCameraScale;
+      return setCameraScale2;
     }
   },
   setCameraPos: () => {
     {
-      return setCameraPos;
+      return setCameraPos2;
     }
   },
   setBlendMode: () => {
@@ -23995,17 +25877,17 @@ __export(exports_littlejs_esm_min, {
   },
   screenToWorld: () => {
     {
-      return screenToWorld;
+      return screenToWorld2;
     }
   },
   rgb: () => {
     {
-      return rgb;
+      return rgb2;
     }
   },
   randVector: () => {
     {
-      return randVector;
+      return randVector2;
     }
   },
   randSign: () => {
@@ -24025,22 +25907,22 @@ __export(exports_littlejs_esm_min, {
   },
   randColor: () => {
     {
-      return randColor;
+      return randColor2;
     }
   },
   rand: () => {
     {
-      return rand;
+      return rand2;
     }
   },
   preventDefaultInput: () => {
     {
-      return preventDefaultInput;
+      return preventDefaultInput2;
     }
   },
   playSamples: () => {
     {
-      return playSamples;
+      return playSamples2;
     }
   },
   playAudioFile: () => {
@@ -24050,12 +25932,12 @@ __export(exports_littlejs_esm_min, {
   },
   percent: () => {
     {
-      return percent;
+      return percent2;
     }
   },
   paused: () => {
     {
-      return paused;
+      return paused2;
     }
   },
   particleEmitRateScale: () => {
@@ -24065,42 +25947,42 @@ __export(exports_littlejs_esm_min, {
   },
   overlayContext: () => {
     {
-      return overlayContext;
+      return overlayContext2;
     }
   },
   overlayCanvas: () => {
     {
-      return overlayCanvas;
+      return overlayCanvas2;
     }
   },
   objectMaxSpeed: () => {
     {
-      return objectMaxSpeed;
+      return objectMaxSpeed2;
     }
   },
   objectDefaultMass: () => {
     {
-      return objectDefaultMass;
+      return objectDefaultMass2;
     }
   },
   objectDefaultFriction: () => {
     {
-      return objectDefaultFriction;
+      return objectDefaultFriction2;
     }
   },
   objectDefaultElasticity: () => {
     {
-      return objectDefaultElasticity;
+      return objectDefaultElasticity2;
     }
   },
   objectDefaultDamping: () => {
     {
-      return objectDefaultDamping;
+      return objectDefaultDamping2;
     }
   },
   objectDefaultAngleDamping: () => {
     {
-      return objectDefaultAngleDamping;
+      return objectDefaultAngleDamping2;
     }
   },
   nearestPowerOfTwo: () => {
@@ -24110,32 +25992,32 @@ __export(exports_littlejs_esm_min, {
   },
   mouseWheel: () => {
     {
-      return mouseWheel;
+      return mouseWheel2;
     }
   },
   mouseWasReleased: () => {
     {
-      return mouseWasReleased;
+      return mouseWasReleased2;
     }
   },
   mouseWasPressed: () => {
     {
-      return mouseWasPressed;
+      return mouseWasPressed2;
     }
   },
   mouseToScreen: () => {
     {
-      return mouseToScreen;
+      return mouseToScreen2;
     }
   },
   mousePosScreen: () => {
     {
-      return mousePosScreen;
+      return mousePosScreen2;
     }
   },
   mousePos: () => {
     {
-      return mousePos;
+      return mousePos2;
     }
   },
   mouseIsDown: () => {
@@ -24145,67 +26027,67 @@ __export(exports_littlejs_esm_min, {
   },
   mod: () => {
     {
-      return mod;
+      return mod2;
     }
   },
   min: () => {
     {
-      return min;
+      return min2;
     }
   },
   medalsPreventUnlock: () => {
     {
-      return medalsPreventUnlock;
+      return medalsPreventUnlock2;
     }
   },
   medalsInit: () => {
     {
-      return medalsInit;
+      return medalsInit2;
     }
   },
   medals: () => {
     {
-      return medals;
+      return medals2;
     }
   },
   medalDisplayTime: () => {
     {
-      return medalDisplayTime;
+      return medalDisplayTime2;
     }
   },
   medalDisplaySlideTime: () => {
     {
-      return medalDisplaySlideTime;
+      return medalDisplaySlideTime2;
     }
   },
   medalDisplaySize: () => {
     {
-      return medalDisplaySize;
+      return medalDisplaySize2;
     }
   },
   medalDisplayIconSize: () => {
     {
-      return medalDisplayIconSize;
+      return medalDisplayIconSize2;
     }
   },
   max: () => {
     {
-      return max;
+      return max2;
     }
   },
   mainContext: () => {
     {
-      return mainContext;
+      return mainContext2;
     }
   },
   mainCanvasSize: () => {
     {
-      return mainCanvasSize;
+      return mainCanvasSize2;
     }
   },
   mainCanvas: () => {
     {
-      return mainCanvas;
+      return mainCanvas2;
     }
   },
   lerpWrap: () => {
@@ -24220,37 +26102,37 @@ __export(exports_littlejs_esm_min, {
   },
   lerp: () => {
     {
-      return lerp;
+      return lerp2;
     }
   },
   keyWasReleased: () => {
     {
-      return keyWasReleased;
+      return keyWasReleased2;
     }
   },
   keyWasPressed: () => {
     {
-      return keyWasPressed;
+      return keyWasPressed2;
     }
   },
   keyIsDown: () => {
     {
-      return keyIsDown;
+      return keyIsDown2;
     }
   },
   isUsingGamepad: () => {
     {
-      return isUsingGamepad;
+      return isUsingGamepad2;
     }
   },
   isTouchDevice: () => {
     {
-      return isTouchDevice;
+      return isTouchDevice2;
     }
   },
   isOverlapping: () => {
     {
-      return isOverlapping;
+      return isOverlapping2;
     }
   },
   isIntersecting: () => {
@@ -24265,12 +26147,12 @@ __export(exports_littlejs_esm_min, {
   },
   isColor: () => {
     {
-      return isColor;
+      return isColor2;
     }
   },
   inputWASDEmulateDirection: () => {
     {
-      return inputWASDEmulateDirection;
+      return inputWASDEmulateDirection2;
     }
   },
   initTileCollision: () => {
@@ -24280,27 +26162,27 @@ __export(exports_littlejs_esm_min, {
   },
   hsl: () => {
     {
-      return hsl;
+      return hsl2;
     }
   },
   headlessMode: () => {
     {
-      return headlessMode;
+      return headlessMode2;
     }
   },
   gravity: () => {
     {
-      return gravity;
+      return gravity2;
     }
   },
   glShader: () => {
     {
-      return glShader;
+      return glShader2;
     }
   },
   glSetTexture: () => {
     {
-      return glSetTexture;
+      return glSetTexture2;
     }
   },
   glSetAntialias: () => {
@@ -24310,102 +26192,102 @@ __export(exports_littlejs_esm_min, {
   },
   glPositionData: () => {
     {
-      return glPositionData;
+      return glPositionData2;
     }
   },
   glOverlay: () => {
     {
-      return glOverlay;
+      return glOverlay2;
     }
   },
   glInstanceCount: () => {
     {
-      return glInstanceCount;
+      return glInstanceCount2;
     }
   },
   glGeometryBuffer: () => {
     {
-      return glGeometryBuffer;
+      return glGeometryBuffer2;
     }
   },
   glFlush: () => {
     {
-      return glFlush;
+      return glFlush2;
     }
   },
   glEnable: () => {
     {
-      return glEnable;
+      return glEnable2;
     }
   },
   glDraw: () => {
     {
-      return glDraw;
+      return glDraw2;
     }
   },
   glCreateTexture: () => {
     {
-      return glCreateTexture;
+      return glCreateTexture2;
     }
   },
   glCreateProgram: () => {
     {
-      return glCreateProgram;
+      return glCreateProgram2;
     }
   },
   glCopyToContext: () => {
     {
-      return glCopyToContext;
+      return glCopyToContext2;
     }
   },
   glContext: () => {
     {
-      return glContext;
+      return glContext2;
     }
   },
   glCompileShader: () => {
     {
-      return glCompileShader;
+      return glCompileShader2;
     }
   },
   glColorData: () => {
     {
-      return glColorData;
+      return glColorData2;
     }
   },
   glCanvas: () => {
     {
-      return glCanvas;
+      return glCanvas2;
     }
   },
   glBatchAdditive: () => {
     {
-      return glBatchAdditive;
+      return glBatchAdditive2;
     }
   },
   glArrayBuffer: () => {
     {
-      return glArrayBuffer;
+      return glArrayBuffer2;
     }
   },
   glAntialias: () => {
     {
-      return glAntialias;
+      return glAntialias2;
     }
   },
   glAdditive: () => {
     {
-      return glAdditive;
+      return glAdditive2;
     }
   },
   glActiveTexture: () => {
     {
-      return glActiveTexture;
+      return glActiveTexture2;
     }
   },
   getTileCollisionData: () => {
     {
-      return getTileCollisionData;
+      return getTileCollisionData2;
     }
   },
   getNoteFrequency: () => {
@@ -24415,17 +26297,17 @@ __export(exports_littlejs_esm_min, {
   },
   getCameraSize: () => {
     {
-      return getCameraSize;
+      return getCameraSize2;
     }
   },
   gamepadsUpdate: () => {
     {
-      return gamepadsUpdate;
+      return gamepadsUpdate2;
     }
   },
   gamepadsEnable: () => {
     {
-      return gamepadsEnable;
+      return gamepadsEnable2;
     }
   },
   gamepadWasReleased: () => {
@@ -24445,42 +26327,42 @@ __export(exports_littlejs_esm_min, {
   },
   gamepadIsDown: () => {
     {
-      return gamepadIsDown;
+      return gamepadIsDown2;
     }
   },
   gamepadDirectionEmulateStick: () => {
     {
-      return gamepadDirectionEmulateStick;
+      return gamepadDirectionEmulateStick2;
     }
   },
   frameRate: () => {
     {
-      return frameRate;
+      return frameRate2;
     }
   },
   frame: () => {
     {
-      return frame;
+      return frame2;
     }
   },
   formatTime: () => {
     {
-      return formatTime;
+      return formatTime2;
     }
   },
   fontDefault: () => {
     {
-      return fontDefault;
+      return fontDefault2;
     }
   },
   engineVersion: () => {
     {
-      return engineVersion;
+      return engineVersion2;
     }
   },
   engineObjectsUpdate: () => {
     {
-      return engineObjectsUpdate;
+      return engineObjectsUpdate2;
     }
   },
   engineObjectsRaycast: () => {
@@ -24500,17 +26382,17 @@ __export(exports_littlejs_esm_min, {
   },
   engineObjects: () => {
     {
-      return engineObjects;
+      return engineObjects2;
     }
   },
   engineName: () => {
     {
-      return engineName;
+      return engineName2;
     }
   },
   engineInit: () => {
     {
-      return engineInit;
+      return engineInit2;
     }
   },
   engineFontImage: () => {
@@ -24520,22 +26402,22 @@ __export(exports_littlejs_esm_min, {
   },
   engineAddPlugin: () => {
     {
-      return engineAddPlugin;
+      return engineAddPlugin2;
     }
   },
   enablePhysicsSolver: () => {
     {
-      return enablePhysicsSolver;
+      return enablePhysicsSolver2;
     }
   },
   drawTile: () => {
     {
-      return drawTile;
+      return drawTile2;
     }
   },
   drawTextScreen: () => {
     {
-      return drawTextScreen;
+      return drawTextScreen2;
     }
   },
   drawText: () => {
@@ -24545,7 +26427,7 @@ __export(exports_littlejs_esm_min, {
   },
   drawRect: () => {
     {
-      return drawRect;
+      return drawRect2;
     }
   },
   drawPoly: () => {
@@ -24555,7 +26437,7 @@ __export(exports_littlejs_esm_min, {
   },
   drawLine: () => {
     {
-      return drawLine;
+      return drawLine2;
     }
   },
   drawEllipse: () => {
@@ -24570,7 +26452,7 @@ __export(exports_littlejs_esm_min, {
   },
   drawCanvas2D: () => {
     {
-      return drawCanvas2D;
+      return drawCanvas2D2;
     }
   },
   distanceWrap: () => {
@@ -24585,7 +26467,7 @@ __export(exports_littlejs_esm_min, {
   },
   debugText: () => {
     {
-      return debugText;
+      return debugText2;
     }
   },
   debugSaveText: () => {
@@ -24595,17 +26477,17 @@ __export(exports_littlejs_esm_min, {
   },
   debugSaveDataURL: () => {
     {
-      return debugSaveDataURL;
+      return debugSaveDataURL2;
     }
   },
   debugSaveCanvas: () => {
     {
-      return debugSaveCanvas;
+      return debugSaveCanvas2;
     }
   },
   debugRect: () => {
     {
-      return debugRect;
+      return debugRect2;
     }
   },
   debugPoly: () => {
@@ -24615,22 +26497,22 @@ __export(exports_littlejs_esm_min, {
   },
   debugPoint: () => {
     {
-      return debugPoint;
+      return debugPoint2;
     }
   },
   debugOverlay: () => {
     {
-      return debugOverlay;
+      return debugOverlay2;
     }
   },
   debugOverlap: () => {
     {
-      return debugOverlap;
+      return debugOverlap2;
     }
   },
   debugLine: () => {
     {
-      return debugLine;
+      return debugLine2;
     }
   },
   debugClear: () => {
@@ -24640,77 +26522,77 @@ __export(exports_littlejs_esm_min, {
   },
   debugCircle: () => {
     {
-      return debugCircle;
+      return debugCircle2;
     }
   },
   debug: () => {
     {
-      return debug;
+      return debug2;
     }
   },
   clearInput: () => {
     {
-      return clearInput;
+      return clearInput2;
     }
   },
   clamp: () => {
     {
-      return clamp;
+      return clamp2;
     }
   },
   canvasPixelated: () => {
     {
-      return canvasPixelated;
+      return canvasPixelated2;
     }
   },
   canvasMaxSize: () => {
     {
-      return canvasMaxSize;
+      return canvasMaxSize2;
     }
   },
   canvasFixedSize: () => {
     {
-      return canvasFixedSize;
+      return canvasFixedSize2;
     }
   },
   cameraScale: () => {
     {
-      return cameraScale;
+      return cameraScale2;
     }
   },
   cameraPos: () => {
     {
-      return cameraPos;
+      return cameraPos2;
     }
   },
   audioContext: () => {
     {
-      return audioContext;
+      return audioContext2;
     }
   },
   abs: () => {
     {
-      return abs;
+      return abs2;
     }
   },
   YELLOW: () => {
     {
-      return YELLOW;
+      return YELLOW2;
     }
   },
   WHITE: () => {
     {
-      return WHITE;
+      return WHITE2;
     }
   },
   Vector2: () => {
     {
-      return Vector2;
+      return Vector22;
     }
   },
   Timer: () => {
     {
-      return Timer;
+      return Timer2;
     }
   },
   TileLayerData: () => {
@@ -24725,12 +26607,12 @@ __export(exports_littlejs_esm_min, {
   },
   TileInfo: () => {
     {
-      return TileInfo;
+      return TileInfo2;
     }
   },
   TextureInfo: () => {
     {
-      return TextureInfo;
+      return TextureInfo2;
     }
   },
   SoundWave: () => {
@@ -24750,7 +26632,7 @@ __export(exports_littlejs_esm_min, {
   },
   RED: () => {
     {
-      return RED;
+      return RED2;
     }
   },
   ParticleEmitter: () => {
@@ -24765,17 +26647,17 @@ __export(exports_littlejs_esm_min, {
   },
   PURPLE: () => {
     {
-      return PURPLE;
+      return PURPLE2;
     }
   },
   PI: () => {
     {
-      return PI;
+      return PI2;
     }
   },
   ORANGE: () => {
     {
-      return ORANGE;
+      return ORANGE2;
     }
   },
   Music: () => {
@@ -24785,22 +26667,22 @@ __export(exports_littlejs_esm_min, {
   },
   Medal: () => {
     {
-      return Medal;
+      return Medal2;
     }
   },
   MAGENTA: () => {
     {
-      return MAGENTA;
+      return MAGENTA2;
     }
   },
   GREEN: () => {
     {
-      return GREEN;
+      return GREEN2;
     }
   },
   GRAY: () => {
     {
-      return GRAY;
+      return GRAY2;
     }
   },
   FontImage: () => {
@@ -24810,101 +26692,101 @@ __export(exports_littlejs_esm_min, {
   },
   EngineObject: () => {
     {
-      return EngineObject;
+      return EngineObject2;
     }
   },
   Color: () => {
     {
-      return Color;
+      return Color2;
     }
   },
   CYAN: () => {
     {
-      return CYAN;
+      return CYAN2;
     }
   },
   BLUE: () => {
     {
-      return BLUE;
+      return BLUE2;
     }
   },
   BLACK: () => {
     {
-      return BLACK;
+      return BLACK2;
     }
   },
   ASSERT: () => {
     {
-      return ASSERT;
+      return ASSERT2;
     }
   }
 });
-var ASSERT = function() {
+var ASSERT2 = function() {
 };
-var debugInit = function() {
+var debugInit2 = function() {
 };
-var debugUpdate = function() {
+var debugUpdate2 = function() {
 };
-var debugRender = function() {
+var debugRender2 = function() {
 };
-var debugRect = function() {
+var debugRect2 = function() {
 };
 var debugPoly = function() {
 };
-var debugCircle = function() {
+var debugCircle2 = function() {
 };
-var debugPoint = function() {
+var debugPoint2 = function() {
 };
-var debugLine = function() {
+var debugLine2 = function() {
 };
-var debugOverlap = function() {
+var debugOverlap2 = function() {
 };
-var debugText = function() {
+var debugText2 = function() {
 };
 var debugClear = function() {
 };
-var debugSaveCanvas = function() {
+var debugSaveCanvas2 = function() {
 };
 var debugSaveText = function() {
 };
-var debugSaveDataURL = function() {
+var debugSaveDataURL2 = function() {
 };
-var abs = function(a) {
+var abs2 = function(a) {
   return Math.abs(a);
 };
-var min = function(a, b) {
+var min2 = function(a, b) {
   return Math.min(a, b);
 };
-var max = function(a, b) {
+var max2 = function(a, b) {
   return Math.max(a, b);
 };
-var sign = function(a) {
+var sign2 = function(a) {
   return Math.sign(a);
 };
-var mod = function(a, b = 1) {
+var mod2 = function(a, b = 1) {
   return (a % b + b) % b;
 };
-var clamp = function(a, b = 0, c = 1) {
+var clamp2 = function(a, b = 0, c = 1) {
   return a < b ? b : a > c ? c : a;
 };
-var percent = function(a, b, c) {
-  return (c -= b) ? clamp((a - b) / c) : 0;
+var percent2 = function(a, b, c) {
+  return (c -= b) ? clamp2((a - b) / c) : 0;
 };
-var lerp = function(a, b, c) {
-  return b + clamp(a) * (c - b);
+var lerp2 = function(a, b, c) {
+  return b + clamp2(a) * (c - b);
 };
 var distanceWrap = function(a, b, c = 1) {
   a = (a - b) % c;
   return 2 * a % c - a;
 };
 var lerpWrap = function(a, b, c, d = 1) {
-  return c + clamp(a) * distanceWrap(b, c, d);
+  return c + clamp2(a) * distanceWrap(b, c, d);
 };
 var distanceAngle = function(a, b) {
-  return distanceWrap(a, b, 2 * PI);
+  return distanceWrap(a, b, 2 * PI2);
 };
 var lerpAngle = function(a, b, c) {
-  return lerpWrap(a, b, c, 2 * PI);
+  return lerpWrap(a, b, c, 2 * PI2);
 };
 var smoothStep = function(a) {
   return a * a * (3 - 2 * a);
@@ -24912,8 +26794,8 @@ var smoothStep = function(a) {
 var nearestPowerOfTwo = function(a) {
   return 2 ** Math.ceil(Math.log2(a));
 };
-var isOverlapping = function(a, b, c, d = vec2()) {
-  return 2 * abs(a.x - c.x) < b.x + d.x && 2 * abs(a.y - c.y) < b.y + d.y;
+var isOverlapping2 = function(a, b, c, d = vec22()) {
+  return 2 * abs2(a.x - c.x) < b.x + d.x && 2 * abs2(a.y - c.y) < b.y + d.y;
 };
 var isIntersecting = function(a, b, c, d) {
   c = c.subtract(d.scale(0.5));
@@ -24931,151 +26813,151 @@ var isIntersecting = function(a, b, c, d) {
       if (0 > a[e]) {
         if (f > d)
           return false;
-        c = max(f, c);
+        c = max2(f, c);
       } else {
         if (f < c)
           return false;
-        d = min(f, d);
+        d = min2(f, d);
       }
     } else if (0 > b[e])
       return false;
   return true;
 };
-var wave = function(a = 1, b = 1, c = time) {
-  return b / 2 * (1 - Math.cos(c * a * 2 * PI));
+var wave2 = function(a = 1, b = 1, c = time2) {
+  return b / 2 * (1 - Math.cos(c * a * 2 * PI2));
 };
-var formatTime = function(a) {
+var formatTime2 = function(a) {
   return (a / 60 | 0) + ":" + (10 > a % 60 ? "0" : "") + (a % 60 | 0);
 };
-var rand = function(a = 1, b = 0) {
+var rand2 = function(a = 1, b = 0) {
   return b + Math.random() * (a - b);
 };
 var randInt = function(a, b = 0) {
-  return Math.floor(rand(a, b));
+  return Math.floor(rand2(a, b));
 };
 var randSign = function() {
   return 2 * randInt(2) - 1;
 };
-var randVector = function(a = 1) {
-  return new Vector2().setAngle(rand(2 * PI), a);
+var randVector2 = function(a = 1) {
+  return new Vector22().setAngle(rand2(2 * PI2), a);
 };
 var randInCircle = function(a = 1, b = 0) {
-  return 0 < a ? randVector(a * rand(b / a, 1) ** 0.5) : new Vector2;
+  return 0 < a ? randVector2(a * rand2(b / a, 1) ** 0.5) : new Vector22;
 };
-var randColor = function(a = new Color, b = new Color(0, 0, 0, 1), c = false) {
-  return c ? a.lerp(b, rand()) : new Color(rand(a.r, b.r), rand(a.g, b.g), rand(a.b, b.b), rand(a.a, b.a));
+var randColor2 = function(a = new Color2, b = new Color2(0, 0, 0, 1), c = false) {
+  return c ? a.lerp(b, rand2()) : new Color2(rand2(a.r, b.r), rand2(a.g, b.g), rand2(a.b, b.b), rand2(a.a, b.a));
 };
-var vec2 = function(a = 0, b) {
-  return typeof a == "number" ? new Vector2(a, b == undefined ? a : b) : new Vector2(a.x, a.y);
+var vec22 = function(a = 0, b) {
+  return typeof a == "number" ? new Vector22(a, b == undefined ? a : b) : new Vector22(a.x, a.y);
 };
-var isVector2 = function(a) {
-  return a instanceof Vector2;
+var isVector22 = function(a) {
+  return a instanceof Vector22;
 };
-var rgb = function(a, b, c, d) {
-  return new Color(a, b, c, d);
+var rgb2 = function(a, b, c, d) {
+  return new Color2(a, b, c, d);
 };
-var hsl = function(a, b, c, d) {
-  return new Color().setHSLA(a, b, c, d);
+var hsl2 = function(a, b, c, d) {
+  return new Color2().setHSLA(a, b, c, d);
 };
-var isColor = function(a) {
-  return a instanceof Color;
+var isColor2 = function(a) {
+  return a instanceof Color2;
 };
-var setCameraPos = function(a) {
-  cameraPos = a;
+var setCameraPos2 = function(a) {
+  cameraPos2 = a;
 };
-var setCameraScale = function(a) {
-  cameraScale = a;
+var setCameraScale2 = function(a) {
+  cameraScale2 = a;
 };
 var setCanvasMaxSize = function(a) {
-  canvasMaxSize = a;
+  canvasMaxSize2 = a;
 };
 var setCanvasFixedSize = function(a) {
-  canvasFixedSize = a;
+  canvasFixedSize2 = a;
 };
 var setCanvasPixelated = function(a) {
-  canvasPixelated = a;
+  canvasPixelated2 = a;
 };
 var setFontDefault = function(a) {
-  fontDefault = a;
+  fontDefault2 = a;
 };
 var setShowSplashScreen = function(a) {
-  showSplashScreen = a;
+  showSplashScreen2 = a;
 };
 var setHeadlessMode = function(a) {
-  headlessMode = a;
+  headlessMode2 = a;
 };
 var setGlEnable = function(a) {
-  glEnable = a;
+  glEnable2 = a;
 };
 var setGlOverlay = function(a) {
-  glOverlay = a;
+  glOverlay2 = a;
 };
 var setTileSizeDefault = function(a) {
-  tileSizeDefault = a;
+  tileSizeDefault2 = a;
 };
 var setTileFixBleedScale = function(a) {
-  tileFixBleedScale = a;
+  tileFixBleedScale2 = a;
 };
 var setEnablePhysicsSolver = function(a) {
-  enablePhysicsSolver = a;
+  enablePhysicsSolver2 = a;
 };
 var setObjectDefaultMass = function(a) {
-  objectDefaultMass = a;
+  objectDefaultMass2 = a;
 };
 var setObjectDefaultDamping = function(a) {
-  objectDefaultDamping = a;
+  objectDefaultDamping2 = a;
 };
 var setObjectDefaultAngleDamping = function(a) {
-  objectDefaultAngleDamping = a;
+  objectDefaultAngleDamping2 = a;
 };
 var setObjectDefaultElasticity = function(a) {
-  objectDefaultElasticity = a;
+  objectDefaultElasticity2 = a;
 };
 var setObjectDefaultFriction = function(a) {
-  objectDefaultFriction = a;
+  objectDefaultFriction2 = a;
 };
 var setObjectMaxSpeed = function(a) {
-  objectMaxSpeed = a;
+  objectMaxSpeed2 = a;
 };
 var setGravity = function(a) {
-  gravity = a;
+  gravity2 = a;
 };
 var setParticleEmitRateScale = function(a) {
   particleEmitRateScale = a;
 };
 var setGamepadsEnable = function(a) {
-  gamepadsEnable = a;
+  gamepadsEnable2 = a;
 };
 var setGamepadDirectionEmulateStick = function(a) {
-  gamepadDirectionEmulateStick = a;
+  gamepadDirectionEmulateStick2 = a;
 };
 var setInputWASDEmulateDirection = function(a) {
-  inputWASDEmulateDirection = a;
+  inputWASDEmulateDirection2 = a;
 };
 var setTouchInputEnable = function(a) {
-  touchInputEnable = a;
+  touchInputEnable2 = a;
 };
 var setTouchGamepadEnable = function(a) {
-  touchGamepadEnable = a;
+  touchGamepadEnable2 = a;
 };
 var setTouchGamepadAnalog = function(a) {
-  touchGamepadAnalog = a;
+  touchGamepadAnalog2 = a;
 };
 var setTouchGamepadSize = function(a) {
-  touchGamepadSize = a;
+  touchGamepadSize2 = a;
 };
 var setTouchGamepadAlpha = function(a) {
-  touchGamepadAlpha = a;
+  touchGamepadAlpha2 = a;
 };
 var setVibrateEnable = function(a) {
   vibrateEnable = a;
 };
 var setSoundEnable = function(a) {
-  soundEnable = a;
+  soundEnable2 = a;
 };
 var setSoundVolume = function(a) {
-  soundVolume = a;
-  soundEnable && !headlessMode && audioGainNode && (audioGainNode.gain.value = a);
+  soundVolume2 = a;
+  soundEnable2 && !headlessMode2 && audioGainNode2 && (audioGainNode2.gain.value = a);
 };
 var setSoundDefaultRange = function(a) {
   soundDefaultRange = a;
@@ -25084,67 +26966,67 @@ var setSoundDefaultTaper = function(a) {
   soundDefaultTaper = a;
 };
 var setMedalDisplayTime = function(a) {
-  medalDisplayTime = a;
+  medalDisplayTime2 = a;
 };
 var setMedalDisplaySlideTime = function(a) {
-  medalDisplaySlideTime = a;
+  medalDisplaySlideTime2 = a;
 };
 var setMedalDisplaySize = function(a) {
-  medalDisplaySize = a;
+  medalDisplaySize2 = a;
 };
 var setMedalDisplayIconSize = function(a) {
-  medalDisplayIconSize = a;
+  medalDisplayIconSize2 = a;
 };
 var setMedalsPreventUnlock = function(a) {
-  medalsPreventUnlock = a;
+  medalsPreventUnlock2 = a;
 };
 var setShowWatermark = function(a) {
-  showWatermark = a;
+  showWatermark2 = a;
 };
 var setDebugKey = function(a) {
-  debugKey = a;
+  debugKey2 = a;
 };
-var tile = function(a = vec2(), b = tileSizeDefault, c = 0, d = 0) {
-  if (headlessMode)
-    return new TileInfo;
-  typeof b === "number" && (ASSERT(0 < b), b = vec2(b));
-  var e = textureInfos[c];
-  ASSERT(e, "Texture not loaded");
-  const f = b.add(vec2(2 * d));
+var tile = function(a = vec22(), b = tileSizeDefault2, c = 0, d = 0) {
+  if (headlessMode2)
+    return new TileInfo2;
+  typeof b === "number" && (ASSERT2(0 < b), b = vec22(b));
+  var e = textureInfos2[c];
+  ASSERT2(e, "Texture not loaded");
+  const f = b.add(vec22(2 * d));
   e = e.size.x / f.x | 0;
-  typeof a === "number" && (a = vec2(a % e, a / e | 0));
-  a = vec2(a.x * f.x + d, a.y * f.y + d);
-  return new TileInfo(a, b, c, d);
+  typeof a === "number" && (a = vec22(a % e, a / e | 0));
+  a = vec22(a.x * f.x + d, a.y * f.y + d);
+  return new TileInfo2(a, b, c, d);
 };
-var screenToWorld = function(a) {
-  return new Vector2((a.x - mainCanvasSize.x / 2 + 0.5) / cameraScale + cameraPos.x, (a.y - mainCanvasSize.y / 2 + 0.5) / -cameraScale + cameraPos.y);
+var screenToWorld2 = function(a) {
+  return new Vector22((a.x - mainCanvasSize2.x / 2 + 0.5) / cameraScale2 + cameraPos2.x, (a.y - mainCanvasSize2.y / 2 + 0.5) / -cameraScale2 + cameraPos2.y);
 };
-var worldToScreen = function(a) {
-  return new Vector2((a.x - cameraPos.x) * cameraScale + mainCanvasSize.x / 2 - 0.5, (a.y - cameraPos.y) * -cameraScale + mainCanvasSize.y / 2 - 0.5);
+var worldToScreen2 = function(a) {
+  return new Vector22((a.x - cameraPos2.x) * cameraScale2 + mainCanvasSize2.x / 2 - 0.5, (a.y - cameraPos2.y) * -cameraScale2 + mainCanvasSize2.y / 2 - 0.5);
 };
-var getCameraSize = function() {
-  return mainCanvasSize.scale(1 / cameraScale);
+var getCameraSize2 = function() {
+  return mainCanvasSize2.scale(1 / cameraScale2);
 };
-var drawTile = function(a, b = vec2(1), c, d = new Color, e = 0, f, g = new Color(0, 0, 0, 0), k = glEnable, h, m) {
-  ASSERT(!m || !k, "context only supported in canvas 2D mode");
-  ASSERT(typeof c !== "number" || !c, "this is an old style calls, to fix replace it with tile(tileIndex, tileSize)");
+var drawTile2 = function(a, b = vec22(1), c, d = new Color2, e = 0, f, g = new Color2(0, 0, 0, 0), k = glEnable2, h, m) {
+  ASSERT2(!m || !k, "context only supported in canvas 2D mode");
+  ASSERT2(typeof c !== "number" || !c, "this is an old style calls, to fix replace it with tile(tileIndex, tileSize)");
   const n = c && c.getTextureInfo();
   if (k)
-    if (h && (a = screenToWorld(a), b = b.scale(1 / cameraScale)), n) {
-      var l = vec2(1).divide(n.size);
+    if (h && (a = screenToWorld2(a), b = b.scale(1 / cameraScale2)), n) {
+      var l = vec22(1).divide(n.size);
       k = c.pos.x * l.x;
       h = c.pos.y * l.y;
       m = c.size.x * l.x;
       const p = c.size.y * l.y;
-      l = l.scale(tileFixBleedScale);
-      glSetTexture(n.glTexture);
-      glDraw(a.x, a.y, f ? -b.x : b.x, b.y, e, k + l.x, h + l.y, k - l.x + m, h - l.y + p, d.rgbaInt(), g.rgbaInt());
+      l = l.scale(tileFixBleedScale2);
+      glSetTexture2(n.glTexture);
+      glDraw2(a.x, a.y, f ? -b.x : b.x, b.y, e, k + l.x, h + l.y, k - l.x + m, h - l.y + p, d.rgbaInt(), g.rgbaInt());
     } else
-      glDraw(a.x, a.y, b.x, b.y, e, 0, 0, 0, 0, 0, d.rgbaInt());
+      glDraw2(a.x, a.y, b.x, b.y, e, 0, 0, 0, 0, 0, d.rgbaInt());
   else
-    showWatermark && ++drawCount, b = vec2(b.x, -b.y), drawCanvas2D(a, b, e, f, (p) => {
+    showWatermark2 && ++drawCount2, b = vec22(b.x, -b.y), drawCanvas2D2(a, b, e, f, (p) => {
       if (n) {
-        const q = c.pos.x + tileFixBleedScale, r = c.pos.y + tileFixBleedScale, x = c.size.x - 2 * tileFixBleedScale, v = c.size.y - 2 * tileFixBleedScale;
+        const q = c.pos.x + tileFixBleedScale2, r = c.pos.y + tileFixBleedScale2, x = c.size.x - 2 * tileFixBleedScale2, v = c.size.y - 2 * tileFixBleedScale2;
         p.globalAlpha = d.a;
         p.drawImage(n.image, q, r, x, v, -0.5, -0.5, 1, 1);
         p.globalAlpha = 1;
@@ -25152,36 +27034,36 @@ var drawTile = function(a, b = vec2(1), c, d = new Color, e = 0, f, g = new Colo
         p.fillStyle = d, p.fillRect(-0.5, -0.5, 1, 1);
     }, h, m);
 };
-var drawRect = function(a, b, c, d, e, f, g) {
-  drawTile(a, b, undefined, c, d, false, undefined, e, f, g);
+var drawRect2 = function(a, b, c, d, e, f, g) {
+  drawTile2(a, b, undefined, c, d, false, undefined, e, f, g);
 };
-var drawLine = function(a, b, c = 0.1, d, e, f, g) {
-  b = vec2((b.x - a.x) / 2, (b.y - a.y) / 2);
-  c = vec2(c, 2 * b.length());
-  drawRect(a.add(b), c, d, b.angle(), e, f, g);
+var drawLine2 = function(a, b, c = 0.1, d, e, f, g) {
+  b = vec22((b.x - a.x) / 2, (b.y - a.y) / 2);
+  c = vec22(c, 2 * b.length());
+  drawRect2(a.add(b), c, d, b.angle(), e, f, g);
 };
-var drawPoly = function(a, b = new Color, c = 0, d = new Color(0, 0, 0), e, f = mainContext) {
+var drawPoly = function(a, b = new Color2, c = 0, d = new Color2(0, 0, 0), e, f = mainContext2) {
   f.fillStyle = b.toString();
   f.beginPath();
-  for (const g of e ? a : a.map(worldToScreen))
+  for (const g of e ? a : a.map(worldToScreen2))
     f.lineTo(g.x, g.y);
   f.closePath();
   f.fill();
-  c && (f.strokeStyle = d.toString(), f.lineWidth = e ? c : c * cameraScale, f.stroke());
+  c && (f.strokeStyle = d.toString(), f.lineWidth = e ? c : c * cameraScale2, f.stroke());
 };
-var drawEllipse = function(a, b = 1, c = 1, d = 0, e = new Color, f = 0, g = new Color(0, 0, 0), k, h = mainContext) {
-  k || (a = worldToScreen(a), b *= cameraScale, c *= cameraScale, f *= cameraScale);
+var drawEllipse = function(a, b = 1, c = 1, d = 0, e = new Color2, f = 0, g = new Color2(0, 0, 0), k, h = mainContext2) {
+  k || (a = worldToScreen2(a), b *= cameraScale2, c *= cameraScale2, f *= cameraScale2);
   h.fillStyle = e.toString();
   h.beginPath();
   h.ellipse(a.x, a.y, b, c, d, 0, 9);
   h.fill();
   f && (h.strokeStyle = g.toString(), h.lineWidth = f, h.stroke());
 };
-var drawCircle = function(a, b = 1, c = new Color, d = 0, e = new Color(0, 0, 0), f, g = mainContext) {
+var drawCircle = function(a, b = 1, c = new Color2, d = 0, e = new Color2(0, 0, 0), f, g = mainContext2) {
   drawEllipse(a, b, b, 0, c, d, e, f, g);
 };
-var drawCanvas2D = function(a, b, c, d, e, f, g = mainContext) {
-  f || (a = worldToScreen(a), b = b.scale(cameraScale));
+var drawCanvas2D2 = function(a, b, c, d, e, f, g = mainContext2) {
+  f || (a = worldToScreen2(a), b = b.scale(cameraScale2));
   g.save();
   g.translate(a.x + 0.5, a.y + 0.5);
   g.rotate(c);
@@ -25189,14 +27071,14 @@ var drawCanvas2D = function(a, b, c, d, e, f, g = mainContext) {
   e(g);
   g.restore();
 };
-var setBlendMode = function(a, b = glEnable, c) {
-  ASSERT(!c || !b, "context only supported in canvas 2D mode");
-  b ? glAdditive = a : (c ||= mainContext, c.globalCompositeOperation = a ? "lighter" : "source-over");
+var setBlendMode = function(a, b = glEnable2, c) {
+  ASSERT2(!c || !b, "context only supported in canvas 2D mode");
+  b ? glAdditive2 = a : (c ||= mainContext2, c.globalCompositeOperation = a ? "lighter" : "source-over");
 };
 var drawText = function(a, b, c = 1, d, e = 0, f, g, k, h, m) {
-  drawTextScreen(a, worldToScreen(b), c * cameraScale, d, e * cameraScale, f, g, k, h, m);
+  drawTextScreen2(a, worldToScreen2(b), c * cameraScale2, d, e * cameraScale2, f, g, k, h, m);
 };
-var drawTextScreen = function(a, b, c = 1, d = new Color, e = 0, f = new Color(0, 0, 0), g = "center", k = fontDefault, h = overlayContext, m) {
+var drawTextScreen2 = function(a, b, c = 1, d = new Color2, e = 0, f = new Color2(0, 0, 0), g = "center", k = fontDefault2, h = overlayContext2, m) {
   h.fillStyle = d.toString();
   h.lineWidth = e;
   h.strokeStyle = f.toString();
@@ -25215,189 +27097,189 @@ var isFullscreen = function() {
   return !!document.fullscreenElement;
 };
 var toggleFullscreen = function() {
-  const a = mainCanvas.parentElement;
+  const a = mainCanvas2.parentElement;
   isFullscreen() ? document.exitFullscreen && document.exitFullscreen() : a.requestFullscreen && a.requestFullscreen();
 };
-var keyIsDown = function(a, b = 0) {
-  ASSERT(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
-  return inputData[b] && !!(inputData[b][a] & 1);
+var keyIsDown2 = function(a, b = 0) {
+  ASSERT2(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
+  return inputData2[b] && !!(inputData2[b][a] & 1);
 };
-var keyWasPressed = function(a, b = 0) {
-  ASSERT(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
-  return inputData[b] && !!(inputData[b][a] & 2);
+var keyWasPressed2 = function(a, b = 0) {
+  ASSERT2(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
+  return inputData2[b] && !!(inputData2[b][a] & 2);
 };
-var keyWasReleased = function(a, b = 0) {
-  ASSERT(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
-  return inputData[b] && !!(inputData[b][a] & 4);
+var keyWasReleased2 = function(a, b = 0) {
+  ASSERT2(0 < b || typeof a !== "number" || 3 > a, "use code string for keyboard");
+  return inputData2[b] && !!(inputData2[b][a] & 4);
 };
-var clearInput = function() {
-  inputData = [[]];
-  touchGamepadButtons = [];
+var clearInput2 = function() {
+  inputData2 = [[]];
+  touchGamepadButtons2 = [];
 };
-var gamepadIsDown = function(a, b = 0) {
-  return keyIsDown(a, b + 1);
+var gamepadIsDown2 = function(a, b = 0) {
+  return keyIsDown2(a, b + 1);
 };
 var gamepadWasPressed = function(a, b = 0) {
-  return keyWasPressed(a, b + 1);
+  return keyWasPressed2(a, b + 1);
 };
 var gamepadWasReleased = function(a, b = 0) {
-  return keyWasReleased(a, b + 1);
+  return keyWasReleased2(a, b + 1);
 };
 var gamepadStick = function(a, b = 0) {
-  return gamepadStickData[b] ? gamepadStickData[b][a] || vec2() : vec2();
+  return gamepadStickData2[b] ? gamepadStickData2[b][a] || vec22() : vec22();
 };
-var inputUpdate = function() {
-  headlessMode || (touchInputEnable && isTouchDevice || document.hasFocus() || clearInput(), mousePos = screenToWorld(mousePosScreen), gamepadsUpdate());
+var inputUpdate2 = function() {
+  headlessMode2 || (touchInputEnable2 && isTouchDevice2 || document.hasFocus() || clearInput2(), mousePos2 = screenToWorld2(mousePosScreen2), gamepadsUpdate2());
 };
-var inputUpdatePost = function() {
-  if (!headlessMode) {
-    for (const a of inputData)
+var inputUpdatePost2 = function() {
+  if (!headlessMode2) {
+    for (const a of inputData2)
       for (const b in a)
         a[b] &= 1;
-    mouseWheel = 0;
+    mouseWheel2 = 0;
   }
 };
-var inputInit = function() {
+var inputInit2 = function() {
   function a(b) {
-    return inputWASDEmulateDirection ? b == "KeyW" ? "ArrowUp" : b == "KeyS" ? "ArrowDown" : b == "KeyA" ? "ArrowLeft" : b == "KeyD" ? "ArrowRight" : b : b;
+    return inputWASDEmulateDirection2 ? b == "KeyW" ? "ArrowUp" : b == "KeyS" ? "ArrowDown" : b == "KeyA" ? "ArrowLeft" : b == "KeyD" ? "ArrowRight" : b : b;
   }
-  headlessMode || (onkeydown = (b) => {
-    b.repeat || (isUsingGamepad = false, inputData[0][b.code] = 3, inputWASDEmulateDirection && (inputData[0][a(b.code)] = 3));
-    preventDefaultInput && b.preventDefault();
+  headlessMode2 || (onkeydown = (b) => {
+    b.repeat || (isUsingGamepad2 = false, inputData2[0][b.code] = 3, inputWASDEmulateDirection2 && (inputData2[0][a(b.code)] = 3));
+    preventDefaultInput2 && b.preventDefault();
   }, onkeyup = (b) => {
-    inputData[0][b.code] = 4;
-    inputWASDEmulateDirection && (inputData[0][a(b.code)] = 4);
+    inputData2[0][b.code] = 4;
+    inputWASDEmulateDirection2 && (inputData2[0][a(b.code)] = 4);
   }, onmousedown = (b) => {
-    soundEnable && !headlessMode && audioContext && audioContext.state != "running" && audioContext.resume();
-    isUsingGamepad = false;
-    inputData[0][b.button] = 3;
-    mousePosScreen = mouseToScreen(b);
+    soundEnable2 && !headlessMode2 && audioContext2 && audioContext2.state != "running" && audioContext2.resume();
+    isUsingGamepad2 = false;
+    inputData2[0][b.button] = 3;
+    mousePosScreen2 = mouseToScreen2(b);
     b.button && b.preventDefault();
-  }, onmouseup = (b) => inputData[0][b.button] = inputData[0][b.button] & 2 | 4, onmousemove = (b) => mousePosScreen = mouseToScreen(b), onwheel = (b) => mouseWheel = b.ctrlKey ? 0 : sign(b.deltaY), oncontextmenu = (b) => false, onblur = (b) => clearInput(), isTouchDevice && touchInputEnable && touchInputInit());
+  }, onmouseup = (b) => inputData2[0][b.button] = inputData2[0][b.button] & 2 | 4, onmousemove = (b) => mousePosScreen2 = mouseToScreen2(b), onwheel = (b) => mouseWheel2 = b.ctrlKey ? 0 : sign2(b.deltaY), oncontextmenu = (b) => false, onblur = (b) => clearInput2(), isTouchDevice2 && touchInputEnable2 && touchInputInit2());
 };
-var mouseToScreen = function(a) {
-  if (!mainCanvas || headlessMode)
-    return vec2();
-  const b = mainCanvas.getBoundingClientRect();
-  return vec2(mainCanvas.width, mainCanvas.height).multiply(vec2(percent(a.x, b.left, b.right), percent(a.y, b.top, b.bottom)));
+var mouseToScreen2 = function(a) {
+  if (!mainCanvas2 || headlessMode2)
+    return vec22();
+  const b = mainCanvas2.getBoundingClientRect();
+  return vec22(mainCanvas2.width, mainCanvas2.height).multiply(vec22(percent2(a.x, b.left, b.right), percent2(a.y, b.top, b.bottom)));
 };
-var gamepadsUpdate = function() {
+var gamepadsUpdate2 = function() {
   const a = (g) => {
-    const k = (h) => 0.3 < h ? percent(h, 0.3, 0.8) : -0.3 > h ? -percent(-h, 0.3, 0.8) : 0;
-    return vec2(k(g.x), k(-g.y)).clampLength();
+    const k = (h) => 0.3 < h ? percent2(h, 0.3, 0.8) : -0.3 > h ? -percent2(-h, 0.3, 0.8) : 0;
+    return vec22(k(g.x), k(-g.y)).clampLength();
   };
-  if (touchGamepadEnable && isTouchDevice && (ASSERT(touchGamepadButtons, "set touchGamepadEnable before calling init!"), touchGamepadTimer.isSet())) {
-    var b = gamepadStickData[0] || (gamepadStickData[0] = []);
-    b[0] = vec2();
-    touchGamepadAnalog ? b[0] = a(touchGamepadStick) : 0.3 < touchGamepadStick.lengthSquared() && (b[0].x = Math.round(touchGamepadStick.x), b[0].y = -Math.round(touchGamepadStick.y), b[0] = b[0].clampLength());
-    b = inputData[1] || (inputData[1] = []);
+  if (touchGamepadEnable2 && isTouchDevice2 && (ASSERT2(touchGamepadButtons2, "set touchGamepadEnable before calling init!"), touchGamepadTimer2.isSet())) {
+    var b = gamepadStickData2[0] || (gamepadStickData2[0] = []);
+    b[0] = vec22();
+    touchGamepadAnalog2 ? b[0] = a(touchGamepadStick2) : 0.3 < touchGamepadStick2.lengthSquared() && (b[0].x = Math.round(touchGamepadStick2.x), b[0].y = -Math.round(touchGamepadStick2.y), b[0] = b[0].clampLength());
+    b = inputData2[1] || (inputData2[1] = []);
     for (var c = 10;c--; ) {
-      var d = c == 3 ? 2 : c == 2 ? 3 : c, e = gamepadIsDown(d, 0);
-      b[d] = touchGamepadButtons[c] ? e ? 1 : 3 : e ? 4 : 0;
+      var d = c == 3 ? 2 : c == 2 ? 3 : c, e = gamepadIsDown2(d, 0);
+      b[d] = touchGamepadButtons2[c] ? e ? 1 : 3 : e ? 4 : 0;
     }
   }
-  if (gamepadsEnable && navigator && navigator.getGamepads && (debug || document.hasFocus()))
+  if (gamepadsEnable2 && navigator && navigator.getGamepads && (debug2 || document.hasFocus()))
     for (b = navigator.getGamepads(), c = b.length;c--; ) {
       e = b[c];
-      const g = inputData[c + 1] || (inputData[c + 1] = []);
-      d = gamepadStickData[c] || (gamepadStickData[c] = []);
+      const g = inputData2[c + 1] || (inputData2[c + 1] = []);
+      d = gamepadStickData2[c] || (gamepadStickData2[c] = []);
       if (e) {
         for (var f = 0;f < e.axes.length - 1; f += 2)
-          d[f >> 1] = a(vec2(e.axes[f], e.axes[f + 1]));
+          d[f >> 1] = a(vec22(e.axes[f], e.axes[f + 1]));
         for (f = e.buttons.length;f--; ) {
-          const k = e.buttons[f], h = gamepadIsDown(f, c);
+          const k = e.buttons[f], h = gamepadIsDown2(f, c);
           g[f] = k.pressed ? h ? 1 : 3 : h ? 4 : 0;
-          isUsingGamepad ||= !c && k.pressed;
+          isUsingGamepad2 ||= !c && k.pressed;
         }
-        gamepadDirectionEmulateStick && (e = vec2((gamepadIsDown(15, c) && 1) - (gamepadIsDown(14, c) && 1), (gamepadIsDown(12, c) && 1) - (gamepadIsDown(13, c) && 1)), e.lengthSquared() && (d[0] = e.clampLength()));
-        touchGamepadEnable && isUsingGamepad && touchGamepadTimer.unset();
+        gamepadDirectionEmulateStick2 && (e = vec22((gamepadIsDown2(15, c) && 1) - (gamepadIsDown2(14, c) && 1), (gamepadIsDown2(12, c) && 1) - (gamepadIsDown2(13, c) && 1)), e.lengthSquared() && (d[0] = e.clampLength()));
+        touchGamepadEnable2 && isUsingGamepad2 && touchGamepadTimer2.unset();
       }
     }
 };
 var vibrate = function(a = 100) {
-  vibrateEnable && !headlessMode && navigator && navigator.vibrate && navigator.vibrate(a);
+  vibrateEnable && !headlessMode2 && navigator && navigator.vibrate && navigator.vibrate(a);
 };
 var vibrateStop = function() {
   vibrate(0);
 };
-var touchInputInit = function() {
+var touchInputInit2 = function() {
   function a(e) {
-    soundEnable && !headlessMode && audioContext && audioContext.state != "running" && audioContext.resume();
+    soundEnable2 && !headlessMode2 && audioContext2 && audioContext2.state != "running" && audioContext2.resume();
     const f = e.touches.length;
     if (f) {
-      const g = vec2(e.touches[0].clientX, e.touches[0].clientY);
-      mousePosScreen = mouseToScreen(g);
-      d ? isUsingGamepad = touchGamepadEnable : inputData[0][0] = 3;
+      const g = vec22(e.touches[0].clientX, e.touches[0].clientY);
+      mousePosScreen2 = mouseToScreen2(g);
+      d ? isUsingGamepad2 = touchGamepadEnable2 : inputData2[0][0] = 3;
     } else
-      d && (inputData[0][0] = inputData[0][0] & 2 | 4);
+      d && (inputData2[0][0] = inputData2[0][0] & 2 | 4);
     d = f;
     document.hasFocus() && e.preventDefault();
     return true;
   }
   function b(e) {
-    touchGamepadStick = vec2();
-    touchGamepadButtons = [];
-    isUsingGamepad = true;
-    if (e.touches.length && (touchGamepadTimer.set(), paused && !d)) {
-      touchGamepadButtons[9] = 1;
+    touchGamepadStick2 = vec22();
+    touchGamepadButtons2 = [];
+    isUsingGamepad2 = true;
+    if (e.touches.length && (touchGamepadTimer2.set(), paused2 && !d)) {
+      touchGamepadButtons2[9] = 1;
       a(e);
       return;
     }
-    const f = vec2(touchGamepadSize, mainCanvasSize.y - touchGamepadSize), g = mainCanvasSize.subtract(vec2(touchGamepadSize, touchGamepadSize)), k = mainCanvasSize.scale(0.5);
+    const f = vec22(touchGamepadSize2, mainCanvasSize2.y - touchGamepadSize2), g = mainCanvasSize2.subtract(vec22(touchGamepadSize2, touchGamepadSize2)), k = mainCanvasSize2.scale(0.5);
     for (const m of e.touches) {
-      var h = mouseToScreen(vec2(m.clientX, m.clientY));
-      h.distance(f) < touchGamepadSize ? touchGamepadStick = h.subtract(f).scale(2 / touchGamepadSize).clampLength() : h.distance(g) < touchGamepadSize ? (h = h.subtract(g).direction(), touchGamepadButtons[h] = 1) : h.distance(k) < touchGamepadSize && !d && (touchGamepadButtons[9] = 1);
+      var h = mouseToScreen2(vec22(m.clientX, m.clientY));
+      h.distance(f) < touchGamepadSize2 ? touchGamepadStick2 = h.subtract(f).scale(2 / touchGamepadSize2).clampLength() : h.distance(g) < touchGamepadSize2 ? (h = h.subtract(g).direction(), touchGamepadButtons2[h] = 1) : h.distance(k) < touchGamepadSize2 && !d && (touchGamepadButtons2[9] = 1);
     }
     a(e);
     return true;
   }
   let c = a;
-  touchGamepadEnable && (c = b, touchGamepadButtons = [], touchGamepadStick = vec2());
+  touchGamepadEnable2 && (c = b, touchGamepadButtons2 = [], touchGamepadStick2 = vec22());
   document.addEventListener("touchstart", (e) => c(e), { passive: false });
   document.addEventListener("touchmove", (e) => c(e), { passive: false });
   document.addEventListener("touchend", (e) => c(e), { passive: false });
   onmousedown = onmouseup = () => 0;
   let d;
 };
-var touchGamepadRender = function() {
-  if (touchInputEnable && isTouchDevice && !headlessMode && touchGamepadEnable && touchGamepadTimer.isSet()) {
-    var a = percent(touchGamepadTimer.get(), 4, 3);
-    if (a && !paused) {
-      var b = overlayContext;
+var touchGamepadRender2 = function() {
+  if (touchInputEnable2 && isTouchDevice2 && !headlessMode2 && touchGamepadEnable2 && touchGamepadTimer2.isSet()) {
+    var a = percent2(touchGamepadTimer2.get(), 4, 3);
+    if (a && !paused2) {
+      var b = overlayContext2;
       b.save();
-      b.globalAlpha = a * touchGamepadAlpha;
+      b.globalAlpha = a * touchGamepadAlpha2;
       b.strokeStyle = "#fff";
       b.lineWidth = 3;
-      b.fillStyle = 0 < touchGamepadStick.lengthSquared() ? "#fff" : "#000";
+      b.fillStyle = 0 < touchGamepadStick2.lengthSquared() ? "#fff" : "#000";
       b.beginPath();
-      a = vec2(touchGamepadSize, mainCanvasSize.y - touchGamepadSize);
-      if (touchGamepadAnalog)
-        b.arc(a.x, a.y, touchGamepadSize / 2, 0, 9), b.fill();
+      a = vec22(touchGamepadSize2, mainCanvasSize2.y - touchGamepadSize2);
+      if (touchGamepadAnalog2)
+        b.arc(a.x, a.y, touchGamepadSize2 / 2, 0, 9), b.fill();
       else
         for (var c = 10;c--; ) {
-          var d = c * PI / 4;
-          b.arc(a.x, a.y, 0.6 * touchGamepadSize, d + PI / 8, d + PI / 8);
-          c % 2 && b.arc(a.x, a.y, 0.33 * touchGamepadSize, d, d);
+          var d = c * PI2 / 4;
+          b.arc(a.x, a.y, 0.6 * touchGamepadSize2, d + PI2 / 8, d + PI2 / 8);
+          c % 2 && b.arc(a.x, a.y, 0.33 * touchGamepadSize2, d, d);
           c == 1 && b.fill();
         }
       b.stroke();
-      a = vec2(mainCanvasSize.x - touchGamepadSize, mainCanvasSize.y - touchGamepadSize);
+      a = vec22(mainCanvasSize2.x - touchGamepadSize2, mainCanvasSize2.y - touchGamepadSize2);
       for (c = 4;c--; )
-        d = a.add(vec2().setDirection(c, touchGamepadSize / 2)), b.fillStyle = touchGamepadButtons[c] ? "#fff" : "#000", b.beginPath(), b.arc(d.x, d.y, touchGamepadSize / 4, 0, 9), b.fill(), b.stroke();
+        d = a.add(vec22().setDirection(c, touchGamepadSize2 / 2)), b.fillStyle = touchGamepadButtons2[c] ? "#fff" : "#000", b.beginPath(), b.arc(d.x, d.y, touchGamepadSize2 / 4, 0, 9), b.fill(), b.stroke();
       b.restore();
     }
   }
 };
-var audioInit = function() {
-  soundEnable && !headlessMode && (audioGainNode = audioContext.createGain(), audioGainNode.connect(audioContext.destination), audioGainNode.gain.value = soundVolume);
+var audioInit2 = function() {
+  soundEnable2 && !headlessMode2 && (audioGainNode2 = audioContext2.createGain(), audioGainNode2.connect(audioContext2.destination), audioGainNode2.gain.value = soundVolume2);
 };
 var playAudioFile = function(a, b = 1, c = false) {
-  if (soundEnable && !headlessMode)
+  if (soundEnable2 && !headlessMode2)
     return new SoundWave(a, 0, 0, 0, (d) => d.play(undefined, b, 1, 1, c));
 };
 var speak = function(a, b = "", c = 1, d = 1, e = 1) {
-  if (soundEnable && !headlessMode && speechSynthesis)
-    return a = new SpeechSynthesisUtterance(a), a.lang = b, a.volume = 2 * c * soundVolume, a.rate = d, a.pitch = e, speechSynthesis.speak(a), a;
+  if (soundEnable2 && !headlessMode2 && speechSynthesis)
+    return a = new SpeechSynthesisUtterance(a), a.lang = b, a.volume = 2 * c * soundVolume2, a.rate = d, a.pitch = e, speechSynthesis.speak(a), a;
 };
 var speakStop = function() {
   speechSynthesis && speechSynthesis.cancel();
@@ -25405,36 +27287,36 @@ var speakStop = function() {
 var getNoteFrequency = function(a, b = 220) {
   return b * 2 ** (a / 12);
 };
-var playSamples = function(a, b = 1, c = 1, d = 0, e = false, f = zzfxR, g) {
-  if (soundEnable && !headlessMode) {
-    var k = audioContext.createBuffer(a.length, a[0].length, f), h = audioContext.createBufferSource();
+var playSamples2 = function(a, b = 1, c = 1, d = 0, e = false, f = zzfxR2, g) {
+  if (soundEnable2 && !headlessMode2) {
+    var k = audioContext2.createBuffer(a.length, a[0].length, f), h = audioContext2.createBufferSource();
     a.forEach((m, n) => k.getChannelData(n).set(m));
     h.buffer = k;
     h.playbackRate.value = c;
     h.loop = e;
-    g = g || audioContext.createGain();
+    g = g || audioContext2.createGain();
     g.gain.value = b;
-    g.connect(audioGainNode);
-    a = new StereoPannerNode(audioContext, { pan: clamp(d, -1, 1) });
+    g.connect(audioGainNode2);
+    a = new StereoPannerNode(audioContext2, { pan: clamp2(d, -1, 1) });
     h.connect(a).connect(g);
-    audioContext.state != "running" ? audioContext.resume().then(() => h.start()) : h.start();
+    audioContext2.state != "running" ? audioContext2.resume().then(() => h.start()) : h.start();
     return h;
   }
 };
-var zzfx = function(...a) {
-  return playSamples([zzfxG(...a)]);
+var zzfx2 = function(...a) {
+  return playSamples2([zzfxG2(...a)]);
 };
-var zzfxG = function(a = 1, b = 0.05, c = 220, d = 0, e = 0, f = 0.1, g = 0, k = 1, h = 0, m = 0, n = 0, l = 0, p = 0, q = 0, r = 0, x = 0, v = 0, D = 1, z = 0, E = 0, A = 0) {
-  let w = 2 * PI;
-  var t = zzfxR;
+var zzfxG2 = function(a = 1, b = 0.05, c = 220, d = 0, e = 0, f = 0.1, g = 0, k = 1, h = 0, m = 0, n = 0, l = 0, p = 0, q = 0, r = 0, x = 0, v = 0, D = 1, z = 0, E = 0, A = 0) {
+  let w = 2 * PI2;
+  var t = zzfxR2;
   let F = h *= 500 * w / t / t;
-  b = c *= rand(1 + b, 1 - b) * w / t;
+  b = c *= rand2(1 + b, 1 - b) * w / t;
   let C = [], y = 0, G = 0, u = 0, H = 1, R = 0, S = 0, B = 0, J;
-  var L = w * abs(A) * 2 / t, K = Math.cos(L), M = Math.sin(L) / 2 / 2, I = 1 + M;
+  var L = w * abs2(A) * 2 / t, K = Math.cos(L), M = Math.sin(L) / 2 / 2, I = 1 + M;
   L = -2 * K / I;
   M = (1 - M) / I;
-  let N = (1 + sign(A) * K) / 2 / I;
-  K = -(sign(A) + K) / I;
+  let N = (1 + sign2(A) * K) / 2 / I;
+  K = -(sign2(A) + K) / I;
   let O = I = 0, P = 0, Q = 0;
   d = d * t + 9;
   z *= t;
@@ -25447,11 +27329,11 @@ var zzfxG = function(a = 1, b = 0.05, c = 220, d = 0, e = 0, f = 0.1, g = 0, k =
   l *= t;
   p = p * t | 0;
   for (J = d + z + e + f + v | 0;u < J; C[u++] = B * a)
-    ++S % (100 * x | 0) || (B = g ? 1 < g ? 2 < g ? 3 < g ? Math.sin(y ** 3) : clamp(Math.tan(y), 1, -1) : 1 - (2 * y / w % 2 + 2) % 2 : 1 - 4 * abs(Math.round(y / w) - y / w) : Math.sin(y), B = (p ? 1 - E + E * Math.sin(w * u / p) : 1) * sign(B) * abs(B) ** k * (u < d ? u / d : u < d + z ? 1 - (u - d) / z * (1 - D) : u < d + z + e ? D : u < J - v ? (J - u - v) / f * D : 0), B = v ? B / 2 + (v > u ? 0 : (u < J - v ? 1 : (J - u) / v) * C[u - v | 0] / 2 / a) : B, A && (B = Q = N * I + K * (I = O) + N * (O = B) - M * P - L * (P = Q))), t = (c += h += m) * Math.cos(r * G++), y += t + t * q * Math.sin(u ** 5), H && ++H > l && (c += n, b += n, H = 0), !p || ++R % p || (c = b, h = F, H = H || 1);
+    ++S % (100 * x | 0) || (B = g ? 1 < g ? 2 < g ? 3 < g ? Math.sin(y ** 3) : clamp2(Math.tan(y), 1, -1) : 1 - (2 * y / w % 2 + 2) % 2 : 1 - 4 * abs2(Math.round(y / w) - y / w) : Math.sin(y), B = (p ? 1 - E + E * Math.sin(w * u / p) : 1) * sign2(B) * abs2(B) ** k * (u < d ? u / d : u < d + z ? 1 - (u - d) / z * (1 - D) : u < d + z + e ? D : u < J - v ? (J - u - v) / f * D : 0), B = v ? B / 2 + (v > u ? 0 : (u < J - v ? 1 : (J - u) / v) * C[u - v | 0] / 2 / a) : B, A && (B = Q = N * I + K * (I = O) + N * (O = B) - M * P - L * (P = Q))), t = (c += h += m) * Math.cos(r * G++), y += t + t * q * Math.sin(u ** 5), H && ++H > l && (c += n, b += n, H = 0), !p || ++R % p || (c = b, h = F, H = H || 1);
   return C;
 };
 var zzfxM = function(a, b, c, d = 125) {
-  let e, f, g, k, h, m, n, l, p, q, r, x, v, D = 0, z, E = [], A = [], w = [], t = 0, F = 0, C = 1, y = {}, G = zzfxR / d * 60 >> 2;
+  let e, f, g, k, h, m, n, l, p, q, r, x, v, D = 0, z, E = [], A = [], w = [], t = 0, F = 0, C = 1, y = {}, G = zzfxR2 / d * 60 >> 2;
   for (;C; t++)
     E = [C = l = x = 0], c.forEach((u, H) => {
       n = b[u][t] || [0, 0, 0];
@@ -25464,278 +27346,278 @@ var zzfxM = function(a, b, c, d = 125) {
         p = e == n.length + v - 1 && v || q != (n[0] || 0) || h | 0;
         for (f = 0;f < G && l; f++ > G - 99 && p && 1 > r ? r += 1 / 99 : 0)
           m = (1 - r) * E[D++] / 2 || 0, A[g] = (A[g] || 0) - m * F + m, w[g] = (w[g++] || 0) + m * F + m;
-        h && (r = h % 1, F = n[1] || 0, h |= 0) && (E = y[[q = n[D = 0] || 0, h]] = y[[q, h]] || (k = [...a[q]], k[2] *= 2 ** ((h - 12) / 12), 0 < h ? zzfxG(...k) : []));
+        h && (r = h % 1, F = n[1] || 0, h |= 0) && (E = y[[q = n[D = 0] || 0, h]] = y[[q, h]] || (k = [...a[q]], k[2] *= 2 ** ((h - 12) / 12), 0 < h ? zzfxG2(...k) : []));
       }
       x = z;
     });
   return [A, w];
 };
 var initTileCollision = function(a) {
-  tileCollisionSize = a;
-  tileCollision = [];
-  for (a = tileCollision.length = tileCollisionSize.area();a--; )
-    tileCollision[a] = 0;
+  tileCollisionSize2 = a;
+  tileCollision2 = [];
+  for (a = tileCollision2.length = tileCollisionSize2.area();a--; )
+    tileCollision2[a] = 0;
 };
 var setTileCollisionData = function(a, b = 0) {
-  a.arrayCheck(tileCollisionSize) && (tileCollision[(a.y | 0) * tileCollisionSize.x + a.x | 0] = b);
+  a.arrayCheck(tileCollisionSize2) && (tileCollision2[(a.y | 0) * tileCollisionSize2.x + a.x | 0] = b);
 };
-var getTileCollisionData = function(a) {
-  return a.arrayCheck(tileCollisionSize) ? tileCollision[(a.y | 0) * tileCollisionSize.x + a.x | 0] : 0;
+var getTileCollisionData2 = function(a) {
+  return a.arrayCheck(tileCollisionSize2) ? tileCollision2[(a.y | 0) * tileCollisionSize2.x + a.x | 0] : 0;
 };
-var tileCollisionTest = function(a, b = vec2(), c) {
-  const d = max(a.x - b.x / 2 | 0, 0);
-  var e = max(a.y - b.y / 2 | 0, 0);
-  const f = min(a.x + b.x / 2, tileCollisionSize.x);
-  for (a = min(a.y + b.y / 2, tileCollisionSize.y);e < a; ++e)
+var tileCollisionTest2 = function(a, b = vec22(), c) {
+  const d = max2(a.x - b.x / 2 | 0, 0);
+  var e = max2(a.y - b.y / 2 | 0, 0);
+  const f = min2(a.x + b.x / 2, tileCollisionSize2.x);
+  for (a = min2(a.y + b.y / 2, tileCollisionSize2.y);e < a; ++e)
     for (b = d;b < f; ++b) {
-      const g = tileCollision[e * tileCollisionSize.x + b];
-      if (g && (!c || c.collideWithTile(g, vec2(b, e))))
+      const g = tileCollision2[e * tileCollisionSize2.x + b];
+      if (g && (!c || c.collideWithTile(g, vec22(b, e))))
         return true;
     }
   return false;
 };
-var tileCollisionRaycast = function(a, b, c) {
+var tileCollisionRaycast2 = function(a, b, c) {
   const d = b.subtract(a), e = d.length();
   var f = d.normalize();
-  f = vec2(abs(1 / f.x), abs(1 / f.y));
+  f = vec22(abs2(1 / f.x), abs2(1 / f.y));
   let g = a.floor(), k = f.x * (0 > d.x ? a.x - g.x : g.x - a.x + 1), h = f.y * (0 > d.y ? a.y - g.y : g.y - a.y + 1);
   for (;; ) {
-    const m = getTileCollisionData(g);
+    const m = getTileCollisionData2(g);
     if (m && (!c || c.collideWithTile(m, g)))
-      return debugRaycast && debugLine(a, b, "#f00", 0.02), debugRaycast && debugPoint(g.add(vec2(0.5)), "#ff0"), g.add(vec2(0.5));
+      return debugRaycast2 && debugLine2(a, b, "#f00", 0.02), debugRaycast2 && debugPoint2(g.add(vec22(0.5)), "#ff0"), g.add(vec22(0.5));
     if (k > e && h > e)
       break;
-    k > h ? (g.y += sign(d.y), h += f.y) : (g.x += sign(d.x), k += f.x);
+    k > h ? (g.y += sign2(d.y), h += f.y) : (g.x += sign2(d.x), k += f.x);
   }
-  debugRaycast && debugLine(a, b, "#00f", 0.02);
+  debugRaycast2 && debugLine2(a, b, "#00f", 0.02);
 };
-var medalsInit = function(a) {
-  medalsSaveName = a;
-  debugMedals || medalsForEach((b) => b.unlocked = !!localStorage[b.storageKey()]);
-  engineAddPlugin(undefined, function() {
-    if (medalsDisplayQueue.length) {
-      var b = medalsDisplayQueue[0], c = timeReal - medalsDisplayTimeLast;
-      if (medalsDisplayTimeLast)
-        if (c > medalDisplayTime)
-          medalsDisplayTimeLast = 0, medalsDisplayQueue.shift();
+var medalsInit2 = function(a) {
+  medalsSaveName2 = a;
+  debugMedals2 || medalsForEach2((b) => b.unlocked = !!localStorage[b.storageKey()]);
+  engineAddPlugin2(undefined, function() {
+    if (medalsDisplayQueue2.length) {
+      var b = medalsDisplayQueue2[0], c = timeReal2 - medalsDisplayTimeLast2;
+      if (medalsDisplayTimeLast2)
+        if (c > medalDisplayTime2)
+          medalsDisplayTimeLast2 = 0, medalsDisplayQueue2.shift();
         else {
-          const d = medalDisplayTime - medalDisplaySlideTime;
-          b.render(c < medalDisplaySlideTime ? 1 - c / medalDisplaySlideTime : c > d ? (c - d) / medalDisplaySlideTime : 0);
+          const d = medalDisplayTime2 - medalDisplaySlideTime2;
+          b.render(c < medalDisplaySlideTime2 ? 1 - c / medalDisplaySlideTime2 : c > d ? (c - d) / medalDisplaySlideTime2 : 0);
         }
       else
-        medalsDisplayTimeLast = timeReal;
+        medalsDisplayTimeLast2 = timeReal2;
     }
   });
 };
-var medalsForEach = function(a) {
-  Object.values(medals).forEach((b) => a(b));
+var medalsForEach2 = function(a) {
+  Object.values(medals2).forEach((b) => a(b));
 };
-var glInit = function() {
-  if (glEnable && !headlessMode) {
-    glCanvas = document.createElement("canvas");
-    glContext = glCanvas.getContext("webgl2", { antialias: glAntialias });
-    var a = mainCanvas.parentElement;
-    glOverlay && a.appendChild(glCanvas);
-    glShader = glCreateProgram("#version 300 es\nprecision highp float;uniform mat4 m;in vec2 g;in vec4 p,u,c,a;in float r;out vec2 v;out vec4 d,e;void main(){vec2 s=(g-.5)*p.zw;gl_Position=m*vec4(p.xy+s*cos(r)-vec2(-s.y,s)*sin(r),1,1);v=mix(u.xw,u.zy,g);d=c;e=a;}", "#version 300 es\nprecision highp float;uniform sampler2D s;in vec2 v;in vec4 d,e;out vec4 c;void main(){c=texture(s,v)*d+e;}");
-    a = new ArrayBuffer(gl_INSTANCE_BUFFER_SIZE);
-    glPositionData = new Float32Array(a);
-    glColorData = new Uint32Array(a);
-    glArrayBuffer = glContext.createBuffer();
-    glGeometryBuffer = glContext.createBuffer();
-    a = new Float32Array([glInstanceCount = 0, 0, 1, 0, 0, 1, 1, 1]);
-    glContext.bindBuffer(gl_ARRAY_BUFFER, glGeometryBuffer);
-    glContext.bufferData(gl_ARRAY_BUFFER, a, gl_STATIC_DRAW);
+var glInit2 = function() {
+  if (glEnable2 && !headlessMode2) {
+    glCanvas2 = document.createElement("canvas");
+    glContext2 = glCanvas2.getContext("webgl2", { antialias: glAntialias2 });
+    var a = mainCanvas2.parentElement;
+    glOverlay2 && a.appendChild(glCanvas2);
+    glShader2 = glCreateProgram2("#version 300 es\nprecision highp float;uniform mat4 m;in vec2 g;in vec4 p,u,c,a;in float r;out vec2 v;out vec4 d,e;void main(){vec2 s=(g-.5)*p.zw;gl_Position=m*vec4(p.xy+s*cos(r)-vec2(-s.y,s)*sin(r),1,1);v=mix(u.xw,u.zy,g);d=c;e=a;}", "#version 300 es\nprecision highp float;uniform sampler2D s;in vec2 v;in vec4 d,e;out vec4 c;void main(){c=texture(s,v)*d+e;}");
+    a = new ArrayBuffer(gl_INSTANCE_BUFFER_SIZE2);
+    glPositionData2 = new Float32Array(a);
+    glColorData2 = new Uint32Array(a);
+    glArrayBuffer2 = glContext2.createBuffer();
+    glGeometryBuffer2 = glContext2.createBuffer();
+    a = new Float32Array([glInstanceCount2 = 0, 0, 1, 0, 0, 1, 1, 1]);
+    glContext2.bindBuffer(gl_ARRAY_BUFFER2, glGeometryBuffer2);
+    glContext2.bufferData(gl_ARRAY_BUFFER2, a, gl_STATIC_DRAW2);
   }
 };
-var glPreRender = function() {
-  if (glEnable && !headlessMode) {
-    glContext.viewport(0, 0, glCanvas.width = mainCanvas.width, glCanvas.height = mainCanvas.height);
-    glContext.clear(gl_COLOR_BUFFER_BIT);
-    glContext.useProgram(glShader);
-    glContext.activeTexture(gl_TEXTURE0);
-    textureInfos[0] && glContext.bindTexture(gl_TEXTURE_2D, glActiveTexture = textureInfos[0].glTexture);
-    var a = glAdditive = glBatchAdditive = 0, b = (d, e, f, g) => {
-      d = glContext.getAttribLocation(glShader, d);
-      const k = f && gl_INSTANCE_BYTE_STRIDE, h = f && 1, m = f == 1;
-      glContext.enableVertexAttribArray(d);
-      glContext.vertexAttribPointer(d, g, e, m, k, a);
-      glContext.vertexAttribDivisor(d, h);
+var glPreRender2 = function() {
+  if (glEnable2 && !headlessMode2) {
+    glContext2.viewport(0, 0, glCanvas2.width = mainCanvas2.width, glCanvas2.height = mainCanvas2.height);
+    glContext2.clear(gl_COLOR_BUFFER_BIT2);
+    glContext2.useProgram(glShader2);
+    glContext2.activeTexture(gl_TEXTURE02);
+    textureInfos2[0] && glContext2.bindTexture(gl_TEXTURE_2D2, glActiveTexture2 = textureInfos2[0].glTexture);
+    var a = glAdditive2 = glBatchAdditive2 = 0, b = (d, e, f, g) => {
+      d = glContext2.getAttribLocation(glShader2, d);
+      const k = f && gl_INSTANCE_BYTE_STRIDE2, h = f && 1, m = f == 1;
+      glContext2.enableVertexAttribArray(d);
+      glContext2.vertexAttribPointer(d, g, e, m, k, a);
+      glContext2.vertexAttribDivisor(d, h);
       a += g * f;
     };
-    glContext.bindBuffer(gl_ARRAY_BUFFER, glGeometryBuffer);
-    b("g", gl_FLOAT, 0, 2);
-    glContext.bindBuffer(gl_ARRAY_BUFFER, glArrayBuffer);
-    glContext.bufferData(gl_ARRAY_BUFFER, gl_INSTANCE_BUFFER_SIZE, gl_DYNAMIC_DRAW);
-    b("p", gl_FLOAT, 4, 4);
-    b("u", gl_FLOAT, 4, 4);
-    b("c", gl_UNSIGNED_BYTE, 1, 4);
-    b("a", gl_UNSIGNED_BYTE, 1, 4);
-    b("r", gl_FLOAT, 4, 1);
-    b = vec2(2 * cameraScale).divide(mainCanvasSize);
-    var c = vec2(-1).subtract(cameraPos.multiply(b));
-    glContext.uniformMatrix4fv(glContext.getUniformLocation(glShader, "m"), false, [b.x, 0, 0, 0, 0, b.y, 0, 0, 1, 1, 1, 1, c.x, c.y, 0, 0]);
+    glContext2.bindBuffer(gl_ARRAY_BUFFER2, glGeometryBuffer2);
+    b("g", gl_FLOAT2, 0, 2);
+    glContext2.bindBuffer(gl_ARRAY_BUFFER2, glArrayBuffer2);
+    glContext2.bufferData(gl_ARRAY_BUFFER2, gl_INSTANCE_BUFFER_SIZE2, gl_DYNAMIC_DRAW2);
+    b("p", gl_FLOAT2, 4, 4);
+    b("u", gl_FLOAT2, 4, 4);
+    b("c", gl_UNSIGNED_BYTE2, 1, 4);
+    b("a", gl_UNSIGNED_BYTE2, 1, 4);
+    b("r", gl_FLOAT2, 4, 1);
+    b = vec22(2 * cameraScale2).divide(mainCanvasSize2);
+    var c = vec22(-1).subtract(cameraPos2.multiply(b));
+    glContext2.uniformMatrix4fv(glContext2.getUniformLocation(glShader2, "m"), false, [b.x, 0, 0, 0, 0, b.y, 0, 0, 1, 1, 1, 1, c.x, c.y, 0, 0]);
   }
 };
-var glSetTexture = function(a) {
-  headlessMode || a == glActiveTexture || (glFlush(), glContext.bindTexture(gl_TEXTURE_2D, glActiveTexture = a));
+var glSetTexture2 = function(a) {
+  headlessMode2 || a == glActiveTexture2 || (glFlush2(), glContext2.bindTexture(gl_TEXTURE_2D2, glActiveTexture2 = a));
 };
-var glCompileShader = function(a, b) {
-  b = glContext.createShader(b);
-  glContext.shaderSource(b, a);
-  glContext.compileShader(b);
-  if (debug && !glContext.getShaderParameter(b, gl_COMPILE_STATUS))
-    throw glContext.getShaderInfoLog(b);
+var glCompileShader2 = function(a, b) {
+  b = glContext2.createShader(b);
+  glContext2.shaderSource(b, a);
+  glContext2.compileShader(b);
+  if (debug2 && !glContext2.getShaderParameter(b, gl_COMPILE_STATUS2))
+    throw glContext2.getShaderInfoLog(b);
   return b;
 };
-var glCreateProgram = function(a, b) {
-  const c = glContext.createProgram();
-  glContext.attachShader(c, glCompileShader(a, gl_VERTEX_SHADER));
-  glContext.attachShader(c, glCompileShader(b, gl_FRAGMENT_SHADER));
-  glContext.linkProgram(c);
-  if (debug && !glContext.getProgramParameter(c, gl_LINK_STATUS))
-    throw glContext.getProgramInfoLog(c);
+var glCreateProgram2 = function(a, b) {
+  const c = glContext2.createProgram();
+  glContext2.attachShader(c, glCompileShader2(a, gl_VERTEX_SHADER2));
+  glContext2.attachShader(c, glCompileShader2(b, gl_FRAGMENT_SHADER2));
+  glContext2.linkProgram(c);
+  if (debug2 && !glContext2.getProgramParameter(c, gl_LINK_STATUS2))
+    throw glContext2.getProgramInfoLog(c);
   return c;
 };
-var glCreateTexture = function(a) {
-  const b = glContext.createTexture();
-  glContext.bindTexture(gl_TEXTURE_2D, b);
-  a && a.width ? glContext.texImage2D(gl_TEXTURE_2D, 0, gl_RGBA, gl_RGBA, gl_UNSIGNED_BYTE, a) : (a = new Uint8Array([255, 255, 255, 255]), glContext.texImage2D(gl_TEXTURE_2D, 0, gl_RGBA, 1, 1, 0, gl_RGBA, gl_UNSIGNED_BYTE, a));
-  a = canvasPixelated ? gl_NEAREST : gl_LINEAR;
-  glContext.texParameteri(gl_TEXTURE_2D, gl_TEXTURE_MIN_FILTER, a);
-  glContext.texParameteri(gl_TEXTURE_2D, gl_TEXTURE_MAG_FILTER, a);
+var glCreateTexture2 = function(a) {
+  const b = glContext2.createTexture();
+  glContext2.bindTexture(gl_TEXTURE_2D2, b);
+  a && a.width ? glContext2.texImage2D(gl_TEXTURE_2D2, 0, gl_RGBA2, gl_RGBA2, gl_UNSIGNED_BYTE2, a) : (a = new Uint8Array([255, 255, 255, 255]), glContext2.texImage2D(gl_TEXTURE_2D2, 0, gl_RGBA2, 1, 1, 0, gl_RGBA2, gl_UNSIGNED_BYTE2, a));
+  a = canvasPixelated2 ? gl_NEAREST2 : gl_LINEAR2;
+  glContext2.texParameteri(gl_TEXTURE_2D2, gl_TEXTURE_MIN_FILTER2, a);
+  glContext2.texParameteri(gl_TEXTURE_2D2, gl_TEXTURE_MAG_FILTER2, a);
   return b;
 };
-var glFlush = function() {
-  if (glInstanceCount) {
-    var a = glBatchAdditive ? gl_ONE : gl_ONE_MINUS_SRC_ALPHA;
-    glContext.blendFuncSeparate(gl_SRC_ALPHA, a, gl_ONE, a);
-    glContext.enable(gl_BLEND);
-    glContext.bufferSubData(gl_ARRAY_BUFFER, 0, glPositionData);
-    glContext.drawArraysInstanced(gl_TRIANGLE_STRIP, 0, 4, glInstanceCount);
-    showWatermark && (drawCount += glInstanceCount);
-    glInstanceCount = 0;
-    glBatchAdditive = glAdditive;
+var glFlush2 = function() {
+  if (glInstanceCount2) {
+    var a = glBatchAdditive2 ? gl_ONE2 : gl_ONE_MINUS_SRC_ALPHA2;
+    glContext2.blendFuncSeparate(gl_SRC_ALPHA2, a, gl_ONE2, a);
+    glContext2.enable(gl_BLEND2);
+    glContext2.bufferSubData(gl_ARRAY_BUFFER2, 0, glPositionData2);
+    glContext2.drawArraysInstanced(gl_TRIANGLE_STRIP2, 0, 4, glInstanceCount2);
+    showWatermark2 && (drawCount2 += glInstanceCount2);
+    glInstanceCount2 = 0;
+    glBatchAdditive2 = glAdditive2;
   }
 };
-var glCopyToContext = function(a, b = false) {
-  glEnable && (glInstanceCount || b) && (glFlush(), glOverlay && !b || a.drawImage(glCanvas, 0, 0));
+var glCopyToContext2 = function(a, b = false) {
+  glEnable2 && (glInstanceCount2 || b) && (glFlush2(), glOverlay2 && !b || a.drawImage(glCanvas2, 0, 0));
 };
 var glSetAntialias = function(a = true) {
-  ASSERT(!glCanvas, "must be called before engineInit");
-  glAntialias = a;
+  ASSERT2(!glCanvas2, "must be called before engineInit");
+  glAntialias2 = a;
 };
-var glDraw = function(a, b, c, d, e, f, g, k, h, m, n = 0) {
-  ASSERT(typeof m == "number" && typeof n == "number", "invalid color");
-  (glInstanceCount >= gl_MAX_INSTANCES || glBatchAdditive != glAdditive) && glFlush();
-  let l = glInstanceCount * gl_INDICIES_PER_INSTANCE;
-  glPositionData[l++] = a;
-  glPositionData[l++] = b;
-  glPositionData[l++] = c;
-  glPositionData[l++] = d;
-  glPositionData[l++] = f;
-  glPositionData[l++] = g;
-  glPositionData[l++] = k;
-  glPositionData[l++] = h;
-  glColorData[l++] = m;
-  glColorData[l++] = n;
-  glPositionData[l++] = e;
-  glInstanceCount++;
+var glDraw2 = function(a, b, c, d, e, f, g, k, h, m, n = 0) {
+  ASSERT2(typeof m == "number" && typeof n == "number", "invalid color");
+  (glInstanceCount2 >= gl_MAX_INSTANCES2 || glBatchAdditive2 != glAdditive2) && glFlush2();
+  let l = glInstanceCount2 * gl_INDICIES_PER_INSTANCE2;
+  glPositionData2[l++] = a;
+  glPositionData2[l++] = b;
+  glPositionData2[l++] = c;
+  glPositionData2[l++] = d;
+  glPositionData2[l++] = f;
+  glPositionData2[l++] = g;
+  glPositionData2[l++] = k;
+  glPositionData2[l++] = h;
+  glColorData2[l++] = m;
+  glColorData2[l++] = n;
+  glPositionData2[l++] = e;
+  glInstanceCount2++;
 };
 var setPaused = function(a) {
-  paused = a;
+  paused2 = a;
 };
-var engineAddPlugin = function(a, b) {
-  ASSERT(!pluginUpdateList.includes(a));
-  ASSERT(!pluginRenderList.includes(b));
-  a && pluginUpdateList.push(a);
-  b && pluginRenderList.push(b);
+var engineAddPlugin2 = function(a, b) {
+  ASSERT2(!pluginUpdateList2.includes(a));
+  ASSERT2(!pluginRenderList2.includes(b));
+  a && pluginUpdateList2.push(a);
+  b && pluginRenderList2.push(b);
 };
-var engineInit = function(a, b, c, d, e, f = [], g = document.body) {
+var engineInit2 = function(a, b, c, d, e, f = [], g = document.body) {
   function k(n = 0) {
-    var l = n - frameTimeLastMS;
-    frameTimeLastMS = n;
-    if (debug || showWatermark)
-      averageFPS = lerp(0.05, averageFPS, 1000 / (l || 1));
-    n = debug && keyIsDown("Equal");
-    const p = debug && keyIsDown("Minus");
-    debug && (l *= n ? 5 : p ? 0.2 : 1);
-    timeReal += l / 1000;
-    frameTimeBufferMS += paused ? 0 : l;
-    n || (frameTimeBufferMS = min(frameTimeBufferMS, 50));
+    var l = n - frameTimeLastMS2;
+    frameTimeLastMS2 = n;
+    if (debug2 || showWatermark2)
+      averageFPS2 = lerp2(0.05, averageFPS2, 1000 / (l || 1));
+    n = debug2 && keyIsDown2("Equal");
+    const p = debug2 && keyIsDown2("Minus");
+    debug2 && (l *= n ? 5 : p ? 0.2 : 1);
+    timeReal2 += l / 1000;
+    frameTimeBufferMS2 += paused2 ? 0 : l;
+    n || (frameTimeBufferMS2 = min2(frameTimeBufferMS2, 50));
     h();
-    if (paused) {
-      for (const r of engineObjects)
+    if (paused2) {
+      for (const r of engineObjects2)
         r.parent || r.updateTransforms();
-      inputUpdate();
-      pluginUpdateList.forEach((r) => r());
-      debugUpdate();
+      inputUpdate2();
+      pluginUpdateList2.forEach((r) => r());
+      debugUpdate2();
       c();
-      inputUpdatePost();
+      inputUpdatePost2();
     } else {
       l = 0;
-      0 > frameTimeBufferMS && -9 < frameTimeBufferMS && (l = frameTimeBufferMS, frameTimeBufferMS = 0);
-      for (;0 <= frameTimeBufferMS; frameTimeBufferMS -= 1000 / frameRate)
-        time = frame++ / frameRate, inputUpdate(), b(), pluginUpdateList.forEach((r) => r()), engineObjectsUpdate(), debugUpdate(), c(), inputUpdatePost();
-      frameTimeBufferMS += l;
+      0 > frameTimeBufferMS2 && -9 < frameTimeBufferMS2 && (l = frameTimeBufferMS2, frameTimeBufferMS2 = 0);
+      for (;0 <= frameTimeBufferMS2; frameTimeBufferMS2 -= 1000 / frameRate2)
+        time2 = frame2++ / frameRate2, inputUpdate2(), b(), pluginUpdateList2.forEach((r) => r()), engineObjectsUpdate2(), debugUpdate2(), c(), inputUpdatePost2();
+      frameTimeBufferMS2 += l;
     }
-    if (!headlessMode) {
-      mainCanvasSize = vec2(mainCanvas.width, mainCanvas.height);
-      mainContext.imageSmoothingEnabled = !canvasPixelated;
-      glPreRender();
+    if (!headlessMode2) {
+      mainCanvasSize2 = vec22(mainCanvas2.width, mainCanvas2.height);
+      mainContext2.imageSmoothingEnabled = !canvasPixelated2;
+      glPreRender2();
       d();
-      engineObjects.sort((r, x) => r.renderOrder - x.renderOrder);
-      for (var q of engineObjects)
+      engineObjects2.sort((r, x) => r.renderOrder - x.renderOrder);
+      for (var q of engineObjects2)
         q.destroyed || q.render();
       e();
-      pluginRenderList.forEach((r) => r());
-      touchGamepadRender();
-      debugRender();
-      glCopyToContext(mainContext);
-      showWatermark && (overlayContext.textAlign = "right", overlayContext.textBaseline = "top", overlayContext.font = "1em monospace", overlayContext.fillStyle = "#000", q = engineName + " v" + engineVersion + " / " + drawCount + " / " + engineObjects.length + " / " + averageFPS.toFixed(1) + (glEnable ? " GL" : " 2D"), overlayContext.fillText(q, mainCanvas.width - 3, 3), overlayContext.fillStyle = "#fff", overlayContext.fillText(q, mainCanvas.width - 2, 2), drawCount = 0);
+      pluginRenderList2.forEach((r) => r());
+      touchGamepadRender2();
+      debugRender2();
+      glCopyToContext2(mainContext2);
+      showWatermark2 && (overlayContext2.textAlign = "right", overlayContext2.textBaseline = "top", overlayContext2.font = "1em monospace", overlayContext2.fillStyle = "#000", q = engineName2 + " v" + engineVersion2 + " / " + drawCount2 + " / " + engineObjects2.length + " / " + averageFPS2.toFixed(1) + (glEnable2 ? " GL" : " 2D"), overlayContext2.fillText(q, mainCanvas2.width - 3, 3), overlayContext2.fillStyle = "#fff", overlayContext2.fillText(q, mainCanvas2.width - 2, 2), drawCount2 = 0);
     }
     requestAnimationFrame(k);
   }
   function h() {
-    if (!headlessMode) {
-      if (canvasFixedSize.x) {
-        mainCanvas.width = canvasFixedSize.x;
-        mainCanvas.height = canvasFixedSize.y;
-        const n = innerWidth / innerHeight, l = mainCanvas.width / mainCanvas.height;
-        (glCanvas || mainCanvas).style.width = mainCanvas.style.width = overlayCanvas.style.width = n < l ? "100%" : "";
-        (glCanvas || mainCanvas).style.height = mainCanvas.style.height = overlayCanvas.style.height = n < l ? "" : "100%";
+    if (!headlessMode2) {
+      if (canvasFixedSize2.x) {
+        mainCanvas2.width = canvasFixedSize2.x;
+        mainCanvas2.height = canvasFixedSize2.y;
+        const n = innerWidth / innerHeight, l = mainCanvas2.width / mainCanvas2.height;
+        (glCanvas2 || mainCanvas2).style.width = mainCanvas2.style.width = overlayCanvas2.style.width = n < l ? "100%" : "";
+        (glCanvas2 || mainCanvas2).style.height = mainCanvas2.style.height = overlayCanvas2.style.height = n < l ? "" : "100%";
       } else
-        mainCanvas.width = min(innerWidth, canvasMaxSize.x), mainCanvas.height = min(innerHeight, canvasMaxSize.y);
-      overlayCanvas.width = mainCanvas.width;
-      overlayCanvas.height = mainCanvas.height;
-      mainCanvasSize = vec2(mainCanvas.width, mainCanvas.height);
+        mainCanvas2.width = min2(innerWidth, canvasMaxSize2.x), mainCanvas2.height = min2(innerHeight, canvasMaxSize2.y);
+      overlayCanvas2.width = mainCanvas2.width;
+      overlayCanvas2.height = mainCanvas2.height;
+      mainCanvasSize2 = vec22(mainCanvas2.width, mainCanvas2.height);
     }
   }
   function m() {
     new Promise((n) => n(a())).then(k);
   }
-  ASSERT(Array.isArray(f), "pass in images as array");
-  headlessMode ? m() : (g.style.cssText = "margin:0;overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#000;user-select:none;-webkit-user-select:none;" + (touchInputEnable ? "touch-action:none;-webkit-touch-callout:none" : ""), g.appendChild(mainCanvas = document.createElement("canvas")), mainContext = mainCanvas.getContext("2d"), inputInit(), audioInit(), debugInit(), glInit(), g.appendChild(overlayCanvas = document.createElement("canvas")), overlayContext = overlayCanvas.getContext("2d"), mainCanvas.style.cssText = overlayCanvas.style.cssText = "position:absolute", glCanvas && (glCanvas.style.cssText = "position:absolute"), h(), g = f.map((n, l) => new Promise((p) => {
+  ASSERT2(Array.isArray(f), "pass in images as array");
+  headlessMode2 ? m() : (g.style.cssText = "margin:0;overflow:hidden;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#000;user-select:none;-webkit-user-select:none;" + (touchInputEnable2 ? "touch-action:none;-webkit-touch-callout:none" : ""), g.appendChild(mainCanvas2 = document.createElement("canvas")), mainContext2 = mainCanvas2.getContext("2d"), inputInit2(), audioInit2(), debugInit2(), glInit2(), g.appendChild(overlayCanvas2 = document.createElement("canvas")), overlayContext2 = overlayCanvas2.getContext("2d"), mainCanvas2.style.cssText = overlayCanvas2.style.cssText = "position:absolute", glCanvas2 && (glCanvas2.style.cssText = "position:absolute"), h(), g = f.map((n, l) => new Promise((p) => {
     const q = new Image;
     q.onerror = q.onload = () => {
-      textureInfos[l] = new TextureInfo(q);
+      textureInfos2[l] = new TextureInfo2(q);
       p();
     };
     q.src = n;
   })), f.length || g.push(new Promise((n) => {
-    textureInfos[0] = new TextureInfo(new Image);
+    textureInfos2[0] = new TextureInfo2(new Image);
     n();
-  })), showSplashScreen && g.push(new Promise((n) => {
+  })), showSplashScreen2 && g.push(new Promise((n) => {
     function l() {
-      clearInput();
-      drawEngineSplashScreen(p += 0.01);
+      clearInput2();
+      drawEngineSplashScreen2(p += 0.01);
       1 < p ? n() : setTimeout(l, 16);
     }
     let p = 0;
-    console.log(`${engineName} Engine v${engineVersion}`);
+    console.log(`${engineName2} Engine v${engineVersion2}`);
     l();
   })), Promise.all(g).then(m));
 };
-var engineObjectsUpdate = function() {
+var engineObjectsUpdate2 = function() {
   function a(b) {
     if (!b.destroyed) {
       b.update();
@@ -25743,22 +27625,22 @@ var engineObjectsUpdate = function() {
         a(c);
     }
   }
-  engineObjectsCollide = engineObjects.filter((b) => b.collideSolidObjects);
-  for (const b of engineObjects)
+  engineObjectsCollide2 = engineObjects2.filter((b) => b.collideSolidObjects);
+  for (const b of engineObjects2)
     b.parent || (a(b), b.updateTransforms());
-  engineObjects = engineObjects.filter((b) => !b.destroyed);
+  engineObjects2 = engineObjects2.filter((b) => !b.destroyed);
 };
 var engineObjectsDestroy = function() {
-  for (const a of engineObjects)
+  for (const a of engineObjects2)
     a.parent || a.destroy();
-  engineObjects = engineObjects.filter((a) => !a.destroyed);
+  engineObjects2 = engineObjects2.filter((a) => !a.destroyed);
 };
-var engineObjectsCollect = function(a, b, c = engineObjects) {
+var engineObjectsCollect = function(a, b, c = engineObjects2) {
   const d = [];
   if (a)
-    if (b instanceof Vector2)
+    if (b instanceof Vector22)
       for (const e of c)
-        isOverlapping(a, b, e.pos, e.size) && d.push(e);
+        isOverlapping2(a, b, e.pos, e.size) && d.push(e);
     else {
       b *= b;
       for (const e of c)
@@ -25769,21 +27651,21 @@ var engineObjectsCollect = function(a, b, c = engineObjects) {
       d.push(e);
   return d;
 };
-var engineObjectsCallback = function(a, b, c, d = engineObjects) {
+var engineObjectsCallback = function(a, b, c, d = engineObjects2) {
   engineObjectsCollect(a, b, d).forEach((e) => c(e));
 };
-var engineObjectsRaycast = function(a, b, c = engineObjects) {
+var engineObjectsRaycast = function(a, b, c = engineObjects2) {
   const d = [];
   for (const e of c)
-    e.collideRaycast && isIntersecting(a, b, e.pos, e.size) && (debugRaycast && debugRect(e.pos, e.size, "#f00"), d.push(e));
-  debugRaycast && debugLine(a, b, d.length ? "#f00" : "#00f", 0.02);
+    e.collideRaycast && isIntersecting(a, b, e.pos, e.size) && (debugRaycast2 && debugRect2(e.pos, e.size, "#f00"), d.push(e));
+  debugRaycast2 && debugLine2(a, b, d.length ? "#f00" : "#00f", 0.02);
   return d;
 };
-var drawEngineSplashScreen = function(a) {
-  const b = overlayContext;
-  var c = overlayCanvas.width = innerWidth, d = overlayCanvas.height = innerHeight, e = percent(a, 1, 0.8), f = percent(a, 0, 0.5), g = b.createRadialGradient(c / 2, d / 2, 0, c / 2, d / 2, 0.7 * Math.hypot(c, d));
-  g.addColorStop(0, hsl(0, 0, lerp(f, 0, e / 2), e).toString());
-  g.addColorStop(1, hsl(0, 0, 0, e).toString());
+var drawEngineSplashScreen2 = function(a) {
+  const b = overlayContext2;
+  var c = overlayCanvas2.width = innerWidth, d = overlayCanvas2.height = innerHeight, e = percent2(a, 1, 0.8), f = percent2(a, 0, 0.5), g = b.createRadialGradient(c / 2, d / 2, 0, c / 2, d / 2, 0.7 * Math.hypot(c, d));
+  g.addColorStop(0, hsl2(0, 0, lerp2(f, 0, e / 2), e).toString());
+  g.addColorStop(1, hsl2(0, 0, 0, e).toString());
   b.save();
   b.fillStyle = g;
   b.fillRect(0, 0, c, d);
@@ -25792,7 +27674,7 @@ var drawEngineSplashScreen = function(a) {
     b.rect(h, m, n, p ? l * k : l);
     (b.fillStyle = p) ? b.fill() : b.stroke();
   };
-  f = (h, m, n, l = 0, p = 2 * PI, q, r) => {
+  f = (h, m, n, l = 0, p = 2 * PI2, q, r) => {
     const x = (l + p) / 2;
     l = k * (p - l) / 2;
     b.beginPath();
@@ -25800,16 +27682,16 @@ var drawEngineSplashScreen = function(a) {
     b.arc(h, m, n, x - l, x + l);
     (b.fillStyle = q) ? b.fill() : b.stroke();
   };
-  e = (h = 0, m = 0) => hsl([0.98, 0.3, 0.57, 0.14][h % 4] - 10, 0.8, [0, 0.3, 0.5, 0.8, 0.9][m]).toString();
-  a = wave(1, 1, a);
-  const k = percent(a, 0.1, 0.5);
+  e = (h = 0, m = 0) => hsl2([0.98, 0.3, 0.57, 0.14][h % 4] - 10, 0.8, [0, 0.3, 0.5, 0.8, 0.9][m]).toString();
+  a = wave2(1, 1, a);
+  const k = percent2(a, 0.1, 0.5);
   b.translate(c / 2, d / 2);
-  c = min(6, min(c, d) / 99);
+  c = min2(6, min2(c, d) / 99);
   b.scale(c, c);
   b.translate(-40, -35);
   b.lineJoin = b.lineCap = "round";
   b.lineWidth = 0.1 + 1.9 * k;
-  c = percent(a, 0.1, 1);
+  c = percent2(a, 0.1, 1);
   b.setLineDash([99 * c, 99]);
   g(7, 16, 18, -8, e(2, 2));
   g(7, 8, 18, 4, e(2, 3));
@@ -25822,7 +27704,7 @@ var drawEngineSplashScreen = function(a) {
   g(11, 16, 14, 8, e(1, 3));
   g(25, 16, -14, 24);
   g(15, 29, 6, -9, e(2, 2));
-  f(15, 21, 5, 0, PI / 2, e(2, 4), 1);
+  f(15, 21, 5, 0, PI2 / 2, e(2, 4), 1);
   g(21, 21, -6, 9);
   g(37, 14, 9, 6, e(3, 2));
   g(37, 14, 4.5, 6, e(3, 3));
@@ -25831,24 +27713,24 @@ var drawEngineSplashScreen = function(a) {
   g(50, 20, 6.5, -8, e(0, 2));
   g(50, 20, 3.5, -8, e(0, 3));
   g(50, 20, 10, -8);
-  f(55, 2, 11.4, 0.5, PI - 0.5, e(3, 3));
-  f(55, 2, 11.4, 0.5, PI / 2, e(3, 2), 1);
-  f(55, 2, 11.4, 0.5, PI - 0.5);
+  f(55, 2, 11.4, 0.5, PI2 - 0.5, e(3, 3));
+  f(55, 2, 11.4, 0.5, PI2 / 2, e(3, 2), 1);
+  f(55, 2, 11.4, 0.5, PI2 - 0.5);
   g(45, 7, 20, -7, e(0, 2));
   g(45, -1, 20, 4, e(0, 3));
   g(45, -1, 20, 8);
   for (c = 5;c--; )
-    f(60 - 6 * c, 30, 9.9, 0, 2 * PI, e(c + 2, 3)), f(60 - 6 * c, 30, 10, -0.5, PI + 0.5, e(c + 2, 2)), f(60 - 6 * c, 30, 10.1, 0.5, PI - 0.5, e(c + 2, 1));
-  f(36, 30, 10, PI / 2, 3 * PI / 2);
-  f(48, 30, 10, PI / 2, 3 * PI / 2);
+    f(60 - 6 * c, 30, 9.9, 0, 2 * PI2, e(c + 2, 3)), f(60 - 6 * c, 30, 10, -0.5, PI2 + 0.5, e(c + 2, 2)), f(60 - 6 * c, 30, 10.1, 0.5, PI2 - 0.5, e(c + 2, 1));
+  f(36, 30, 10, PI2 / 2, 3 * PI2 / 2);
+  f(48, 30, 10, PI2 / 2, 3 * PI2 / 2);
   f(60, 30, 10);
   b.beginPath();
   b.lineTo(36, 20);
   b.lineTo(60, 20);
   b.stroke();
-  f(60, 30, 4, PI, 3 * PI, e(3, 2));
-  f(60, 30, 4, PI, 2 * PI, e(3, 3));
-  f(60, 30, 4, PI, 3 * PI);
+  f(60, 30, 4, PI2, 3 * PI2, e(3, 2));
+  f(60, 30, 4, PI2, 2 * PI2, e(3, 3));
+  f(60, 30, 4, PI2, 3 * PI2);
   for (c = 6;c--; )
     b.beginPath(), b.lineTo(53, 54), b.lineTo(53, 40), b.lineTo(53 + (1 + 2.9 * c) * k, 40), b.lineTo(53 + (4 + 3.5 * c) * k, 54), b.fillStyle = e(0, c % 2 + 2), b.fill(), c % 2 && b.stroke();
   g(6, 40, 5, 5);
@@ -25856,7 +27738,7 @@ var drawEngineSplashScreen = function(a) {
   g(15, 54, 38, -14, e());
   for (g = 3;g--; )
     for (c = 2;c--; )
-      f(15 * g + 15, 47, c ? 7 : 1, PI, 3 * PI, e(g, 3)), b.stroke(), f(15 * g + 15, 47, c ? 7 : 1, 0, PI, e(g, 2)), b.stroke();
+      f(15 * g + 15, 47, c ? 7 : 1, PI2, 3 * PI2, e(g, 3)), b.stroke(), f(15 * g + 15, 47, c ? 7 : 1, 0, PI2, e(g, 2)), b.stroke();
   b.beginPath();
   b.lineTo(6, 40);
   b.lineTo(68, 40);
@@ -25865,7 +27747,7 @@ var drawEngineSplashScreen = function(a) {
   b.lineTo(77, 54);
   b.lineTo(4, 54);
   b.stroke();
-  f = engineName;
+  f = engineName2;
   b.font = "900 16px arial";
   b.textAlign = "center";
   b.textBaseline = "top";
@@ -25878,15 +27760,15 @@ var drawEngineSplashScreen = function(a) {
       b.fillStyle = e(h, 2), d = b.measureText(f[h]).width, b[c ? "strokeText" : "fillText"](f[h], m + d / 2, 55.5, 17 * k), m += d;
   b.restore();
 };
-var showWatermark = 0;
-var debugKey = "";
-var debug = 0;
-var debugOverlay = 0;
-var debugPhysics = 0;
-var debugParticles = 0;
-var debugRaycast = 0;
-var debugMedals = 0;
-var PI = Math.PI;
+var showWatermark2 = 0;
+var debugKey2 = "";
+var debug2 = 0;
+var debugOverlay2 = 0;
+var debugPhysics2 = 0;
+var debugParticles2 = 0;
+var debugRaycast2 = 0;
+var debugMedals2 = 0;
+var PI2 = Math.PI;
 
 class RandomGenerator {
   constructor(a) {
@@ -25896,7 +27778,7 @@ class RandomGenerator {
     this.seed ^= this.seed << 13;
     this.seed ^= this.seed >>> 17;
     this.seed ^= this.seed << 5;
-    return b + (a - b) * abs(this.seed % 1e8) / 1e8;
+    return b + (a - b) * abs2(this.seed % 1e8) / 1e8;
   }
   int(a, b = 0) {
     return Math.floor(this.float(a, b));
@@ -25906,40 +27788,40 @@ class RandomGenerator {
   }
 }
 
-class Vector2 {
+class Vector22 {
   constructor(a = 0, b = 0) {
     this.x = a;
     this.y = b;
-    ASSERT(this.isValid());
+    ASSERT2(this.isValid());
   }
   set(a = 0, b = 0) {
     this.x = a;
     this.y = b;
-    ASSERT(this.isValid());
+    ASSERT2(this.isValid());
     return this;
   }
   copy() {
-    return new Vector2(this.x, this.y);
+    return new Vector22(this.x, this.y);
   }
   add(a) {
-    ASSERT(isVector2(a));
-    return new Vector2(this.x + a.x, this.y + a.y);
+    ASSERT2(isVector22(a));
+    return new Vector22(this.x + a.x, this.y + a.y);
   }
   subtract(a) {
-    ASSERT(isVector2(a));
-    return new Vector2(this.x - a.x, this.y - a.y);
+    ASSERT2(isVector22(a));
+    return new Vector22(this.x - a.x, this.y - a.y);
   }
   multiply(a) {
-    ASSERT(isVector2(a));
-    return new Vector2(this.x * a.x, this.y * a.y);
+    ASSERT2(isVector22(a));
+    return new Vector22(this.x * a.x, this.y * a.y);
   }
   divide(a) {
-    ASSERT(isVector2(a));
-    return new Vector2(this.x / a.x, this.y / a.y);
+    ASSERT2(isVector22(a));
+    return new Vector22(this.x / a.x, this.y / a.y);
   }
   scale(a) {
-    ASSERT(!isVector2(a));
-    return new Vector2(this.x * a, this.y * a);
+    ASSERT2(!isVector22(a));
+    return new Vector22(this.x * a, this.y * a);
   }
   length() {
     return this.lengthSquared() ** 0.5;
@@ -25948,27 +27830,27 @@ class Vector2 {
     return this.x ** 2 + this.y ** 2;
   }
   distance(a) {
-    ASSERT(isVector2(a));
+    ASSERT2(isVector22(a));
     return this.distanceSquared(a) ** 0.5;
   }
   distanceSquared(a) {
-    ASSERT(isVector2(a));
+    ASSERT2(isVector22(a));
     return (this.x - a.x) ** 2 + (this.y - a.y) ** 2;
   }
   normalize(a = 1) {
     const b = this.length();
-    return b ? this.scale(a / b) : new Vector2(0, a);
+    return b ? this.scale(a / b) : new Vector22(0, a);
   }
   clampLength(a = 1) {
     const b = this.length();
     return b > a ? this.scale(a / b) : this;
   }
   dot(a) {
-    ASSERT(isVector2(a));
+    ASSERT2(isVector22(a));
     return this.x * a.x + this.y * a.y;
   }
   cross(a) {
-    ASSERT(isVector2(a));
+    ASSERT2(isVector22(a));
     return this.x * a.y - this.y * a.x;
   }
   angle() {
@@ -25982,35 +27864,35 @@ class Vector2 {
   rotate(a) {
     const b = Math.cos(a);
     a = Math.sin(a);
-    return new Vector2(this.x * b - this.y * a, this.x * a + this.y * b);
+    return new Vector22(this.x * b - this.y * a, this.x * a + this.y * b);
   }
   setDirection(a, b = 1) {
-    a = mod(a, 4);
-    ASSERT(a == 0 || a == 1 || a == 2 || a == 3);
-    return vec2(a % 2 ? a - 1 ? -b : b : 0, a % 2 ? 0 : a ? -b : b);
+    a = mod2(a, 4);
+    ASSERT2(a == 0 || a == 1 || a == 2 || a == 3);
+    return vec22(a % 2 ? a - 1 ? -b : b : 0, a % 2 ? 0 : a ? -b : b);
   }
   direction() {
-    return abs(this.x) > abs(this.y) ? 0 > this.x ? 3 : 1 : 0 > this.y ? 2 : 0;
+    return abs2(this.x) > abs2(this.y) ? 0 > this.x ? 3 : 1 : 0 > this.y ? 2 : 0;
   }
   invert() {
-    return new Vector2(this.y, -this.x);
+    return new Vector22(this.y, -this.x);
   }
   floor() {
-    return new Vector2(Math.floor(this.x), Math.floor(this.y));
+    return new Vector22(Math.floor(this.x), Math.floor(this.y));
   }
   area() {
-    return abs(this.x * this.y);
+    return abs2(this.x * this.y);
   }
   lerp(a, b) {
-    ASSERT(isVector2(a));
-    return this.add(a.subtract(this).scale(clamp(b)));
+    ASSERT2(isVector22(a));
+    return this.add(a.subtract(this).scale(clamp2(b)));
   }
   arrayCheck(a) {
-    ASSERT(isVector2(a));
+    ASSERT2(isVector22(a));
     return 0 <= this.x && 0 <= this.y && this.x < a.x && this.y < a.y;
   }
   toString(a = 3) {
-    if (debug)
+    if (debug2)
       return `(${(0 > this.x ? "" : " ") + this.x.toFixed(a)},${(0 > this.y ? "" : " ") + this.y.toFixed(a)} )`;
   }
   isValid() {
@@ -26018,67 +27900,67 @@ class Vector2 {
   }
 }
 
-class Color {
+class Color2 {
   constructor(a = 1, b = 1, c = 1, d = 1) {
     this.r = a;
     this.g = b;
     this.b = c;
     this.a = d;
-    ASSERT(this.isValid());
+    ASSERT2(this.isValid());
   }
   set(a = 1, b = 1, c = 1, d = 1) {
     this.r = a;
     this.g = b;
     this.b = c;
     this.a = d;
-    ASSERT(this.isValid());
+    ASSERT2(this.isValid());
     return this;
   }
   copy() {
-    return new Color(this.r, this.g, this.b, this.a);
+    return new Color2(this.r, this.g, this.b, this.a);
   }
   add(a) {
-    ASSERT(isColor(a));
-    return new Color(this.r + a.r, this.g + a.g, this.b + a.b, this.a + a.a);
+    ASSERT2(isColor2(a));
+    return new Color2(this.r + a.r, this.g + a.g, this.b + a.b, this.a + a.a);
   }
   subtract(a) {
-    ASSERT(isColor(a));
-    return new Color(this.r - a.r, this.g - a.g, this.b - a.b, this.a - a.a);
+    ASSERT2(isColor2(a));
+    return new Color2(this.r - a.r, this.g - a.g, this.b - a.b, this.a - a.a);
   }
   multiply(a) {
-    ASSERT(isColor(a));
-    return new Color(this.r * a.r, this.g * a.g, this.b * a.b, this.a * a.a);
+    ASSERT2(isColor2(a));
+    return new Color2(this.r * a.r, this.g * a.g, this.b * a.b, this.a * a.a);
   }
   divide(a) {
-    ASSERT(isColor(a));
-    return new Color(this.r / a.r, this.g / a.g, this.b / a.b, this.a / a.a);
+    ASSERT2(isColor2(a));
+    return new Color2(this.r / a.r, this.g / a.g, this.b / a.b, this.a / a.a);
   }
   scale(a, b = a) {
-    return new Color(this.r * a, this.g * a, this.b * a, this.a * b);
+    return new Color2(this.r * a, this.g * a, this.b * a, this.a * b);
   }
   clamp() {
-    return new Color(clamp(this.r), clamp(this.g), clamp(this.b), clamp(this.a));
+    return new Color2(clamp2(this.r), clamp2(this.g), clamp2(this.b), clamp2(this.a));
   }
   lerp(a, b) {
-    ASSERT(isColor(a));
-    return this.add(a.subtract(this).scale(clamp(b)));
+    ASSERT2(isColor2(a));
+    return this.add(a.subtract(this).scale(clamp2(b)));
   }
   setHSLA(a = 0, b = 0, c = 1, d = 1) {
-    a = mod(a, 1);
-    b = clamp(b);
-    c = clamp(c);
+    a = mod2(a, 1);
+    b = clamp2(b);
+    c = clamp2(c);
     b = 0.5 > c ? c * (1 + b) : c + b - c * b;
     c = 2 * c - b;
-    const e = (f, g, k) => 1 > 6 * (k = mod(k, 1)) ? f + 6 * (g - f) * k : 1 > 2 * k ? g : 2 > 3 * k ? f + (g - f) * (4 - 6 * k) : f;
+    const e = (f, g, k) => 1 > 6 * (k = mod2(k, 1)) ? f + 6 * (g - f) * k : 1 > 2 * k ? g : 2 > 3 * k ? f + (g - f) * (4 - 6 * k) : f;
     this.r = e(c, b, a + 1 / 3);
     this.g = e(c, b, a);
     this.b = e(c, b, a - 1 / 3);
     this.a = d;
-    ASSERT(this.isValid());
+    ASSERT2(this.isValid());
     return this;
   }
   HSLA() {
-    const a = clamp(this.r), b = clamp(this.g), c = clamp(this.b), d = clamp(this.a), e = Math.max(a, b, c), f = Math.min(a, b, c), g = (e + f) / 2;
+    const a = clamp2(this.r), b = clamp2(this.g), c = clamp2(this.b), d = clamp2(this.a), e = Math.max(a, b, c), f = Math.min(a, b, c), g = (e + f) / 2;
     let k = 0, h = 0;
     if (e != f) {
       let m = e - f;
@@ -26088,46 +27970,46 @@ class Color {
     return [k / 6, h, g, d];
   }
   mutate(a = 0.05, b = 0) {
-    return new Color(this.r + rand(a, -a), this.g + rand(a, -a), this.b + rand(a, -a), this.a + rand(b, -b)).clamp();
+    return new Color2(this.r + rand2(a, -a), this.g + rand2(a, -a), this.b + rand2(a, -a), this.a + rand2(b, -b)).clamp();
   }
   toString(a = true) {
-    const b = (c) => (16 > (c = 255 * clamp(c) | 0) ? "0" : "") + c.toString(16);
+    const b = (c) => (16 > (c = 255 * clamp2(c) | 0) ? "0" : "") + c.toString(16);
     return "#" + b(this.r) + b(this.g) + b(this.b) + (a ? b(this.a) : "");
   }
   setHex(a) {
-    ASSERT(typeof a == "string" && a[0] == "#");
-    ASSERT([4, 5, 7, 9].includes(a.length), "Invalid hex");
-    6 > a.length ? (this.r = clamp(parseInt(a[1], 16) / 15), this.g = clamp(parseInt(a[2], 16) / 15), this.b = clamp(parseInt(a[3], 16) / 15), this.a = a.length == 5 ? clamp(parseInt(a[4], 16) / 15) : 1) : (this.r = clamp(parseInt(a.slice(1, 3), 16) / 255), this.g = clamp(parseInt(a.slice(3, 5), 16) / 255), this.b = clamp(parseInt(a.slice(5, 7), 16) / 255), this.a = a.length == 9 ? clamp(parseInt(a.slice(7, 9), 16) / 255) : 1);
-    ASSERT(this.isValid());
+    ASSERT2(typeof a == "string" && a[0] == "#");
+    ASSERT2([4, 5, 7, 9].includes(a.length), "Invalid hex");
+    6 > a.length ? (this.r = clamp2(parseInt(a[1], 16) / 15), this.g = clamp2(parseInt(a[2], 16) / 15), this.b = clamp2(parseInt(a[3], 16) / 15), this.a = a.length == 5 ? clamp2(parseInt(a[4], 16) / 15) : 1) : (this.r = clamp2(parseInt(a.slice(1, 3), 16) / 255), this.g = clamp2(parseInt(a.slice(3, 5), 16) / 255), this.b = clamp2(parseInt(a.slice(5, 7), 16) / 255), this.a = a.length == 9 ? clamp2(parseInt(a.slice(7, 9), 16) / 255) : 1);
+    ASSERT2(this.isValid());
     return this;
   }
   rgbaInt() {
-    const a = 255 * clamp(this.r) | 0, b = 255 * clamp(this.g) << 8, c = 255 * clamp(this.b) << 16, d = 255 * clamp(this.a) << 24;
+    const a = 255 * clamp2(this.r) | 0, b = 255 * clamp2(this.g) << 8, c = 255 * clamp2(this.b) << 16, d = 255 * clamp2(this.a) << 24;
     return a + b + c + d;
   }
   isValid() {
     return typeof this.r == "number" && !isNaN(this.r) && typeof this.g == "number" && !isNaN(this.g) && typeof this.b == "number" && !isNaN(this.b) && typeof this.a == "number" && !isNaN(this.a);
   }
 }
-var WHITE = rgb();
-var BLACK = rgb(0, 0, 0);
-var GRAY = rgb(0.5, 0.5, 0.5);
-var RED = rgb(1, 0, 0);
-var ORANGE = rgb(1, 0.5, 0);
-var YELLOW = rgb(1, 1, 0);
-var GREEN = rgb(0, 1, 0);
-var CYAN = rgb(0, 1, 1);
-var BLUE = rgb(0, 0, 1);
-var PURPLE = rgb(0.5, 0, 1);
-var MAGENTA = rgb(1, 0, 1);
+var WHITE2 = rgb2();
+var BLACK2 = rgb2(0, 0, 0);
+var GRAY2 = rgb2(0.5, 0.5, 0.5);
+var RED2 = rgb2(1, 0, 0);
+var ORANGE2 = rgb2(1, 0.5, 0);
+var YELLOW2 = rgb2(1, 1, 0);
+var GREEN2 = rgb2(0, 1, 0);
+var CYAN2 = rgb2(0, 1, 1);
+var BLUE2 = rgb2(0, 0, 1);
+var PURPLE2 = rgb2(0.5, 0, 1);
+var MAGENTA2 = rgb2(1, 0, 1);
 
-class Timer {
+class Timer2 {
   constructor(a) {
-    this.time = a == undefined ? undefined : time + a;
+    this.time = a == undefined ? undefined : time2 + a;
     this.setTime = a;
   }
   set(a = 0) {
-    this.time = time + a;
+    this.time = time2 + a;
     this.setTime = a;
   }
   unset() {
@@ -26137,69 +28019,69 @@ class Timer {
     return this.time != null;
   }
   active() {
-    return time < this.time;
+    return time2 < this.time;
   }
   elapsed() {
-    return time >= this.time;
+    return time2 >= this.time;
   }
   get() {
-    return this.isSet() ? time - this.time : 0;
+    return this.isSet() ? time2 - this.time : 0;
   }
   getPercent() {
-    return this.isSet() ? percent(this.time - time, this.setTime, 0) : 0;
+    return this.isSet() ? percent2(this.time - time2, this.setTime, 0) : 0;
   }
   toString() {
-    if (debug)
+    if (debug2)
       return this.isSet() ? Math.abs(this.get()) + " seconds " + (0 > this.get() ? "before" : "after") : "unset";
   }
   valueOf() {
     return this.get();
   }
 }
-var cameraPos = vec2();
-var cameraScale = 32;
-var canvasMaxSize = vec2(1920, 1080);
-var canvasFixedSize = vec2();
-var canvasPixelated = true;
-var fontDefault = "arial";
-var showSplashScreen = false;
-var headlessMode = false;
-var glEnable = true;
-var glOverlay = true;
-var tileSizeDefault = vec2(16);
-var tileFixBleedScale = 0;
-var enablePhysicsSolver = true;
-var objectDefaultMass = 1;
-var objectDefaultDamping = 1;
-var objectDefaultAngleDamping = 1;
-var objectDefaultElasticity = 0;
-var objectDefaultFriction = 0.8;
-var objectMaxSpeed = 1;
-var gravity = 0;
+var cameraPos2 = vec22();
+var cameraScale2 = 32;
+var canvasMaxSize2 = vec22(1920, 1080);
+var canvasFixedSize2 = vec22();
+var canvasPixelated2 = true;
+var fontDefault2 = "arial";
+var showSplashScreen2 = false;
+var headlessMode2 = false;
+var glEnable2 = true;
+var glOverlay2 = true;
+var tileSizeDefault2 = vec22(16);
+var tileFixBleedScale2 = 0;
+var enablePhysicsSolver2 = true;
+var objectDefaultMass2 = 1;
+var objectDefaultDamping2 = 1;
+var objectDefaultAngleDamping2 = 1;
+var objectDefaultElasticity2 = 0;
+var objectDefaultFriction2 = 0.8;
+var objectMaxSpeed2 = 1;
+var gravity2 = 0;
 var particleEmitRateScale = 1;
-var gamepadsEnable = true;
-var gamepadDirectionEmulateStick = true;
-var inputWASDEmulateDirection = true;
-var touchInputEnable = true;
-var touchGamepadEnable = false;
-var touchGamepadAnalog = true;
-var touchGamepadSize = 99;
-var touchGamepadAlpha = 0.3;
+var gamepadsEnable2 = true;
+var gamepadDirectionEmulateStick2 = true;
+var inputWASDEmulateDirection2 = true;
+var touchInputEnable2 = true;
+var touchGamepadEnable2 = false;
+var touchGamepadAnalog2 = true;
+var touchGamepadSize2 = 99;
+var touchGamepadAlpha2 = 0.3;
 var vibrateEnable = true;
-var soundEnable = true;
-var soundVolume = 0.3;
+var soundEnable2 = true;
+var soundVolume2 = 0.3;
 var soundDefaultRange = 40;
 var soundDefaultTaper = 0.7;
-var medalDisplayTime = 5;
-var medalDisplaySlideTime = 0.5;
-var medalDisplaySize = vec2(640, 80);
-var medalDisplayIconSize = 50;
-var medalsPreventUnlock = false;
+var medalDisplayTime2 = 5;
+var medalDisplaySlideTime2 = 0.5;
+var medalDisplaySize2 = vec22(640, 80);
+var medalDisplayIconSize2 = 50;
+var medalsPreventUnlock2 = false;
 
-class EngineObject {
-  constructor(a = vec2(), b = vec2(1), c, d = 0, e = new Color, f = 0) {
-    ASSERT(isVector2(a) && isVector2(b), "ensure pos and size are vec2s");
-    ASSERT(typeof c !== "number" || !c, "old style tile setup");
+class EngineObject2 {
+  constructor(a = vec22(), b = vec22(1), c, d = 0, e = new Color2, f = 0) {
+    ASSERT2(isVector22(a) && isVector22(b), "ensure pos and size are vec2s");
+    ASSERT2(typeof c !== "number" || !c, "old style tile setup");
     this.pos = a.copy();
     this.size = b;
     this.drawSize = undefined;
@@ -26208,29 +28090,29 @@ class EngineObject {
     this.color = e;
     this.additiveColor = undefined;
     this.mirror = false;
-    this.mass = objectDefaultMass;
-    this.damping = objectDefaultDamping;
-    this.angleDamping = objectDefaultAngleDamping;
-    this.elasticity = objectDefaultElasticity;
-    this.friction = objectDefaultFriction;
+    this.mass = objectDefaultMass2;
+    this.damping = objectDefaultDamping2;
+    this.angleDamping = objectDefaultAngleDamping2;
+    this.elasticity = objectDefaultElasticity2;
+    this.friction = objectDefaultFriction2;
     this.gravityScale = 1;
     this.renderOrder = f;
-    this.velocity = vec2();
+    this.velocity = vec22();
     this.angleVelocity = 0;
-    this.spawnTime = time;
+    this.spawnTime = time2;
     this.children = [];
     this.clampSpeedLinear = true;
     this.parent = undefined;
-    this.localPos = vec2();
+    this.localPos = vec22();
     this.localAngle = 0;
     this.collideRaycast = this.isSolid = this.collideSolidObjects = this.collideTiles = false;
-    engineObjects.push(this);
+    engineObjects2.push(this);
   }
   updateTransforms() {
     const a = this.parent;
     if (a) {
       const b = a.getMirrorSign();
-      this.pos = this.localPos.multiply(vec2(b, 1)).rotate(-a.angle).add(a.pos);
+      this.pos = this.localPos.multiply(vec22(b, 1)).rotate(-a.angle).add(a.pos);
       this.angle = b * this.localAngle + a.angle;
     }
     for (const b of this.children)
@@ -26239,21 +28121,21 @@ class EngineObject {
   update() {
     if (!this.parent) {
       if (this.clampSpeedLinear)
-        this.velocity.x = clamp(this.velocity.x, -objectMaxSpeed, objectMaxSpeed), this.velocity.y = clamp(this.velocity.y, -objectMaxSpeed, objectMaxSpeed);
+        this.velocity.x = clamp2(this.velocity.x, -objectMaxSpeed2, objectMaxSpeed2), this.velocity.y = clamp2(this.velocity.y, -objectMaxSpeed2, objectMaxSpeed2);
       else {
         var a = this.velocity.lengthSquared();
-        a > objectMaxSpeed * objectMaxSpeed && (a = objectMaxSpeed / a ** 0.5, this.velocity.x *= a, this.velocity.y *= a);
+        a > objectMaxSpeed2 * objectMaxSpeed2 && (a = objectMaxSpeed2 / a ** 0.5, this.velocity.x *= a, this.velocity.y *= a);
       }
       a = this.pos.copy();
       this.velocity.x *= this.damping;
       this.velocity.y *= this.damping;
-      this.mass && (this.velocity.y += gravity * this.gravityScale);
+      this.mass && (this.velocity.y += gravity2 * this.gravityScale);
       this.pos.x += this.velocity.x;
       this.pos.y += this.velocity.y;
       this.angle += this.angleVelocity *= this.angleDamping;
-      ASSERT(0 <= this.angleDamping && 1 >= this.angleDamping);
-      ASSERT(0 <= this.damping && 1 >= this.damping);
-      if (enablePhysicsSolver && this.mass) {
+      ASSERT2(0 <= this.angleDamping && 1 >= this.angleDamping);
+      ASSERT2(0 <= this.damping && 1 >= this.damping);
+      if (enablePhysicsSolver2 && this.mass) {
         var b = 0 > this.velocity.y;
         if (this.groundObject) {
           var c = this.groundObject.velocity ? this.groundObject.velocity.x : 0;
@@ -26261,55 +28143,55 @@ class EngineObject {
           this.groundObject = 0;
         }
         if (this.collideSolidObjects)
-          for (var d of engineObjectsCollide) {
+          for (var d of engineObjectsCollide2) {
             if (!this.isSolid && !d.isSolid || d.destroyed || d.parent || d == this)
               continue;
-            if (!isOverlapping(this.pos, this.size, d.pos, d.size))
+            if (!isOverlapping2(this.pos, this.size, d.pos, d.size))
               continue;
             c = this.collideWithObject(d);
             var e = d.collideWithObject(this);
             if (!c || !e)
               continue;
-            if (isOverlapping(a, this.size, d.pos, d.size)) {
+            if (isOverlapping2(a, this.size, d.pos, d.size)) {
               c = a.subtract(d.pos);
               e = c.length();
-              c = 0.01 > e ? randVector(0.001) : c.scale(0.001 / e);
+              c = 0.01 > e ? randVector2(0.001) : c.scale(0.001 / e);
               this.velocity = this.velocity.add(c);
               d.mass && (d.velocity = d.velocity.subtract(c));
-              debugOverlay && debugPhysics && debugOverlap(this.pos, this.size, d.pos, d.size, "#f00");
+              debugOverlay2 && debugPhysics2 && debugOverlap2(this.pos, this.size, d.pos, d.size, "#f00");
               continue;
             }
             e = this.size.add(d.size);
-            var f = 2 * (a.y - d.pos.y) > e.y + gravity;
-            const k = 2 * abs(a.y - d.pos.y) < e.y;
-            var g = 2 * abs(a.x - d.pos.x) < e.x;
-            c = max(this.elasticity, d.elasticity);
+            var f = 2 * (a.y - d.pos.y) > e.y + gravity2;
+            const k = 2 * abs2(a.y - d.pos.y) < e.y;
+            var g = 2 * abs2(a.x - d.pos.x) < e.x;
+            c = max2(this.elasticity, d.elasticity);
             if (f || g || !k) {
-              if (this.pos.y = d.pos.y + (e.y / 2 + 0.001) * sign(a.y - d.pos.y), d.groundObject && b || !d.mass)
+              if (this.pos.y = d.pos.y + (e.y / 2 + 0.001) * sign2(a.y - d.pos.y), d.groundObject && b || !d.mass)
                 b && (this.groundObject = d), this.velocity.y *= -c;
               else if (d.mass) {
                 g = (this.mass * this.velocity.y + d.mass * d.velocity.y) / (this.mass + d.mass);
                 const h = d.velocity.y * (d.mass - this.mass) / (this.mass + d.mass) + 2 * this.velocity.y * this.mass / (this.mass + d.mass);
-                this.velocity.y = lerp(c, g, this.velocity.y * (this.mass - d.mass) / (this.mass + d.mass) + 2 * d.velocity.y * d.mass / (this.mass + d.mass));
-                d.velocity.y = lerp(c, g, h);
+                this.velocity.y = lerp2(c, g, this.velocity.y * (this.mass - d.mass) / (this.mass + d.mass) + 2 * d.velocity.y * d.mass / (this.mass + d.mass));
+                d.velocity.y = lerp2(c, g, h);
               }
             }
-            !f && k && (this.pos.x = d.pos.x + (e.x / 2 + 0.001) * sign(a.x - d.pos.x), d.mass ? (e = (this.mass * this.velocity.x + d.mass * d.velocity.x) / (this.mass + d.mass), f = d.velocity.x * (d.mass - this.mass) / (this.mass + d.mass) + 2 * this.velocity.x * this.mass / (this.mass + d.mass), this.velocity.x = lerp(c, e, this.velocity.x * (this.mass - d.mass) / (this.mass + d.mass) + 2 * d.velocity.x * d.mass / (this.mass + d.mass)), d.velocity.x = lerp(c, e, f)) : this.velocity.x *= -c);
-            debugOverlay && debugPhysics && debugOverlap(this.pos, this.size, d.pos, d.size, "#f0f");
+            !f && k && (this.pos.x = d.pos.x + (e.x / 2 + 0.001) * sign2(a.x - d.pos.x), d.mass ? (e = (this.mass * this.velocity.x + d.mass * d.velocity.x) / (this.mass + d.mass), f = d.velocity.x * (d.mass - this.mass) / (this.mass + d.mass) + 2 * this.velocity.x * this.mass / (this.mass + d.mass), this.velocity.x = lerp2(c, e, this.velocity.x * (this.mass - d.mass) / (this.mass + d.mass) + 2 * d.velocity.x * d.mass / (this.mass + d.mass)), d.velocity.x = lerp2(c, e, f)) : this.velocity.x *= -c);
+            debugOverlay2 && debugPhysics2 && debugOverlap2(this.pos, this.size, d.pos, d.size, "#f0f");
           }
-        if (this.collideTiles && tileCollisionTest(this.pos, this.size, this) && !tileCollisionTest(a, this.size, this)) {
-          d = tileCollisionTest(vec2(a.x, this.pos.y), this.size, this);
-          c = tileCollisionTest(vec2(this.pos.x, a.y), this.size, this);
+        if (this.collideTiles && tileCollisionTest2(this.pos, this.size, this) && !tileCollisionTest2(a, this.size, this)) {
+          d = tileCollisionTest2(vec22(a.x, this.pos.y), this.size, this);
+          c = tileCollisionTest2(vec22(this.pos.x, a.y), this.size, this);
           if (d || !c)
             this.velocity.y *= -this.elasticity, (this.groundObject = b) ? this.pos.y = (a.y - this.size.y / 2 | 0) + this.size.y / 2 + 0.0001 : this.pos.y = a.y;
           c && (this.pos.x = a.x, this.velocity.x *= -this.elasticity);
-          debugOverlay && debugPhysics && debugRect(this.pos, this.size, "#f00");
+          debugOverlay2 && debugPhysics2 && debugRect2(this.pos, this.size, "#f00");
         }
       }
     }
   }
   render() {
-    drawTile(this.pos, this.drawSize || this.size, this.tileInfo, this.color, this.angle, this.mirror, this.additiveColor);
+    drawTile2(this.pos, this.drawSize || this.size, this.tileInfo, this.color, this.angle, this.mirror, this.additiveColor);
   }
   destroy() {
     if (!this.destroyed) {
@@ -26338,7 +28220,7 @@ class EngineObject {
     return true;
   }
   getAliveTime() {
-    return time - this.spawnTime;
+    return time2 - this.spawnTime;
   }
   applyAcceleration(a) {
     this.mass && (this.velocity = this.velocity.add(a));
@@ -26349,27 +28231,27 @@ class EngineObject {
   getMirrorSign() {
     return this.mirror ? -1 : 1;
   }
-  addChild(a, b = vec2(), c = 0) {
-    ASSERT(!a.parent && !this.children.includes(a));
+  addChild(a, b = vec22(), c = 0) {
+    ASSERT2(!a.parent && !this.children.includes(a));
     this.children.push(a);
     a.parent = this;
     a.localPos = b.copy();
     a.localAngle = c;
   }
   removeChild(a) {
-    ASSERT(a.parent == this && this.children.includes(a));
+    ASSERT2(a.parent == this && this.children.includes(a));
     this.children.splice(this.children.indexOf(a), 1);
     a.parent = 0;
   }
   setCollision(a = true, b = true, c = true, d = true) {
-    ASSERT(a || !b, "solid objects must be set to collide");
+    ASSERT2(a || !b, "solid objects must be set to collide");
     this.collideSolidObjects = a;
     this.isSolid = b;
     this.collideTiles = c;
     this.collideRaycast = d;
   }
   toString() {
-    if (debug) {
+    if (debug2) {
       let a = "type = " + this.constructor.name;
       if (this.pos.x || this.pos.y)
         a += "\npos = " + this.pos;
@@ -26383,52 +28265,52 @@ class EngineObject {
     }
   }
   renderDebugInfo() {
-    if (debug) {
-      const a = vec2(max(this.size.x, 0.2), max(this.size.y, 0.2)), b = rgb(this.collideTiles ? 1 : 0, this.collideSolidObjects ? 1 : 0, this.isSolid ? 1 : 0, this.parent ? 0.2 : 0.5), c = this.parent ? rgb(1, 1, 1, 0.5) : rgb(0, 0, 0, 0.8);
-      drawRect(this.pos, a, b, this.angle, false);
-      drawRect(this.pos, a.scale(0.8), c, this.angle, false);
-      this.parent && drawLine(this.pos, this.parent.pos, 0.1, rgb(0, 0, 1, 0.5), false);
+    if (debug2) {
+      const a = vec22(max2(this.size.x, 0.2), max2(this.size.y, 0.2)), b = rgb2(this.collideTiles ? 1 : 0, this.collideSolidObjects ? 1 : 0, this.isSolid ? 1 : 0, this.parent ? 0.2 : 0.5), c = this.parent ? rgb2(1, 1, 1, 0.5) : rgb2(0, 0, 0, 0.8);
+      drawRect2(this.pos, a, b, this.angle, false);
+      drawRect2(this.pos, a.scale(0.8), c, this.angle, false);
+      this.parent && drawLine2(this.pos, this.parent.pos, 0.1, rgb2(0, 0, 1, 0.5), false);
     }
   }
 }
-var mainCanvas;
-var mainContext;
-var overlayCanvas;
-var overlayContext;
-var mainCanvasSize = vec2();
-var textureInfos = [];
-var drawCount;
+var mainCanvas2;
+var mainContext2;
+var overlayCanvas2;
+var overlayContext2;
+var mainCanvasSize2 = vec22();
+var textureInfos2 = [];
+var drawCount2;
 
-class TileInfo {
-  constructor(a = vec2(), b = tileSizeDefault, c = 0, d = 0) {
+class TileInfo2 {
+  constructor(a = vec22(), b = tileSizeDefault2, c = 0, d = 0) {
     this.pos = a.copy();
     this.size = b.copy();
     this.textureIndex = c;
     this.padding = d;
   }
   offset(a) {
-    return new TileInfo(this.pos.add(a), this.size, this.textureIndex);
+    return new TileInfo2(this.pos.add(a), this.size, this.textureIndex);
   }
   frame(a) {
-    ASSERT(typeof a == "number");
-    return this.offset(vec2(a * (this.size.x + 2 * this.padding), 0));
+    ASSERT2(typeof a == "number");
+    return this.offset(vec22(a * (this.size.x + 2 * this.padding), 0));
   }
   getTextureInfo() {
-    return textureInfos[this.textureIndex];
+    return textureInfos2[this.textureIndex];
   }
 }
 
-class TextureInfo {
+class TextureInfo2 {
   constructor(a) {
     this.image = a;
-    this.size = vec2(a.width, a.height);
-    this.glTexture = glEnable && glCreateTexture(a);
+    this.size = vec22(a.width, a.height);
+    this.glTexture = glEnable2 && glCreateTexture2(a);
   }
 }
 var engineFontImage;
 
 class FontImage {
-  constructor(a, b = vec2(8), c = vec2(0, 1), d = overlayContext) {
+  constructor(a, b = vec22(8), c = vec22(0, 1), d = overlayContext2) {
     engineFontImage || ((engineFontImage = new Image).src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAAYAQAAAAA9+x6JAAAAAnRSTlMAAHaTzTgAAAGiSURBVHjaZZABhxxBEIUf6ECLBdFY+Q0PMNgf0yCgsSAGZcT9sgIPtBWwIA5wgAPEoHUyJeeSlW+gjK+fegWwtROWpVQEyWh2npdpBmTUFVhb29RINgLIukoXr5LIAvYQ5ve+1FqWEMqNKTX3FAJHyQDRZvmKWubAACcv5z5Gtg2oyCWE+Yk/8JZQX1jTTCpKAFGIgza+dJCNBF2UskRlsgwitHbSV0QLgt9sTPtsRlvJjEr8C/FARWA2bJ/TtJ7lko34dNDn6usJUMzuErP89UUBJbWeozrwLLncXczd508deAjLWipLO4Q5XGPcJvPu92cNDaN0P5G1FL0nSOzddZOrJ6rNhbXGmeDvO3TF7DeJWl4bvaYQTNHCTeuqKZmbjHaSOFes+IX/+IhHrnAkXOAsfn24EM68XieIECoccD4KZLk/odiwzeo2rovYdhvb2HYFgyznJyDpYJdYOmfXgVdJTaUi4xA2uWYNYec9BLeqdl9EsoTw582mSFDX2DxVLbNt9U3YYoeatBad1c2Tj8t2akrjaIGJNywKB/7h75/gN3vCMSaadIUTAAAAAElFTkSuQmCC");
     this.image = a || engineFontImage;
     this.tileSize = b;
@@ -26436,12 +28318,12 @@ class FontImage {
     this.context = d;
   }
   drawText(a, b, c = 1, d) {
-    this.drawTextScreen(a, worldToScreen(b).floor(), c * cameraScale | 0, d);
+    this.drawTextScreen(a, worldToScreen2(b).floor(), c * cameraScale2 | 0, d);
   }
   drawTextScreen(a, b, c = 4, d) {
     const e = this.context;
     e.save();
-    e.imageSmoothingEnabled = !canvasPixelated;
+    e.imageSmoothingEnabled = !canvasPixelated2;
     const f = this.tileSize, g = f.add(this.paddingSize).scale(c), k = this.image.width / this.tileSize.x | 0;
     (a + "").split("\n").forEach((h, m) => {
       const n = d ? h.length * f.x * c / 2 | 0 : 0;
@@ -26452,48 +28334,48 @@ class FontImage {
         var p = l - 32;
         l = p % k;
         p = p / k | 0;
-        const r = b.add(vec2(q, m).multiply(g));
+        const r = b.add(vec22(q, m).multiply(g));
         e.drawImage(this.image, l * f.x, p * f.y, f.x, f.y, r.x - n, r.y, f.x * c, f.y * c);
       }
     });
     e.restore();
   }
 }
-var mouseIsDown = keyIsDown;
-var mouseWasPressed = keyWasPressed;
-var mouseWasReleased = keyWasReleased;
-var mousePos = vec2();
-var mousePosScreen = vec2();
-var mouseWheel = 0;
-var isUsingGamepad = false;
-var preventDefaultInput = false;
-var inputData = [[]];
-var gamepadStickData = [];
-var isTouchDevice = window.ontouchstart !== undefined;
-var touchGamepadTimer = new Timer;
-var touchGamepadButtons;
-var touchGamepadStick;
-var audioContext = new AudioContext;
-var audioGainNode;
+var mouseIsDown = keyIsDown2;
+var mouseWasPressed2 = keyWasPressed2;
+var mouseWasReleased2 = keyWasReleased2;
+var mousePos2 = vec22();
+var mousePosScreen2 = vec22();
+var mouseWheel2 = 0;
+var isUsingGamepad2 = false;
+var preventDefaultInput2 = false;
+var inputData2 = [[]];
+var gamepadStickData2 = [];
+var isTouchDevice2 = window.ontouchstart !== undefined;
+var touchGamepadTimer2 = new Timer2;
+var touchGamepadButtons2;
+var touchGamepadStick2;
+var audioContext2 = new AudioContext;
+var audioGainNode2;
 
 class Sound {
   constructor(a, b = soundDefaultRange, c = soundDefaultTaper) {
-    soundEnable && !headlessMode && (this.range = b, this.taper = c, this.randomness = 0, this.gainNode = audioContext.createGain(), a && (this.randomness = a[1] != null ? a[1] : 0.05, a[1] = 0, this.sampleChannels = [zzfxG(...a)], this.sampleRate = zzfxR));
+    soundEnable2 && !headlessMode2 && (this.range = b, this.taper = c, this.randomness = 0, this.gainNode = audioContext2.createGain(), a && (this.randomness = a[1] != null ? a[1] : 0.05, a[1] = 0, this.sampleChannels = [zzfxG2(...a)], this.sampleRate = zzfxR2));
   }
   play(a, b = 1, c = 1, d = 1, e = false) {
-    if (soundEnable && !headlessMode && this.sampleChannels) {
+    if (soundEnable2 && !headlessMode2 && this.sampleChannels) {
       var f;
       if (a) {
         if (f = this.range) {
-          const g = cameraPos.distanceSquared(a);
+          const g = cameraPos2.distanceSquared(a);
           if (g > f * f)
             return;
-          b *= percent(g ** 0.5, f, f * this.taper);
+          b *= percent2(g ** 0.5, f, f * this.taper);
         }
-        f = 2 * worldToScreen(a).x / mainCanvas.width - 1;
+        f = 2 * worldToScreen2(a).x / mainCanvas2.width - 1;
       }
-      a = c + c * this.randomness * d * rand(-1, 1);
-      return this.source = playSamples(this.sampleChannels, b, a, f, e, this.sampleRate, this.gainNode);
+      a = c + c * this.randomness * d * rand2(-1, 1);
+      return this.source = playSamples2(this.sampleChannels, b, a, f, e, this.sampleRate, this.gainNode);
     }
   }
   setVolume(a = 1) {
@@ -26520,7 +28402,7 @@ class Sound {
 class SoundWave extends Sound {
   constructor(a, b = 0, c, d, e) {
     super(undefined, c, d);
-    soundEnable && !headlessMode && (this.randomness = b, fetch(a).then((f) => f.arrayBuffer()).then((f) => audioContext.decodeAudioData(f)).then((f) => {
+    soundEnable2 && !headlessMode2 && (this.randomness = b, fetch(a).then((f) => f.arrayBuffer()).then((f) => audioContext2.decodeAudioData(f)).then((f) => {
       this.sampleChannels = [];
       for (let g = f.numberOfChannels;g--; )
         this.sampleChannels[g] = Array.from(f.getChannelData(g));
@@ -26532,18 +28414,18 @@ class SoundWave extends Sound {
 class Music extends Sound {
   constructor(a) {
     super(undefined);
-    soundEnable && !headlessMode && (this.randomness = 0, this.sampleChannels = zzfxM(...a), this.sampleRate = zzfxR);
+    soundEnable2 && !headlessMode2 && (this.randomness = 0, this.sampleChannels = zzfxM(...a), this.sampleRate = zzfxR2);
   }
   playMusic(a, b = false) {
     return super.play(undefined, a, 1, 1, b);
   }
 }
-var zzfxR = 44100;
-var tileCollision = [];
-var tileCollisionSize = vec2();
+var zzfxR2 = 44100;
+var tileCollision2 = [];
+var tileCollisionSize2 = vec22();
 
 class TileLayerData {
-  constructor(a, b = 0, c = false, d = new Color) {
+  constructor(a, b = 0, c = false, d = new Color2) {
     this.tile = a;
     this.direction = b;
     this.mirror = c;
@@ -26552,12 +28434,12 @@ class TileLayerData {
   clear() {
     this.tile = this.direction = 0;
     this.mirror = false;
-    this.color = new Color;
+    this.color = new Color2;
   }
 }
 
-class TileLayer extends EngineObject {
-  constructor(a, b = tileCollisionSize, c = tile(), d = vec2(1), e = 0) {
+class TileLayer extends EngineObject2 {
+  constructor(a, b = tileCollisionSize2, c = tile(), d = vec22(1), e = 0) {
     super(a, b, c, 0, undefined, e);
     this.canvas = document.createElement("canvas");
     this.context = this.canvas.getContext("2d");
@@ -26566,7 +28448,7 @@ class TileLayer extends EngineObject {
     this.data = [];
     for (a = this.size.area();a--; )
       this.data.push(new TileLayerData);
-    headlessMode && (this.redraw = () => {
+    headlessMode2 && (this.redraw = () => {
     }, this.render = () => {
     }, this.redrawStart = () => {
     }, this.redrawEnd = () => {
@@ -26583,39 +28465,39 @@ class TileLayer extends EngineObject {
   update() {
   }
   render() {
-    ASSERT(mainContext != this.context, "must call redrawEnd() after drawing tiles");
-    glOverlay || this.isOverlay || glCopyToContext(mainContext);
-    const a = worldToScreen(this.pos.add(vec2(0, this.size.y * this.scale.y)));
-    (this.isOverlay ? overlayContext : mainContext).drawImage(this.canvas, a.x, a.y, cameraScale * this.size.x * this.scale.x, cameraScale * this.size.y * this.scale.y);
+    ASSERT2(mainContext2 != this.context, "must call redrawEnd() after drawing tiles");
+    glOverlay2 || this.isOverlay || glCopyToContext2(mainContext2);
+    const a = worldToScreen2(this.pos.add(vec22(0, this.size.y * this.scale.y)));
+    (this.isOverlay ? overlayContext2 : mainContext2).drawImage(this.canvas, a.x, a.y, cameraScale2 * this.size.x * this.scale.x, cameraScale2 * this.size.y * this.scale.y);
   }
   redraw() {
     this.redrawStart(true);
     for (let a = this.size.x;a--; )
       for (let b = this.size.y;b--; )
-        this.drawTileData(vec2(a, b), false);
+        this.drawTileData(vec22(a, b), false);
     this.redrawEnd();
   }
   redrawStart(a = false) {
-    this.savedRenderSettings = [mainCanvas, mainContext, mainCanvasSize, cameraPos, cameraScale];
-    mainCanvas = this.canvas;
-    mainContext = this.context;
-    mainCanvasSize = this.size.multiply(this.tileInfo.size);
-    cameraPos = this.size.scale(0.5);
-    cameraScale = this.tileInfo.size.x;
-    a && (mainCanvas.width = mainCanvasSize.x, mainCanvas.height = mainCanvasSize.y);
-    this.context.imageSmoothingEnabled = !canvasPixelated;
-    glPreRender();
+    this.savedRenderSettings = [mainCanvas2, mainContext2, mainCanvasSize2, cameraPos2, cameraScale2];
+    mainCanvas2 = this.canvas;
+    mainContext2 = this.context;
+    mainCanvasSize2 = this.size.multiply(this.tileInfo.size);
+    cameraPos2 = this.size.scale(0.5);
+    cameraScale2 = this.tileInfo.size.x;
+    a && (mainCanvas2.width = mainCanvasSize2.x, mainCanvas2.height = mainCanvasSize2.y);
+    this.context.imageSmoothingEnabled = !canvasPixelated2;
+    glPreRender2();
   }
   redrawEnd() {
-    ASSERT(mainContext == this.context, "must call redrawStart() before drawing tiles");
-    glCopyToContext(mainContext, true);
-    [mainCanvas, mainContext, mainCanvasSize, cameraPos, cameraScale] = this.savedRenderSettings;
+    ASSERT2(mainContext2 == this.context, "must call redrawStart() before drawing tiles");
+    glCopyToContext2(mainContext2, true);
+    [mainCanvas2, mainContext2, mainCanvasSize2, cameraPos2, cameraScale2] = this.savedRenderSettings;
   }
   drawTileData(a, b = true) {
     var c = this.tileInfo.size;
     b && (b = a.multiply(c), this.context.clearRect(b.x, this.canvas.height - b.y, c.x, -c.y));
     b = this.getData(a);
-    b.tile != null && (ASSERT(mainContext == this.context, "must call redrawStart() before drawing tiles"), a = a.add(vec2(0.5)), c = tile(b.tile, c, this.tileInfo.textureIndex), drawTile(a, vec2(1), c, b.color, b.direction * PI / 2, b.mirror));
+    b.tile != null && (ASSERT2(mainContext2 == this.context, "must call redrawStart() before drawing tiles"), a = a.add(vec22(0.5)), c = tile(b.tile, c, this.tileInfo.textureIndex), drawTile2(a, vec22(1), c, b.color, b.direction * PI2 / 2, b.mirror));
   }
   drawCanvas2D(a, b, c, d, e) {
     const f = this.context;
@@ -26628,7 +28510,7 @@ class TileLayer extends EngineObject {
     e(f);
     f.restore();
   }
-  drawTile(a, b = vec2(1), c, d = new Color, e, f) {
+  drawTile(a, b = vec22(1), c, d = new Color2, e, f) {
     this.drawCanvas2D(a, b, e, f, (g) => {
       const k = c && c.getTextureInfo();
       k ? (g.globalAlpha = d.a, g.drawImage(k.image, c.pos.x, c.pos.y, c.size.x, c.size.y, -0.5, -0.5, 1, 1), g.globalAlpha = 1) : (g.fillStyle = d, g.fillRect(-0.5, -0.5, 1, 1));
@@ -26639,9 +28521,9 @@ class TileLayer extends EngineObject {
   }
 }
 
-class ParticleEmitter extends EngineObject {
-  constructor(a, b, c = 0, d = 0, e = 100, f = PI, g, k = new Color, h = new Color, m = new Color(1, 1, 1, 0), n = new Color(1, 1, 1, 0), l = 0.5, p = 0.1, q = 1, r = 0.1, x = 0.05, v = 1, D = 1, z = 0, E = PI, A = 0.1, w = 0.2, t = false, F = false, C = true, y = F ? 1e9 : 0, G = false) {
-    super(a, vec2(), g, b, undefined, y);
+class ParticleEmitter extends EngineObject2 {
+  constructor(a, b, c = 0, d = 0, e = 100, f = PI2, g, k = new Color2, h = new Color2, m = new Color2(1, 1, 1, 0), n = new Color2(1, 1, 1, 0), l = 0.5, p = 0.1, q = 1, r = 0.1, x = 0.05, v = 1, D = 1, z = 0, E = PI2, A = 0.1, w = 0.2, t = false, F = false, C = true, y = F ? 1e9 : 0, G = false) {
+    super(a, vec22(), g, b, undefined, y);
     this.emitSize = c;
     this.emitTime = d;
     this.emitRate = e;
@@ -26674,26 +28556,26 @@ class ParticleEmitter extends EngineObject {
     if (!this.emitTime || this.getAliveTime() <= this.emitTime) {
       if (this.emitRate * particleEmitRateScale) {
         const a = 1 / this.emitRate / particleEmitRateScale;
-        for (this.emitTimeBuffer += timeDelta;0 < this.emitTimeBuffer; this.emitTimeBuffer -= a)
+        for (this.emitTimeBuffer += timeDelta2;0 < this.emitTimeBuffer; this.emitTimeBuffer -= a)
           this.emitParticle();
       }
     } else
       this.destroy();
-    debugParticles && debugRect(this.pos, vec2(this.emitSize), "#0f0", 0, this.angle);
+    debugParticles2 && debugRect2(this.pos, vec22(this.emitSize), "#0f0", 0, this.angle);
   }
   emitParticle() {
-    var a = typeof this.emitSize === "number" ? randInCircle(this.emitSize / 2) : vec2(rand(-0.5, 0.5), rand(-0.5, 0.5)).multiply(this.emitSize).rotate(this.angle);
-    let b = rand(this.particleConeAngle, -this.particleConeAngle);
+    var a = typeof this.emitSize === "number" ? randInCircle(this.emitSize / 2) : vec22(rand2(-0.5, 0.5), rand2(-0.5, 0.5)).multiply(this.emitSize).rotate(this.angle);
+    let b = rand2(this.particleConeAngle, -this.particleConeAngle);
     this.localSpace || (a = this.pos.add(a), b += this.angle);
     const c = this.randomness;
-    var d = (l) => l + l * rand(c, -c);
+    var d = (l) => l + l * rand2(c, -c);
     const e = d(this.particleTime), f = d(this.sizeStart), g = d(this.sizeEnd), k = d(this.speed);
     d = d(this.angleSpeed) * randSign();
-    var h = rand(this.emitConeAngle, -this.emitConeAngle);
-    const m = randColor(this.colorStartA, this.colorStartB, this.randomColorLinear), n = randColor(this.colorEndA, this.colorEndB, this.randomColorLinear);
+    var h = rand2(this.emitConeAngle, -this.emitConeAngle);
+    const m = randColor2(this.colorStartA, this.colorStartB, this.randomColorLinear), n = randColor2(this.colorEndA, this.colorEndB, this.randomColorLinear);
     h = this.localSpace ? h : this.angle + h;
     a = new Particle(a, this.tileInfo, b, m, n, e, f, g, this.fadeRate, this.additive, this.trailScale, this.localSpace && this, this.particleDestroyCallback);
-    a.velocity = vec2().setAngle(h, k);
+    a.velocity = vec22().setAngle(h, k);
     a.angleVelocity = d;
     a.fadeRate = this.fadeRate;
     a.damping = this.damping;
@@ -26711,9 +28593,9 @@ class ParticleEmitter extends EngineObject {
   }
 }
 
-class Particle extends EngineObject {
+class Particle extends EngineObject2 {
   constructor(a, b, c, d, e, f, g, k, h, m, n, l, p) {
-    super(a, vec2(), b, c);
+    super(a, vec22(), b, c);
     this.colorStart = d;
     this.colorEndDelta = e.subtract(d);
     this.lifeTime = f;
@@ -26727,9 +28609,9 @@ class Particle extends EngineObject {
     this.clampSpeedLinear = false;
   }
   render() {
-    const a = min((time - this.spawnTime) / this.lifeTime, 1), b = vec2(this.sizeStart + a * this.sizeEndDelta);
+    const a = min2((time2 - this.spawnTime) / this.lifeTime, 1), b = vec22(this.sizeStart + a * this.sizeEndDelta);
     var c = this.fadeRate / 2;
-    c = new Color(this.colorStart.r + a * this.colorEndDelta.r, this.colorStart.g + a * this.colorEndDelta.g, this.colorStart.b + a * this.colorEndDelta.b, (this.colorStart.a + a * this.colorEndDelta.a) * (a < c ? a / c : a > 1 - c ? (1 - a) / c : 1));
+    c = new Color2(this.colorStart.r + a * this.colorEndDelta.r, this.colorStart.g + a * this.colorEndDelta.g, this.colorStart.b + a * this.colorEndDelta.b, (this.colorStart.a + a * this.colorEndDelta.a) * (a < c ? a / c : a > 1 - c ? (1 - a) / c : 1));
     this.additive && setBlendMode(true);
     let d = this.pos, e = this.angle;
     this.localSpaceEmitter && (d = this.localSpaceEmitter.pos.add(d.rotate(-this.localSpaceEmitter.angle)), e += this.localSpaceEmitter.angle);
@@ -26737,119 +28619,119 @@ class Particle extends EngineObject {
       var f = this.velocity;
       this.localSpaceEmitter && (f = f.rotate(-this.localSpaceEmitter.angle));
       var g = f.length();
-      g && (f = f.scale(1 / g), g *= this.trailScale, b.y = max(b.x, g), e = f.angle(), drawTile(d.add(f.multiply(vec2(0, -g / 2))), b, this.tileInfo, c, e, this.mirror));
+      g && (f = f.scale(1 / g), g *= this.trailScale, b.y = max2(b.x, g), e = f.angle(), drawTile2(d.add(f.multiply(vec22(0, -g / 2))), b, this.tileInfo, c, e, this.mirror));
     } else
-      drawTile(d, b, this.tileInfo, c, e, this.mirror);
+      drawTile2(d, b, this.tileInfo, c, e, this.mirror);
     this.additive && setBlendMode();
-    debugParticles && debugRect(d, b, "#f005", 0, e);
+    debugParticles2 && debugRect2(d, b, "#f005", 0, e);
     a == 1 && (this.color = c, this.size = b, this.destroyCallback && this.destroyCallback(this), this.destroyed = 1);
   }
 }
-var medals = {};
-var medalsDisplayQueue = [];
-var medalsSaveName;
-var medalsDisplayTimeLast;
+var medals2 = {};
+var medalsDisplayQueue2 = [];
+var medalsSaveName2;
+var medalsDisplayTimeLast2;
 
-class Medal {
+class Medal2 {
   constructor(a, b, c = "", d = "\uD83C\uDFC6", e) {
-    ASSERT(0 <= a && !medals[a]);
+    ASSERT2(0 <= a && !medals2[a]);
     this.id = a;
     this.name = b;
     this.description = c;
     this.icon = d;
     this.unlocked = false;
     e && ((this.image = new Image).src = e);
-    medals[a] = this;
+    medals2[a] = this;
   }
   unlock() {
-    medalsPreventUnlock || this.unlocked || (ASSERT(medalsSaveName, "save name must be set"), localStorage[this.storageKey()] = this.unlocked = true, medalsDisplayQueue.push(this));
+    medalsPreventUnlock2 || this.unlocked || (ASSERT2(medalsSaveName2, "save name must be set"), localStorage[this.storageKey()] = this.unlocked = true, medalsDisplayQueue2.push(this));
   }
   render(a = 0) {
-    const b = overlayContext;
-    var c = min(medalDisplaySize.x, mainCanvas.width);
-    const d = overlayCanvas.width - c;
-    a *= -medalDisplaySize.y;
+    const b = overlayContext2;
+    var c = min2(medalDisplaySize2.x, mainCanvas2.width);
+    const d = overlayCanvas2.width - c;
+    a *= -medalDisplaySize2.y;
     b.save();
     b.beginPath();
-    b.fillStyle = new Color(0.9, 0.9, 0.9).toString();
-    b.strokeStyle = new Color(0, 0, 0).toString();
+    b.fillStyle = new Color2(0.9, 0.9, 0.9).toString();
+    b.strokeStyle = new Color2(0, 0, 0).toString();
     b.lineWidth = 3;
-    b.rect(d, a, c, medalDisplaySize.y);
+    b.rect(d, a, c, medalDisplaySize2.y);
     b.fill();
     b.stroke();
     b.clip();
-    this.renderIcon(vec2(d + 15 + medalDisplayIconSize / 2, a + medalDisplaySize.y / 2));
-    c = vec2(d + medalDisplayIconSize + 30, a + 28);
-    drawTextScreen(this.name, c, 38, new Color(0, 0, 0), 0, undefined, "left");
+    this.renderIcon(vec22(d + 15 + medalDisplayIconSize2 / 2, a + medalDisplaySize2.y / 2));
+    c = vec22(d + medalDisplayIconSize2 + 30, a + 28);
+    drawTextScreen2(this.name, c, 38, new Color2(0, 0, 0), 0, undefined, "left");
     c.y += 32;
-    drawTextScreen(this.description, c, 24, new Color(0, 0, 0), 0, undefined, "left");
+    drawTextScreen2(this.description, c, 24, new Color2(0, 0, 0), 0, undefined, "left");
     b.restore();
   }
-  renderIcon(a, b = medalDisplayIconSize) {
-    this.image ? overlayContext.drawImage(this.image, a.x - b / 2, a.y - b / 2, b, b) : drawTextScreen(this.icon, a, 0.7 * b, new Color(0, 0, 0));
+  renderIcon(a, b = medalDisplayIconSize2) {
+    this.image ? overlayContext2.drawImage(this.image, a.x - b / 2, a.y - b / 2, b, b) : drawTextScreen2(this.icon, a, 0.7 * b, new Color2(0, 0, 0));
   }
   storageKey() {
-    return medalsSaveName + "_" + this.id;
+    return medalsSaveName2 + "_" + this.id;
   }
 }
-var glCanvas;
-var glContext;
-var glAntialias = true;
-var glShader;
-var glActiveTexture;
-var glArrayBuffer;
-var glGeometryBuffer;
-var glPositionData;
-var glColorData;
-var glInstanceCount;
-var glAdditive;
-var glBatchAdditive;
-var gl_ONE = 1;
-var gl_TRIANGLE_STRIP = 5;
-var gl_SRC_ALPHA = 770;
-var gl_ONE_MINUS_SRC_ALPHA = 771;
-var gl_BLEND = 3042;
-var gl_TEXTURE_2D = 3553;
-var gl_UNSIGNED_BYTE = 5121;
-var gl_FLOAT = 5126;
-var gl_RGBA = 6408;
-var gl_NEAREST = 9728;
-var gl_LINEAR = 9729;
-var gl_TEXTURE_MAG_FILTER = 10240;
-var gl_TEXTURE_MIN_FILTER = 10241;
-var gl_COLOR_BUFFER_BIT = 16384;
-var gl_TEXTURE0 = 33984;
-var gl_ARRAY_BUFFER = 34962;
-var gl_STATIC_DRAW = 35044;
-var gl_DYNAMIC_DRAW = 35048;
-var gl_FRAGMENT_SHADER = 35632;
-var gl_VERTEX_SHADER = 35633;
-var gl_COMPILE_STATUS = 35713;
-var gl_LINK_STATUS = 35714;
-var gl_INDICIES_PER_INSTANCE = 11;
-var gl_MAX_INSTANCES = 1e4;
-var gl_INSTANCE_BYTE_STRIDE = 4 * gl_INDICIES_PER_INSTANCE;
-var gl_INSTANCE_BUFFER_SIZE = gl_MAX_INSTANCES * gl_INSTANCE_BYTE_STRIDE;
-var engineName = "LittleJS";
-var engineVersion = "1.10.7";
-var frameRate = 60;
-var timeDelta = 1 / frameRate;
-var engineObjects = [];
-var engineObjectsCollide = [];
-var frame = 0;
-var time = 0;
-var timeReal = 0;
-var paused = false;
-var frameTimeLastMS = 0;
-var frameTimeBufferMS = 0;
-var averageFPS = 0;
-var pluginUpdateList = [];
-var pluginRenderList = [];
+var glCanvas2;
+var glContext2;
+var glAntialias2 = true;
+var glShader2;
+var glActiveTexture2;
+var glArrayBuffer2;
+var glGeometryBuffer2;
+var glPositionData2;
+var glColorData2;
+var glInstanceCount2;
+var glAdditive2;
+var glBatchAdditive2;
+var gl_ONE2 = 1;
+var gl_TRIANGLE_STRIP2 = 5;
+var gl_SRC_ALPHA2 = 770;
+var gl_ONE_MINUS_SRC_ALPHA2 = 771;
+var gl_BLEND2 = 3042;
+var gl_TEXTURE_2D2 = 3553;
+var gl_UNSIGNED_BYTE2 = 5121;
+var gl_FLOAT2 = 5126;
+var gl_RGBA2 = 6408;
+var gl_NEAREST2 = 9728;
+var gl_LINEAR2 = 9729;
+var gl_TEXTURE_MAG_FILTER2 = 10240;
+var gl_TEXTURE_MIN_FILTER2 = 10241;
+var gl_COLOR_BUFFER_BIT2 = 16384;
+var gl_TEXTURE02 = 33984;
+var gl_ARRAY_BUFFER2 = 34962;
+var gl_STATIC_DRAW2 = 35044;
+var gl_DYNAMIC_DRAW2 = 35048;
+var gl_FRAGMENT_SHADER2 = 35632;
+var gl_VERTEX_SHADER2 = 35633;
+var gl_COMPILE_STATUS2 = 35713;
+var gl_LINK_STATUS2 = 35714;
+var gl_INDICIES_PER_INSTANCE2 = 11;
+var gl_MAX_INSTANCES2 = 1e4;
+var gl_INSTANCE_BYTE_STRIDE2 = 4 * gl_INDICIES_PER_INSTANCE2;
+var gl_INSTANCE_BUFFER_SIZE2 = gl_MAX_INSTANCES2 * gl_INSTANCE_BYTE_STRIDE2;
+var engineName2 = "LittleJS";
+var engineVersion2 = "1.10.7";
+var frameRate2 = 60;
+var timeDelta2 = 1 / frameRate2;
+var engineObjects2 = [];
+var engineObjectsCollide2 = [];
+var frame2 = 0;
+var time2 = 0;
+var timeReal2 = 0;
+var paused2 = false;
+var frameTimeLastMS2 = 0;
+var frameTimeBufferMS2 = 0;
+var averageFPS2 = 0;
+var pluginUpdateList2 = [];
+var pluginRenderList2 = [];
 // src/lib/external/newgrounds.ts
 function newgroundsInit(app_id, cipher, cryptoJS) {
   newgrounds = new Newgrounds(app_id, cipher, cryptoJS);
 }
-var debugMedals2 = true;
+var debugMedals3 = true;
 
 class NewgroundsMedal extends Medal {
   constructor(id, name, description, icon, src) {
@@ -26884,7 +28766,7 @@ class Newgrounds {
       return;
     const medalsResult = this.call("Medal.getList");
     this.medals = medalsResult ? medalsResult.result.data["medals"] : [];
-    debugMedals2 && console.log(this.medals);
+    debugMedals3 && console.log(this.medals);
     for (const newgroundsMedal of this.medals) {
       const medal = this.medals[newgroundsMedal["id"]];
       if (medal) {
@@ -26901,7 +28783,7 @@ class Newgrounds {
     }
     const scoreboardResult = this.call("ScoreBoard.getBoards");
     this.scoreboards = scoreboardResult ? scoreboardResult.result.data.scoreboards : [];
-    debugMedals2 && console.log(this.scoreboards);
+    debugMedals3 && console.log(this.scoreboards);
     const keepAliveMS = 300000;
     setInterval(() => this.call("Gateway.ping", 0, true), keepAliveMS);
   }
@@ -26942,9 +28824,9 @@ class Newgrounds {
     formData.append("input", JSON.stringify(input));
     const xmlHttp = new XMLHttpRequest;
     const url = "https://newgrounds.io/gateway_v3.php";
-    xmlHttp.open("POST", url, !debugMedals2 && async);
+    xmlHttp.open("POST", url, !debugMedals3 && async);
     xmlHttp.send(formData);
-    debugMedals2 && console.log(xmlHttp.responseText);
+    debugMedals3 && console.log(xmlHttp.responseText);
     return xmlHttp.responseText && JSON.parse(xmlHttp.responseText);
   }
 }
@@ -26989,11 +28871,11 @@ class AnimationManager {
       const imgSource = animation.imageSource;
       if (imgSource) {
         const size = vec2(animation.spriteSize?.[0] ?? 0, animation.spriteSize?.[1] ?? 0);
-        animation.frames?.forEach((frame2) => {
+        animation.frames?.forEach((frame3) => {
           const mul = animation.mul ?? 1;
           const cols = 30;
           for (let i = 0;i < mul; i++) {
-            animInfo.tileInfos.push(new TileInfo(undefined, size, this.imageSources.indexOf(imgSource), 2).frame(frame2 % cols).offset(vec2(0, Math.floor(frame2 / cols) * (size.y + 4))));
+            animInfo.tileInfos.push(new TileInfo(undefined, size, this.imageSources.indexOf(imgSource), 2).frame(frame3 % cols).offset(vec2(0, Math.floor(frame3 / cols) * (size.y + 4))));
           }
         });
       }
@@ -27018,10 +28900,10 @@ class AnimationManager {
       if (animation.airFrames?.length) {
         let count = 0;
         animInfo.airFramesSet = new Set;
-        animation.frames?.forEach((frame2) => {
+        animation.frames?.forEach((frame3) => {
           const mul = animation.mul ?? 1;
           for (let i = 0;i < mul; i++) {
-            if (animation.airFrames?.includes(frame2)) {
+            if (animation.airFrames?.includes(frame3)) {
               animInfo.airFramesSet?.add(count);
             }
             count++;
@@ -27417,10 +29299,10 @@ class GameObject extends EngineObject {
     if (!resources) {
       return;
     }
-    const rand2 = floatResources ? (Math.random() - 0.5) * 0.5 : 0;
+    const rand3 = floatResources ? (Math.random() - 0.5) * 0.5 : 0;
     const resourceSpacing = 0.15;
     const offset = this.elem?.gameObject?.offset ?? [0, 0];
-    const offX = x - this.px - offset[0] + rand2, offY = y - this.py - offset[1];
+    const offX = x - this.px - offset[0] + rand3, offY = y - this.py - offset[1];
     const RESOURCES = ["wheat", "wood", "trade", "gold", "brain"];
     let total = 0;
     RESOURCES.forEach((resource) => {
@@ -27441,7 +29323,7 @@ class GameObject extends EngineObject {
         indic.color = new Color(1, 1, 1, 1);
         const col = count % MAX_ROW;
         const row = Math.floor(count / MAX_ROW);
-        this.addChild(indic, vec2(offX + (col - (Math.min(total, MAX_ROW) - 1) / 2) * resourceSpacing + rand2, offY + (row - Math.floor(total / MAX_ROW) / 2) * resourceSpacing + rand2));
+        this.addChild(indic, vec2(offX + (col - (Math.min(total, MAX_ROW) - 1) / 2) * resourceSpacing + rand3, offY + (row - Math.floor(total / MAX_ROW) / 2) * resourceSpacing + rand3));
         this.resources.push(indic);
         count++;
       }
@@ -28309,9 +30191,9 @@ class GameObject extends EngineObject {
     }
     if (this.elem?.spread?.moving && Math.random() < this.elem.spread.moving) {
       this.decors.forEach((decor2) => {
-        const time2 = Date.now() - decor2.bornTime;
-        const dx2 = Math.sin(time2 / 5000 * decor2.motionX) * 0.2;
-        const dy2 = Math.cos(time2 / 5000 * decor2.motionY) * 0.2;
+        const time3 = Date.now() - decor2.bornTime;
+        const dx2 = Math.sin(time3 / 5000 * decor2.motionX) * 0.2;
+        const dy2 = Math.cos(time3 / 5000 * decor2.motionY) * 0.2;
         decor2.localPos.set(decor2.initialPos.x + dx2, decor2.initialPos.y + dy2);
       });
     }
@@ -28333,8 +30215,8 @@ class GameObject extends EngineObject {
     }
     if (this.doomed) {
       this.decors.forEach((decor2) => {
-        const time2 = Date.now() - decor2.doomTime;
-        if (time2 > 0) {
+        const time3 = Date.now() - decor2.doomTime;
+        if (time3 > 0) {
           decor2.size.set(decor2.size.x * 0.9, decor2.size.y * 0.9);
         }
       });
@@ -28942,8 +30824,8 @@ class Hud {
       return;
     }
     this.medalsView.innerHTML = "";
-    const medals3 = [...this.manager.scene.medals ?? []];
-    medals3.sort((a, b) => {
+    const medals4 = [...this.manager.scene.medals ?? []];
+    medals4.sort((a, b) => {
       const unlockedA = this.manager.medals.isUnlocked(a.name) ? 1 : 0;
       const unlockedB = this.manager.medals.isUnlocked(b.name) ? 1 : 0;
       if (unlockedA !== unlockedB) {
@@ -28951,7 +30833,7 @@ class Hud {
       }
       return a.name.localeCompare(b.name);
     });
-    medals3.forEach((medal) => {
+    medals4.forEach((medal) => {
       if (medal.showInUI) {
         const medalDiv = this.medalsView.appendChild(document.createElement("div"));
         medalDiv.textContent = `${medal.icon}`;
@@ -29194,9 +31076,9 @@ class Hud {
         } else {
           animationFrame = requestAnimationFrame(animateIcon);
         }
-        const frame2 = frames[frameIndex];
+        const frame3 = frames[frameIndex];
         if (icon) {
-          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+          icon.style.backgroundPosition = `${-spriteWidth * (frame3 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
         }
       };
       this.turnPage = () => {
@@ -29299,8 +31181,8 @@ class Hud {
       let animationFrame;
       const animateIcon = () => {
         animationFrame = requestAnimationFrame(animateIcon);
-        const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-        icon.style.backgroundPosition = `${-spriteWidth * (frame2 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+        icon.style.backgroundPosition = `${-spriteWidth * (frame3 % SPRITESHEET_COLS)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
       };
       animateIcon();
       this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -29485,8 +31367,8 @@ class Hud {
         let animationFrame;
         const animateIcon = () => {
           animationFrame = requestAnimationFrame(animateIcon);
-          const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+          const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame3 % cols)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
         };
         animateIcon();
         this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -29609,8 +31491,8 @@ class Hud {
         let animationFrame;
         const animateIcon = () => {
           animationFrame = requestAnimationFrame(animateIcon);
-          const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+          const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame3 % cols)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
         };
         animateIcon();
         this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -29662,8 +31544,8 @@ class Hud {
       let animationFrame;
       const animateIcon = () => {
         animationFrame = requestAnimationFrame(animateIcon);
-        const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-        researchImage.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+        const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+        researchImage.style.backgroundPosition = `${-spriteWidth * (frame3 % cols)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
       };
       animateIcon();
       this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -29749,8 +31631,8 @@ class Hud {
       };
     });
   }
-  async waitABit(time2 = 1000) {
-    await new Promise((resolve) => setTimeout(resolve, time2));
+  async waitABit(time3 = 1000) {
+    await new Promise((resolve) => setTimeout(resolve, time3));
   }
   closeDialog() {
     this.dialog.style.display = "none";
@@ -29828,8 +31710,8 @@ class Hud {
         let animationFrame;
         const animateIcon = () => {
           animationFrame = requestAnimationFrame(animateIcon);
-          const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-          icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+          const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+          icon.style.backgroundPosition = `${-spriteWidth * (frame3 % cols)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
         };
         animateIcon();
         this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -29917,8 +31799,8 @@ class Hud {
     let animationFrame;
     const animateIcon = () => {
       animationFrame = requestAnimationFrame(animateIcon);
-      const frame2 = frames[Math.floor(performance.now() / 100) % frames.length];
-      icon.style.backgroundPosition = `${-spriteWidth * (frame2 % cols)}px ${-spriteHeight * Math.floor(frame2 / SPRITESHEET_COLS)}px`;
+      const frame3 = frames[Math.floor(performance.now() / 100) % frames.length];
+      icon.style.backgroundPosition = `${-spriteWidth * (frame3 % cols)}px ${-spriteHeight * Math.floor(frame3 / SPRITESHEET_COLS)}px`;
     };
     animateIcon();
     this.itemsToDestroy.add(() => cancelAnimationFrame(animationFrame));
@@ -30080,8 +31962,8 @@ class Thinker {
           }
           return;
         }
-        const time2 = Date.now() - startTime;
-        if (time2 < actions[actions.length - 1].time) {
+        const time3 = Date.now() - startTime;
+        if (time3 < actions[actions.length - 1].time) {
           requestAnimationFrame(loop);
         } else if (actions.length) {
           const action = actions.pop();
@@ -30107,9 +31989,9 @@ class Medals {
   villageMedal = new NewgroundsMedal(82136, "First Village", "You build your first village!", "\uD83C\uDF96\uFE0F");
   medals = {};
   mMedals = {};
-  constructor(medals3) {
+  constructor(medals4) {
     newgroundsInit("59435:yImSBHAv", "CgB6J4i3kfvQGILxQUF39g==", import_crypto_js.default);
-    medals3.forEach((medal) => {
+    medals4.forEach((medal) => {
       this.mMedals[medal.name] = new Medal(medal.id, medal.name, medal.description, medal.icon);
       if (!medal.id) {
         return;
@@ -31072,8 +32954,8 @@ class Manager {
           return;
         }
         if (reward.gold) {
-          const [min2, max2] = reward.gold;
-          const gold = Math.floor(Math.random() * (max2 - min2 + 1) + min2);
+          const [min3, max3] = reward.gold;
+          const gold = Math.floor(Math.random() * (max3 - min3 + 1) + min3);
           obj.updateResource("gold", (g) => g + gold);
           obj.showResources(obj.px, obj.py, obj.elem?.owner, true, {
             gold
@@ -35063,4 +36945,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=1075094A9DBDA1EC64756e2164756e21
+//# debugId=1D3AE75E6546710464756e2164756e21
