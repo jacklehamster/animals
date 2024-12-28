@@ -1222,7 +1222,7 @@ export class GameObject extends BaseObject {
       return;
     }
     if (!this.visible) {
-      return;
+      // return;
     }
     // if (this.manager.inUI) {
     //   return;
