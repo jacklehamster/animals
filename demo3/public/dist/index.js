@@ -28207,6 +28207,9 @@ class GameObject extends BaseObject {
     if (this.updated && !this.elem?.dynamic && !this.elem?.spread?.moving && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
+    if (!this.visible) {
+      return;
+    }
     const nowHoverered = this.manager.hovering(this);
     if (this.hovered !== nowHoverered) {
       this.hovered = nowHoverered;
@@ -35126,4 +35129,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=687A5A2AC1B4D4CB64756e2164756e21
+//# debugId=B59DD14A825D817864756e2164756e21

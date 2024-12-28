@@ -1221,6 +1221,9 @@ export class GameObject extends BaseObject {
     if (this.updated && !this.elem?.dynamic && !this.elem?.spread?.moving && !this.doomed && Date.now() - this.bornTime < 1000 && !this.floatResources) {
       return;
     }
+    if (!this.visible) {
+      return;
+    }
     // if (this.manager.inUI) {
     //   return;
     // }
