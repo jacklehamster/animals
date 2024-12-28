@@ -27035,8 +27035,30 @@ class AnimationManager {
   }
 }
 
+// src/core/objects/base-object.ts
+class BaseObject extends EngineObject {
+  visible = true;
+  constructor(pos, size) {
+    super(pos, size);
+  }
+  hide() {
+    this.setVisible(false);
+  }
+  show() {
+    this.setVisible(true);
+  }
+  setVisible(visible) {
+    this.visible = visible;
+  }
+  render() {
+    if (this.visible) {
+      super.render();
+    }
+  }
+}
+
 // src/core/objects/decor.ts
-class DecorObject extends EngineObject {
+class DecorObject extends BaseObject {
   initialPos;
   bornTime;
   doomTime;
@@ -27051,7 +27073,7 @@ class DecorObject extends EngineObject {
 }
 
 // src/core/objects/move-option.ts
-class MoveOption extends EngineObject {
+class MoveOption extends BaseObject {
   px;
   py;
   from;
@@ -27073,7 +27095,7 @@ class MoveOption extends EngineObject {
 }
 
 // src/core/objects/attack-option.ts
-class AttackOption extends EngineObject {
+class AttackOption extends BaseObject {
   px;
   py;
   animation;
@@ -27113,7 +27135,7 @@ class Projectile extends EngineObject {
 }
 
 // src/core/objects/game-object.ts
-class GameObject extends EngineObject {
+class GameObject extends BaseObject {
   manager;
   gridShift;
   animationInfo;
@@ -27129,21 +27151,13 @@ class GameObject extends EngineObject {
   py = 0;
   positionDetached;
   onHoverHideCursor;
-  visible = true;
   elem;
   hovered = false;
-  decors = [];
-  shadow;
-  labels = [];
   updated = false;
-  moveOptions;
-  attackOptions;
   clearedCloud;
   bornTime = Date.now() - Math.random() * 1e4;
   moveQueue = [];
-  resources = [];
   floatResources;
-  resourceBars = [];
   moving;
   talkingTime;
   attackTarget;
@@ -27155,6 +27169,14 @@ class GameObject extends EngineObject {
   retaliating;
   projectile;
   unitsSupported = new Set;
+  shadow;
+  labels = [];
+  resources = [];
+  resourceBars = [];
+  hoverIndic;
+  decors = [];
+  moveOptions;
+  attackOptions;
   constructor(manager, gridShift = vec2(0, 0)) {
     super();
     this.manager = manager;
@@ -27180,7 +27202,11 @@ class GameObject extends EngineObject {
     elem = this.elem;
     const config = elem.gameObject;
     if (config) {
-      this.visible = !config.hidden;
+      if (config.hidden) {
+        this.hide();
+      } else {
+        this.show();
+      }
       if (this.home) {
         this.home.unitsSupported.add(this);
       }
@@ -27229,7 +27255,7 @@ class GameObject extends EngineObject {
         if (elem.shadow.animation) {
           this.shadowAnimationInfo = this.manager.animation.getInfo(elem.shadow.animation);
           if (!this.shadow) {
-            this.shadow = new EngineObject;
+            this.shadow = new BaseObject;
             this.shadow.size.set(this.size.x, this.size.y);
             this.shadow.tileInfo = this.getTileInfoAnimate(this.shadowAnimationInfo);
             const offset = this.elem?.gameObject?.offset ?? [0, 0];
@@ -27326,14 +27352,14 @@ class GameObject extends EngineObject {
       if (!value) {
         return;
       }
-      const backBar = new EngineObject(vec2(0, 0), vec2(1, 0.3));
+      const backBar = new BaseObject(vec2(0, 0), vec2(1, 0.3));
       backBar.color = new Color(0, 0, 0, 0.3);
       this.addChild(backBar, vec2(0 - offX, count * 0.3 - offY - 0.3));
       this.resourceBars.push(backBar);
       const numValuesToShow = Math.min(10, value);
       const spacing = Math.min(0.2, 1 / numValuesToShow);
       for (let j = 0;j < numValuesToShow; j++) {
-        const barIcon = new EngineObject(vec2(0, 0), vec2(0.5, 0.5));
+        const barIcon = new BaseObject(vec2(0, 0), vec2(0.5, 0.5));
         barIcon.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(key));
         this.addChild(barIcon, vec2(-0.4 + j * spacing - offX + Math.floor(j / 5) * 0.1 - Math.floor((numValuesToShow - 1) / 5) * 0.05, count * 0.3 - offY - 0.3));
         this.resourceBars.push(barIcon);
@@ -27401,7 +27427,7 @@ class GameObject extends EngineObject {
   generateEngineObjectsForDigit(num, size, charSize, offset, color) {
     const digits = this.generateDigits(num);
     return digits.map((d, i) => {
-      const digit = new EngineObject(vec2(0, 0), vec2(size, size));
+      const digit = new BaseObject(vec2(0, 0), vec2(size, size));
       digit.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${d}`));
       digit.color = color;
       this.addChild(digit, offset.add(vec2(-i * charSize, 0)));
@@ -27436,7 +27462,7 @@ class GameObject extends EngineObject {
       }
       const MAX_ROW = 8;
       for (let i = 0;i < value; i++) {
-        const indic = new EngineObject(vec2(0, 0), vec2(0.5, 0.5));
+        const indic = new BaseObject(vec2(0, 0), vec2(0.5, 0.5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
         indic.color = new Color(1, 1, 1, 1);
         const col = count % MAX_ROW;
@@ -27455,7 +27481,7 @@ class GameObject extends EngineObject {
       });
     }
     if (!floatResources) {
-      const indic = new EngineObject(vec2(0, 0), vec2(count * resourceSpacing + 0.2, 0.3));
+      const indic = new BaseObject(vec2(0, 0), vec2(count * resourceSpacing + 0.2, 0.3));
       indic.color = harvesting ? new Color(1, 0.5, 1, 0.8) : new Color(0.5, 0.5, 0.5, 0.8);
       this.addChild(indic, vec2(offX, offY));
       this.resources.push(indic);
@@ -27810,18 +27836,11 @@ class GameObject extends EngineObject {
     return true;
   }
   hide() {
-    if (this.visible) {
-      this.visible = false;
-      this.size.set(0, 0);
-    }
+    this.visible = false;
   }
   show() {
-    if (!this.visible) {
-      this.visible = true;
-      this.updateSize();
-    }
+    this.visible = true;
   }
-  hoverIndic;
   onHoverChange() {
     if (this.manager.shifting) {
       return;
@@ -27830,7 +27849,7 @@ class GameObject extends EngineObject {
       if (this.manager.hovering(this)) {
         this.manager.setHovered(this);
         if (this.elem?.onHover?.indic && !this.hoverIndic) {
-          this.hoverIndic = new EngineObject;
+          this.hoverIndic = new BaseObject;
           const scale = this.elem.onHover.indic.scale ?? 1;
           this.hoverIndic.size.set(this.size.x * scale, this.size.y * scale);
           this.hoverIndic.tileInfo = this.manager.animation.getInfo(this.elem.onHover.indic.animation).tileInfos[0];
@@ -28608,11 +28627,19 @@ class GameObject extends EngineObject {
     }
     return { retaliation: 0, death: false };
   }
-  render() {
-    if (!this.visible) {
-      return;
+  detailsVisible = true;
+  showDetails(visible) {
+    if (visible !== this.detailsVisible) {
+      this.detailsVisible = visible;
+      this.shadow?.setVisible(visible);
+      this.labels.forEach((label) => label.setVisible(visible));
+      this.resources.forEach((resource) => resource.setVisible(visible));
+      this.resourceBars.forEach((bar) => bar.setVisible(visible));
+      this.hoverIndic?.setVisible(visible);
+      this.decors.forEach((decor2) => decor2.setVisible(visible));
+      Object.values(this.moveOptions ?? {}).forEach((moveOption) => moveOption.setVisible(visible));
+      Object.values(this.attackOptions ?? {}).forEach((option) => option.setVisible(visible));
     }
-    super.render();
   }
 }
 
@@ -28905,7 +28932,7 @@ class Hud {
     if (!isTouchDevice) {
       this.setupZoom();
     } else {
-      setCameraScale(50);
+      this.manager.resizeCamera(50);
     }
   }
   setupMusic() {
@@ -29165,7 +29192,7 @@ class Hud {
     zoomKnob.style.marginTop = "40px";
     zoomKnob.style.transform = "rotate(90deg)";
     zoomKnob.addEventListener("input", (e) => {
-      setCameraScale(parseInt(zoomKnob.value));
+      this.manager.resizeCamera(parseInt(zoomKnob.value));
     });
     zoomKnob.addEventListener("mouseover", (e) => {
       this.onKnob = true;
@@ -30163,17 +30190,20 @@ class Manager {
   lastHovered;
   advise = new Set;
   medals;
+  resizeCamera(scale) {
+    setCameraScale(scale);
+  }
   constructor(scene) {
     this.scene = scene;
     this.animation = new AnimationManager(scene.animations);
     this.hud = new Hud(this);
     this.medals = new Medals(this.scene?.medals ?? []);
     if (scene.scale) {
-      setCameraScale(scene.scale);
+      this.resizeCamera(scene.scale);
     }
     document.addEventListener("wheel", (e) => {
       const newScale = Math.max(20, Math.min(200, cameraScale + e.deltaY / 10));
-      setCameraScale(newScale);
+      this.resizeCamera(newScale);
       e.preventDefault();
     }, { passive: false });
     this.hud.initialize();
@@ -30232,6 +30262,7 @@ class Manager {
       } else {
         gameObject.hide();
       }
+      gameObject.showDetails(cameraScale > 50);
     });
   }
   clearFogOfWar() {
@@ -35095,4 +35126,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=4A37E8FBE25A811764756e2164756e21
+//# debugId=687A5A2AC1B4D4CB64756e2164756e21

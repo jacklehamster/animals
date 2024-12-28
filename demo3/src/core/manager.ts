@@ -127,6 +127,7 @@ export class Manager {
       } else {
         gameObject.hide();
       }
+      gameObject.showDetails(cameraScale > 50);
     });
   }
 

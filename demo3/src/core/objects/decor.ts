@@ -1,6 +1,7 @@
 import { EngineObject, vec2, Vector2 } from "../../lib/littlejs";
+import { BaseObject } from "./base-object";
 
-export class DecorObject extends EngineObject {
+export class DecorObject extends BaseObject {
   initialPos: Vector2;
   bornTime: number;
   doomTime?: number;

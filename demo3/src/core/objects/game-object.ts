@@ -7,8 +7,9 @@ import { DecorObject } from "./decor";
 import { MoveOption } from "./move-option";
 import { AttackOption } from "./attack-option";
 import { Projectile } from "../projectile";
+import { BaseObject } from "./base-object";
 
-export class GameObject extends EngineObject {
+export class GameObject extends BaseObject {
   animationInfo?: AnimationInfo;
   hoveredAnimationInfo?: AnimationInfo;
   selectedAnimationInfo?: AnimationInfo;
@@ -22,21 +23,13 @@ export class GameObject extends EngineObject {
   positionDetached?: boolean;
   // type?: string;
   onHoverHideCursor?: boolean;
-  visible: boolean = true;
   elem?: Elem;
   hovered: boolean = false;
-  decors: DecorObject[] = [];
-  shadow?: EngineObject;
-  labels: EngineObject[] = [];
   updated?: boolean = false;
-  moveOptions?: Record<string, MoveOption>;
-  attackOptions?: Record<string, AttackOption>;
   clearedCloud?: boolean;
   bornTime: number = Date.now() - Math.random() * 10000;
   moveQueue: Vector2[] = [];
-  resources: EngineObject[] = [];
   floatResources?: number;
-  resourceBars: EngineObject[] = [];
   moving?: boolean;
   talkingTime?: number;
   attackTarget?: GameObject;
@@ -48,6 +41,16 @@ export class GameObject extends EngineObject {
   retaliating?: boolean;
   projectile?: Projectile;
   unitsSupported: Set<GameObject> = new Set();
+
+  shadow?: BaseObject;
+  labels: BaseObject[] = [];
+  resources: BaseObject[] = [];
+  resourceBars: BaseObject[] = [];
+  hoverIndic?: BaseObject;
+  decors: DecorObject[] = [];
+  moveOptions?: Record<string, MoveOption>;
+  attackOptions?: Record<string, AttackOption>;
+
 
   constructor(public manager: Manager, private gridShift: Vector2 = vec2(0, 0)) {
     super();
@@ -77,7 +80,11 @@ export class GameObject extends EngineObject {
     elem = this.elem!;
     const config = elem.gameObject;
     if (config) {
-      this.visible = !config.hidden;
+      if (config.hidden) {
+        this.hide();
+      } else {
+        this.show();
+      }
       if (this.home) {
         this.home.unitsSupported.add(this);
       }
@@ -126,7 +133,7 @@ export class GameObject extends EngineObject {
         if (elem.shadow.animation) {
           this.shadowAnimationInfo = this.manager.animation.getInfo(elem.shadow.animation);
           if (!this.shadow) {
-            this.shadow = new EngineObject();
+            this.shadow = new BaseObject();
             this.shadow.size.set(this.size.x, this.size.y);
             this.shadow.tileInfo = this.getTileInfoAnimate(this.shadowAnimationInfo);
             const offset = this.elem?.gameObject?.offset ?? [0, 0];
@@ -228,7 +235,7 @@ export class GameObject extends EngineObject {
       if (!value) {
         return;
       }
-      const backBar = new EngineObject(vec2(0, 0), vec2(1, .3));
+      const backBar = new BaseObject(vec2(0, 0), vec2(1, .3));
       backBar.color = new Color(0, 0, 0, .3);
       this.addChild(backBar, vec2(0 - offX, count * .3 - offY - .3));
       this.resourceBars.push(backBar);
@@ -236,7 +243,7 @@ export class GameObject extends EngineObject {
       const numValuesToShow = Math.min(10, value);
       const spacing = Math.min(.2, 1 / numValuesToShow);
       for (let j = 0; j < numValuesToShow; j++) {
-        const barIcon = new EngineObject(vec2(0, 0), vec2(.5, .5));
+        const barIcon = new BaseObject(vec2(0, 0), vec2(.5, .5));
         barIcon.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(key));
         this.addChild(barIcon, vec2(-.4 + j * spacing - offX + Math.floor(j / 5) * .1 - Math.floor((numValuesToShow - 1) / 5) * .05, count * .3 - offY - .3));
         this.resourceBars.push(barIcon);
@@ -319,7 +326,7 @@ export class GameObject extends EngineObject {
   generateEngineObjectsForDigit(num: number, size: number, charSize: number, offset: Vector2, color: Color) {
     const digits = this.generateDigits(num);
     return digits.map((d, i) => {
-      const digit = new EngineObject(vec2(0, 0), vec2(size, size));
+      const digit = new BaseObject(vec2(0, 0), vec2(size, size));
       digit.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(`num_${d}`));
       digit.color = color;
       this.addChild(digit, offset.add(vec2(-i * charSize, 0)));
@@ -363,7 +370,7 @@ export class GameObject extends EngineObject {
       }
       const MAX_ROW = 8;
       for (let i = 0; i < value; i++) {
-        const indic = new EngineObject(vec2(0, 0), vec2(.5, .5));
+        const indic = new BaseObject(vec2(0, 0), vec2(.5, .5));
         indic.tileInfo = this.getTileInfoAnimate(this.manager.animation.getInfo(resource));
         indic.color = new Color(1, 1, 1, 1);
         const col = count % MAX_ROW;
@@ -387,7 +394,7 @@ export class GameObject extends EngineObject {
       });
     }
     if (!floatResources) {
-      const indic = new EngineObject(vec2(0, 0), vec2(count * resourceSpacing + .2, .3));
+      const indic = new BaseObject(vec2(0, 0), vec2(count * resourceSpacing + .2, .3));
       indic.color = harvesting ? new Color(1, .5, 1, .8) : new Color(.5, .5, .5, .8);
       this.addChild(indic, vec2(offX, offY));
       this.resources.push(indic);
@@ -808,20 +815,12 @@ export class GameObject extends EngineObject {
   }
 
   hide() {
-    if (this.visible) {
-      this.visible = false;
-      this.size.set(0, 0);
-    }
+    this.visible = false;
   }
 
   show() {
-    if (!this.visible) {
-      this.visible = true;
-      this.updateSize();
-    }
+    this.visible = true;
   }
-
-  hoverIndic?: EngineObject;
 
   onHoverChange() {
     if (this.manager.shifting) {
@@ -831,7 +830,7 @@ export class GameObject extends EngineObject {
       if (this.manager.hovering(this)) {
         this.manager.setHovered(this);
         if (this.elem?.onHover?.indic && !this.hoverIndic) {
-          this.hoverIndic = new EngineObject();
+          this.hoverIndic = new BaseObject();
           const scale = this.elem.onHover.indic.scale ?? 1;
           this.hoverIndic.size.set(this.size.x * scale, this.size.y * scale);
           this.hoverIndic.tileInfo = this.manager.animation.getInfo(this.elem.onHover.indic.animation).tileInfos[0];
@@ -1699,10 +1698,18 @@ export class GameObject extends EngineObject {
     return { retaliation: 0, death: false };
   }
 
-  render(): void {
-    if (!this.visible) {
-      return;
+  detailsVisible: boolean = true;
+  showDetails(visible: boolean) {
+    if (visible !== this.detailsVisible) {
+      this.detailsVisible = visible;
+      this.shadow?.setVisible(visible);
+      this.labels.forEach(label => label.setVisible(visible));
+      this.resources.forEach(resource => resource.setVisible(visible));
+      this.resourceBars.forEach(bar => bar.setVisible(visible));
+      this.hoverIndic?.setVisible(visible);
+      this.decors.forEach(decor => decor.setVisible(visible));
+      Object.values(this.moveOptions ?? {}).forEach(moveOption => moveOption.setVisible(visible));
+      Object.values(this.attackOptions ?? {}).forEach(option => option.setVisible(visible));
     }
-    super.render();
   }
 }

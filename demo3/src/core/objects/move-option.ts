@@ -1,7 +1,8 @@
 import type { AnimationInfo } from "../../animation/animation-manager";
-import { EngineObject, Vector2 } from "../../lib/littlejs";
+import { Vector2 } from "../../lib/littlejs";
+import { BaseObject } from "./base-object";
 
-export class MoveOption extends EngineObject {
+export class MoveOption extends BaseObject {
   animation?: AnimationInfo;
   constructor(
     readonly px: number,
