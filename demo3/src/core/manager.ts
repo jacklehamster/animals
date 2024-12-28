@@ -46,17 +46,21 @@ export class Manager {
   advise: Set<string> = new Set();
   medals: Medals;
 
+  resizeCamera(scale: number) {
+    setCameraScale(scale);
+  }
+
   constructor(readonly scene: Scene) {
     this.animation = new AnimationManager(scene.animations);
     this.hud = new Hud(this);
     this.medals = new Medals(this.scene?.medals ?? []);
     if (scene.scale) {
-      setCameraScale(scene.scale);
+      this.resizeCamera(scene.scale);
     }
 
     document.addEventListener("wheel", (e) => {
       const newScale = Math.max(20, Math.min(200, cameraScale + e.deltaY / 10));
-      setCameraScale(newScale);
+      this.resizeCamera(newScale);
       // this.camShift.x += e.deltaX / cameraScale;
       // this.camShift.y -= e.deltaY / cameraScale;
       e.preventDefault();
@@ -106,6 +110,7 @@ export class Manager {
       }
       this.sanitizeElem(elem);
       this.refreshElem(elem);
+      this.checkElemVisibility(elem);
     });
     this.shiftCamera();
     if (this.worldChanged) {
@@ -113,6 +118,16 @@ export class Manager {
       this.worldChanged = false;
     }
     this.hud.update();
+  }
+
+  checkElemVisibility(elem: Elem) {
+    this.entries.get(elem)?.gameObject.forEach((gameObject) => {
+      if (this.isInsideGrid(gameObject.px, gameObject.py)) {
+        gameObject.show();
+      } else {
+        gameObject.hide();
+      }
+    });
   }
 
   clearFogOfWar() {
@@ -291,15 +306,16 @@ export class Manager {
         const farFromCenter = elem.group?.farFromCenter ?? 0;
         for (let x = 0; x < col; x++) {
           for (let y = 0; y < row; y++) {
+            const xx = x - Math.floor(col / 2);
+            const yy = y - Math.floor(row / 2);
+
             if (farFromCenter) {
-              const distance = Math.abs(x - Math.floor(col / 2)) + Math.abs(y - Math.floor(row / 2));
+              const distance = Math.abs(xx) + Math.abs(yy);
               if (distance < farFromCenter) {
                 continue;
               }
             }
             if (Math.random() <= chance) {
-              const xx = x - Math.floor(col / 2);
-              const yy = y - Math.floor(row / 2);
               if ((elem.type === "decor" || elem.water) && Math.abs(xx) <= 1 && Math.abs(yy) <= 1) {
                 continue;
               }
@@ -1262,5 +1278,23 @@ export class Manager {
     if (action.score) {
       postScore(action.score.board, this.getTurn());
     }
+  }
+
+  isInsideGrid(px: number, py: number) {
+    const { gridLeft, gridTop, gridRight, gridBottom } = this.getGridDimensions();
+    return px >= gridLeft && px <= gridRight && py >= gridTop && py <= gridBottom;
+  }
+
+  getGridDimensions() {
+    const margin = 1;
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const gridWidth = (screenWidth / cameraScale);
+    const gridHeight = (screenHeight / cameraScale);
+    const gridLeft = cameraPos.x - Math.floor(gridWidth / 2) - margin;
+    const gridTop = cameraPos.y - Math.floor(gridHeight / 2) - margin;
+    const gridRight = gridLeft + gridWidth + margin;
+    const gridBottom = gridTop + gridHeight + margin;
+    return { gridLeft, gridTop, gridRight, gridBottom };
   }
 }

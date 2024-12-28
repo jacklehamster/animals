@@ -1698,4 +1698,11 @@ export class GameObject extends EngineObject {
     }
     return { retaliation: 0, death: false };
   }
+
+  render(): void {
+    if (!this.visible) {
+      return;
+    }
+    super.render();
+  }
 }

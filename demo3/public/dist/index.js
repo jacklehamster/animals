@@ -28608,6 +28608,12 @@ class GameObject extends EngineObject {
     }
     return { retaliation: 0, death: false };
   }
+  render() {
+    if (!this.visible) {
+      return;
+    }
+    super.render();
+  }
 }
 
 // src/content/constant.ts
@@ -30210,6 +30216,7 @@ class Manager {
       }
       this.sanitizeElem(elem);
       this.refreshElem(elem);
+      this.checkElemVisibility(elem);
     });
     this.shiftCamera();
     if (this.worldChanged) {
@@ -30217,6 +30224,15 @@ class Manager {
       this.worldChanged = false;
     }
     this.hud.update();
+  }
+  checkElemVisibility(elem) {
+    this.entries.get(elem)?.gameObject.forEach((gameObject) => {
+      if (this.isInsideGrid(gameObject.px, gameObject.py)) {
+        gameObject.show();
+      } else {
+        gameObject.hide();
+      }
+    });
   }
   clearFogOfWar() {
     Object.keys(this.grid).forEach((tag) => {
@@ -30383,15 +30399,15 @@ class Manager {
         const farFromCenter = elem.group?.farFromCenter ?? 0;
         for (let x = 0;x < col; x++) {
           for (let y = 0;y < row; y++) {
+            const xx = x - Math.floor(col / 2);
+            const yy2 = y - Math.floor(row / 2);
             if (farFromCenter) {
-              const distance = Math.abs(x - Math.floor(col / 2)) + Math.abs(y - Math.floor(row / 2));
+              const distance = Math.abs(xx) + Math.abs(yy2);
               if (distance < farFromCenter) {
                 continue;
               }
             }
             if (Math.random() <= chance) {
-              const xx = x - Math.floor(col / 2);
-              const yy2 = y - Math.floor(row / 2);
               if ((elem.type === "decor" || elem.water) && Math.abs(xx) <= 1 && Math.abs(yy2) <= 1) {
                 continue;
               }
@@ -31246,6 +31262,22 @@ class Manager {
     if (action.score) {
       postScore(action.score.board, this.getTurn());
     }
+  }
+  isInsideGrid(px, py) {
+    const { gridLeft, gridTop, gridRight, gridBottom } = this.getGridDimensions();
+    return px >= gridLeft && px <= gridRight && py >= gridTop && py <= gridBottom;
+  }
+  getGridDimensions() {
+    const margin = 1;
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    const gridWidth = screenWidth / cameraScale;
+    const gridHeight = screenHeight / cameraScale;
+    const gridLeft = cameraPos.x - Math.floor(gridWidth / 2) - margin;
+    const gridTop = cameraPos.y - Math.floor(gridHeight / 2) - margin;
+    const gridRight = gridLeft + gridWidth + margin;
+    const gridBottom = gridTop + gridHeight + margin;
+    return { gridLeft, gridTop, gridRight, gridBottom };
   }
 }
 
@@ -35063,4 +35095,4 @@ var manager2 = new Manager(scene);
 window.manager = manager2;
 engineInit(gameInit, gameUpdate, postUpdate, render, renderPost, manager2.animation.imageSources);
 
-//# debugId=26468CB7CF2121FB64756e2164756e21
+//# debugId=4A37E8FBE25A811764756e2164756e21

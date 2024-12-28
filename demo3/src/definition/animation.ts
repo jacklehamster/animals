@@ -1,5 +1,5 @@
 export interface Anim {
-  name?: string;
+  name: string;
   imageSource?: string;
   spriteSize: [number, number];
   padding?: [number, number];

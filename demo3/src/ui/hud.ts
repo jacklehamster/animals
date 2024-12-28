@@ -3,7 +3,7 @@ import type { Manager } from "../core/manager";
 import type { Resources } from "../definition/resources";
 import { DEBUG } from "../content/constant";
 import type { Research } from "../definition/research";
-import { setCameraScale, isTouchDevice, zzfx } from "../lib/littlejs";
+import { isTouchDevice, zzfx } from "../lib/littlejs";
 import type { Elem } from "../definition/elem";
 import type { QuickAction } from "../definition/quick-actions";
 import type { Medal } from "../definition/medal";
@@ -315,7 +315,7 @@ export class Hud {
     if (!isTouchDevice) {
       this.setupZoom();
     } else {
-      setCameraScale(50);
+      this.manager.resizeCamera(50);
     }
   }
 
@@ -606,7 +606,7 @@ export class Hud {
     zoomKnob.style.marginTop = "40px";
     zoomKnob.style.transform = "rotate(90deg)";
     zoomKnob.addEventListener("input", e => {
-      setCameraScale(parseInt(zoomKnob.value));
+      this.manager.resizeCamera(parseInt(zoomKnob.value));
     });
     zoomKnob.addEventListener("mouseover", e => {
       this.onKnob = true;

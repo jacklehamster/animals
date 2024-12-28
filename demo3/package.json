@@ -12,6 +12,7 @@
     "@types/bun": "latest",
     "@types/crypto-js": "^4.2.2",
     "@types/express": "^5.0.0",
+    "@types/seedrandom": "^3.0.8",
     "express": "^4.21.1"
   },
   "peerDependencies": {
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "littlejsengine": "^1.10.7"
+    "littlejsengine": "^1.10.7",
+    "seedrandom": "^3.0.5"
   }
 }
