@@ -1,7 +1,7 @@
 # Oh Sheep!
 
-[demo1](demo1)
+[demo1/public](demo1)
 
-[demo2](demo2)
+[demo2/public](demo2)
 
-[demo3](demo3)
+[demo3/public](demo3)
