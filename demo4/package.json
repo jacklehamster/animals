@@ -1,0 +1,28 @@
+{
+  "name": "animals",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun i && bun run copy-littlejsengine && bun test && rm -rf public/dist/*.* && bun run bundler/bundler.ts && bun run test",
+    "start": "bun run build && bun run ./index.ts",
+    "test": "bun test",
+    "copy-littlejsengine": "cp -r node_modules/littlejsengine/dist/littlejs.esm.min.js ./dist"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/crypto-js": "^4.2.2",
+    "@types/express": "^5.0.0",
+    "@types/seedrandom": "^3.0.8",
+    "express": "^4.21.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "aseprite-sheet": "^1.0.6",
+    "crypto-js": "^4.2.0",
+    "littlejsengine": "^1.11.2",
+    "napl": "^1.0.9",
+    "seedrandom": "^3.0.5"
+  }
+}

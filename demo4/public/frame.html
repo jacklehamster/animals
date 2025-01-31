@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spincasters</title>
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Spincasters" />
+    <meta property="og:description" content="Spellcasting and spinning." />
+
+    <!-- Imges -->
+    <meta
+      property="og:image"
+      content="https://i.ibb.co/7kbJWXQ/oh-sheep-crt.png"
+    />
+    <meta property="og:image:width" content="734" />
+    <meta property="og:image:height" content="365" />
+    <meta property="og:url" content="https://ohsheep.dobuki.net" />
+    <meta property="og:type" content="video.game" />
+    <meta
+      property="og:site_name"
+      content="Oh Sheep! - Grow your civilization of pets"
+    />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Oh Sheep! - Grow your civilization of pets"
+    />
+    <meta
+      name="twitter:description"
+      content="A game where you build your civilization of pets, trying to thrive in the middle of a war among humans."
+    />
+    <meta
+      name="twitter:image"
+      content="https://i.ibb.co/7kbJWXQ/oh-sheep-crt.png"
+    />
+    <meta name="twitter:site" content="@jacklehamster" />
+    <meta name="twitter:creator" content="@jacklehamster" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "The Supernatural Power Troll",
+        "description": "The Supernatural Power troll uses humans to overcome obstacles by throwing superpowers at them.",
+        "url": "https://ohsheep.dobuki.net",
+        "image": {
+          "@type": "ImageObject",
+          "url": "https://i.ibb.co/7kbJWXQ/oh-sheep-crt.png",
+          "width": 734,
+          "height": 365
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Dobuki Studio",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://power-troll-levels.dobuki.net/data/image/dobuki-logo.png",
+            "width": 600,
+            "height": 600
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /*      canvas {
+        cursor: none;
+      }*/
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #f1f100;
+      }
+      button {
+        border: 2px solid #000;
+        padding: 10px 20px;
+        text-transform: uppercase;
+        font-weight: bold;
+      }
+
+      @keyframes flash {
+        0% {
+          background-color: #fff;
+        }
+        50% {
+          background-color: #55f;
+        }
+        100% {
+          background-color: #fff;
+        }
+      }
+
+      @keyframes research-flash {
+        0% {
+          background-color: rgba(0, 0, 0, 0.7);
+        }
+        50% {
+          background-color: rgba(0, 0, 255, 0.7);
+        }
+        100% {
+          background-color: rgba(0, 0, 0, 0.7);
+        }
+      }
+
+      .flash {
+        animation: flash 1s infinite;
+      }
+      .flash-temp {
+        animation: flash 1s 1;
+      }
+      .research-flash-temp {
+        animation: research-flash 1s 1;
+      }
+      .hidden {
+        opacity: 0;
+      }
+
+      .hud {
+        -moz-transition: opacity 0.5s linear; /* Firefox 4 */
+        -webkit-transition: opacity 0.5s linear; /* Safari and Chrome */
+        -o-transition: opacity 0.5s linear; /* Opera */
+        -ms-transition: opacity 0.5s linear; /* Explorer 10 */
+        transition: opacity 0.5s linear;
+      }
+      .resource-icon {
+        background-color: #00000080;
+        bottom: 0;
+        left: 0;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-self: flex-end;
+        justify-content: center;
+        font-size: 12pt;
+        font-weight: bold;
+        margin-top: 15px;
+        transition: background-color 0.2s;
+      }
+      .resource-icon:hover {
+        background-color: #000000;
+      }
+      .bg {
+        height: 100px;
+        bottom: -100px;
+      }
+      @media (orientation: portrait) {
+        .bg {
+          height: 200px;
+          bottom: -200px;
+        }
+        .bg.open.nomenu {
+          height: 100px;
+        }
+      }
+      .bg.open {
+        bottom: 0;
+      }
+      .quick-actions {
+        bottom: 0;
+      }
+      .quick-actions.removed {
+        bottom: -100px !important;
+      }
+      .quick-actions.open {
+        bottom: 100px;
+      }
+      @media (orientation: portrait) {
+        .quick-actions.open {
+          bottom: 200px;
+        }
+        .quick-actions.open.nomenu {
+          bottom: 100px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <script src="dist/index.js"></script>
+  </body>
+</html>
+<!--
+BEEPBOX
+https://www.beepbox.co/#9n31sbk0l00e0ft1Ua7g0fj0br1i0o542T1v3ue4f0q0w10p5d4aA5F4B0Q0248Pac74E3b8628635T5v0ua6f10i8q8141d23HYr901i8ah00000h0E0T1v1u17f0q00d03A1F0B0Q200ePb793E3617628637T3v1uf9f0qwx10l511d08SW86bmhkrrzrkrrrE1b6b0180d01mu9Ei4Ql6u7yqL18id3lDpUCH4h4h4i8z8ycp29yFEYcpt9BR7dVcpsypthPuIpsypqrnWbQQvF7jsvObQQu6hQAsyhTAuMhT4tx7qhR4tN7ohMh7G4sD0R4sahSAtN70AtF7xxBQ6n1BZ9HUA4sEhOp78AschOp7uhTAuQhSAt97ihT4th7ihQAuQhM97uhMp7ihQAt97ihBdvMwWqkSLQCzMqp6LGalbWtMR-iGbUeELSE6IzVa1KwHO_4qV6Tyi2HKHOrWrXXqrF-N7IrBdBBCACn-HaGIPE61IKGOIKHaGKNq0LFOtzaGOGHoaWGC3EFws--1Kwo6CO_T7As9Mx8AunkhX5tdenB9J7UFVWiFwJPcH8WLtbrUaCzW4th7ihQAt97ihQAt97E4s6hQAt97ihQAt97ihV4hRAt97ihMp7ihQAt97H4tx7ihQAt970At97ihWx7khQAt97khTAt97mhXh7qhS4tp7khT4tx7b4uEhOh7ohOV7mhRAtN7ohW17uhQAt97khMh7ihQAuQhMx7ihQAsIhS4t97ihXx7ohQAt97ohR4t97ihU4hS4t97ihTAth7ihQAqCza6nuhQ4t9BQAt17L4tV7ihQQnAtp7ihQQqN7qhSAs0hO9704s30i5g0
+-->
